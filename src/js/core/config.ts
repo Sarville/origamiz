@@ -82,7 +82,10 @@ export const globalConfig = {
     debug,
 };
 
-export const IS_MOBILE = navigator.userAgentData.mobile;
+// navigator.userAgentData (Client Hints) is Chromium-only and undefined on
+// Safari/Firefox, where ".mobile" would throw at module load. UA sniffing is
+// less "modern" but actually works everywhere.
+export const IS_MOBILE = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 export const SUPPORT_TOUCH = IS_MOBILE;
 
 // Automatic calculations

@@ -178,6 +178,13 @@ canvas {
     backface-visibility: hidden;
 }
 
+#ingame_Canvas {
+    // Camera panning/pinch-zoom and drag-placement handle touch gestures
+    // themselves (see game/camera.js) - without this, some mobile browsers
+    // hijack the gesture for native scroll/zoom before JS ever sees it.
+    touch-action: none;
+}
+
 // Scrollbar
 ::-webkit-scrollbar {
     width: 0.6rem;

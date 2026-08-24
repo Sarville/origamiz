@@ -249,7 +249,7 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      * Aborts any dragging
      */
     abortDragging() {
-        this.currentlyDragging = true;
+        this.currentlyDragging = false;
         this.currentlyDeleting = false;
         this.initialPlacementVector = null;
         this.lastDragTile = null;
