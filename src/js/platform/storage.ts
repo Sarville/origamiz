@@ -1,5 +1,6 @@
 import { Application } from "@/application";
 import { Compression, DefaultCompression } from "@/core/compression";
+import { handleBrowserFsJob } from "./browser_fs_job";
 import { FsError } from "./fs_error";
 
 export const STORAGE_SAVES = "saves";
@@ -77,12 +78,10 @@ export class Storage {
     }
 
     private invokeFsJob(data: FsJob) {
-        return ipcRenderer
-            .invoke("fs-job", {
-                id: this.id,
-                ...data,
-            })
-            .catch(e => this.wrapError(e));
+        const job = { id: this.id, ...data };
+        const promise =
+            typeof ipcRenderer !== "undefined" ? ipcRenderer.invoke("fs-job", job) : handleBrowserFsJob(job);
+        return promise.catch(e => this.wrapError(e));
     }
 
     private wrapError(err: unknown): Promise<never> {

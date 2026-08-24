@@ -76,7 +76,8 @@ export class ModLoader {
 
     async initMods() {
         this.exposeExports();
-        const queue: ModQueueEntry[] = await ipcRenderer.invoke("get-mods");
+        const queue: ModQueueEntry[] =
+            typeof ipcRenderer !== "undefined" ? await ipcRenderer.invoke("get-mods") : [];
 
         // Mods can be parsed and constructed in parallel
         const loadedMods = await Promise.all(
