@@ -64,6 +64,21 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
     }
 
     /**
+     * HELPER / Returns if there is a building selected for placement and
+     * it has multiple variants to choose from
+     * @returns {boolean}
+     */
+    get buildingPlacementHasVariants() {
+        const placer = this.root.hud.parts.buildingPlacer;
+        return (
+            !this.mapOverviewActive &&
+            placer &&
+            placer.currentMetaBuilding.get() &&
+            placer.currentMetaBuilding.get().getAvailableVariants(this.root).length > 1
+        );
+    }
+
+    /**
      * HELPER / Returns if there is a blueprint selected for placement
      * @returns {boolean}
      */
@@ -129,6 +144,8 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
                 // Move map - Including mouse
                 label: T.ingame.keybindingsOverlay.moveMap,
                 keys: [
+                    KEYCODE_MMB,
+                    DIVIDER_TOKEN,
                     KEYCODE_LMB,
                     DIVIDER_TOKEN,
                     k.navigation.mapMoveUp,
@@ -140,9 +157,11 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
             },
 
             {
-                // Move map - No mouse
+                // Move map - Placement active (only middle mouse still pans)
                 label: T.ingame.keybindingsOverlay.moveMap,
                 keys: [
+                    KEYCODE_MMB,
+                    DIVIDER_TOKEN,
                     k.navigation.mapMoveUp,
                     k.navigation.mapMoveLeft,
                     k.navigation.mapMoveDown,
@@ -150,6 +169,7 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
                 ],
                 condition: () => this.anyPlacementActive,
             },
+
 
             {
                 // [OVERVIEW] Create marker with right click
@@ -197,8 +217,27 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
             {
                 // Rotate
                 label: T.ingame.keybindingsOverlay.rotateBuilding,
-                keys: [k.placement.rotateWhilePlacing],
+                keys: [
+                    k.placement.rotateInverseModifier,
+                    ADDER_TOKEN,
+                    KEYCODE_MMB,
+                    DIVIDER_TOKEN,
+                    k.placement.rotateWhilePlacing,
+                ],
                 condition: () => this.anyPlacementActive && !this.beltPlannerActive,
+            },
+
+            {
+                // Select variant
+                label: T.ingame.keybindingsOverlay.selectVariant,
+                keys: [
+                    k.placement.rotateInverseModifier,
+                    ADDER_TOKEN,
+                    KEYCODE_RMB,
+                    DIVIDER_TOKEN,
+                    k.placement.cycleBuildingVariants,
+                ],
+                condition: () => this.buildingPlacementHasVariants,
             },
 
             {

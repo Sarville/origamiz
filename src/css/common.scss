@@ -501,6 +501,21 @@ kbd,
     height: 1.2rem;
     overflow: hidden;
     border: 0rem solid $accentColorDark;
+
+    &.leftMouse {
+        /* @load-async */
+        background: #fff uiResource("icons/mouse_left.png") center center / 85% no-repeat;
+    }
+
+    &.rightMouse {
+        /* @load-async */
+        background: #fff uiResource("icons/mouse_right.png") center center / 85% no-repeat;
+    }
+
+    &.middleMouse {
+        /* @load-async */
+        background: #fff uiResource("icons/mouse_middle.png") center center / 85% no-repeat;
+    }
 }
 
 iframe {

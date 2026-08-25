@@ -87,6 +87,7 @@ export class Camera extends BasicSerializableObject {
         this.movePreHandler = /** @type {Signal<[Vector]>} */ (new Signal());
         // this.pinchPreHandler = /** @type {Signal<[Vector]>} */ (new Signal());
         this.upPostHandler = /** @type {Signal<[Vector]>} */ (new Signal());
+        this.wheelPreHandler = /** @type {Signal<[WheelEvent]>} */ (new Signal());
 
         this.internalInitEvents();
         this.clampZoomLevel();
@@ -444,6 +445,14 @@ export class Camera extends BasicSerializableObject {
             this.combinedSingleTouchStartHandler(event.clientX, event.clientY);
         } else if (event.button === 1) {
             this.downPreHandler.dispatch(new Vector(event.clientX, event.clientY), enumMouseButton.middle);
+
+            // Middle mouse button always pans the camera, even while a building
+            // is selected for placement (which captures the left button)
+            this.currentlyMoving = true;
+            this.lastMovingPosition = new Vector(event.clientX, event.clientY);
+            this.lastMovingPositionLastTick = null;
+            this.numTicksStandingStill = 0;
+            this.didMoveSinceTouchStart = false;
         } else if (event.button === 2) {
             this.downPreHandler.dispatch(new Vector(event.clientX, event.clientY), enumMouseButton.right);
         }
@@ -464,7 +473,7 @@ export class Camera extends BasicSerializableObject {
             return;
         }
 
-        if (event.button === 0) {
+        if (event.button === 0 || this.currentlyMoving) {
             this.combinedSingleTouchMoveHandler(event.clientX, event.clientY);
         }
 
@@ -503,6 +512,11 @@ export class Camera extends BasicSerializableObject {
             event.preventDefault();
             // event.stopPropagation();
         }
+
+        if (this.wheelPreHandler.dispatch(event) === STOP_PROPAGATION) {
+            return;
+        }
+
         const prevZoom = this.zoomLevel;
 
         const scale = 1 + 0.15 * this.root.app.settings.getScrollWheelSensitivity();

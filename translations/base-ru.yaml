@@ -248,6 +248,7 @@ ingame:
         pipette: Пипетка
         switchLayers: Переключить слои
         clearBelts: Очистить конвейеры
+        selectVariant: Выбрать вариант
     colors:
         red: Красный
         green: Зеленый

@@ -134,6 +134,7 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         this.root.camera.downPreHandler.add(this.onMouseDown, this);
         this.root.camera.movePreHandler.add(this.onMouseMove, this);
         this.root.camera.upPostHandler.add(this.onMouseUp, this);
+        this.root.camera.wheelPreHandler.add(this.onMouseWheel, this);
     }
 
     /**
@@ -293,6 +294,28 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             const staticComp = this.fakeEntity.components.StaticMapEntity;
             staticComp.rotation = this.currentBaseRotation;
         }
+    }
+
+    /**
+     * Rotates the current building while scrolling with shift held
+     * @param {WheelEvent} event
+     */
+    onMouseWheel(event) {
+        const selectedBuilding = this.currentMetaBuilding.get();
+        if (!selectedBuilding) {
+            return;
+        }
+        if (!this.root.keyMapper.getBinding(KEYMAPPINGS.placement.rotateInverseModifier).pressed) {
+            return;
+        }
+        if (event.deltaY === 0) {
+            return;
+        }
+
+        this.currentBaseRotation = (this.currentBaseRotation + (event.deltaY < 0 ? 270 : 90)) % 360;
+        const staticComp = this.fakeEntity.components.StaticMapEntity;
+        staticComp.rotation = this.currentBaseRotation;
+        return STOP_PROPAGATION;
     }
 
     /**
@@ -489,8 +512,9 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
 
     /**
      * Cycles through the variants
+     * @param {number=} direction Overrides the direction instead of reading it from the modifier key
      */
-    cycleVariants() {
+    cycleVariants(direction) {
         const metaBuilding = this.currentMetaBuilding.get();
         if (!metaBuilding) {
             this.currentVariant.set(defaultBuildingVariant);
@@ -501,10 +525,12 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 index = 0;
                 console.warn("Invalid variant selected:", this.currentVariant.get());
             }
-            const direction = this.root.keyMapper.getBinding(KEYMAPPINGS.placement.rotateInverseModifier)
-                .pressed
-                ? -1
-                : 1;
+            if (!direction) {
+                direction = this.root.keyMapper.getBinding(KEYMAPPINGS.placement.rotateInverseModifier)
+                    .pressed
+                    ? -1
+                    : 1;
+            }
 
             const newIndex = safeModulo(index + direction, availableVariants.length);
             const newVariant = availableVariants[newIndex];
@@ -684,6 +710,18 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         }
 
         const metaBuilding = this.currentMetaBuilding.get();
+
+        // Switch variant with shift + right click
+        if (
+            button === enumMouseButton.right &&
+            metaBuilding &&
+            this.root.keyMapper.getBinding(KEYMAPPINGS.placement.rotateInverseModifier).pressed
+        ) {
+            if (metaBuilding.getAvailableVariants(this.root).length > 1) {
+                this.cycleVariants(1);
+            }
+            return STOP_PROPAGATION;
+        }
 
         // Placement
         if (button === enumMouseButton.left && metaBuilding) {

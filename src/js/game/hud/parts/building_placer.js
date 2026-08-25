@@ -199,6 +199,10 @@ export class HUDBuildingPlacer extends HUDBuildingPlacerLogic {
                 "<key>",
                 "<kbd>" +
                     this.root.keyMapper
+                        .getBinding(KEYMAPPINGS.placement.rotateInverseModifier)
+                        .getKeyCodeString() +
+                    "</kbd>+<kbd class=\"rightMouse\"></kbd> / <kbd>" +
+                    this.root.keyMapper
                         .getBinding(KEYMAPPINGS.placement.cycleBuildingVariants)
                         .getKeyCodeString() +
                     "</kbd>"
