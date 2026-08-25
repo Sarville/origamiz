@@ -19,6 +19,7 @@ import { HUDLayerPreview } from "../hud/parts/layer_preview";
 import { HUDLeverToggle } from "../hud/parts/lever_toggle";
 import { HUDMassSelector } from "../hud/parts/mass_selector";
 import { HUDMinerHighlight } from "../hud/parts/miner_highlight";
+import { HUDMobileControls } from "../hud/parts/mobile_controls";
 import { HUDNotifications } from "../hud/parts/notifications";
 import { HUDPinnedShapes } from "../hud/parts/pinned_shapes";
 import { HUDScreenshotExporter } from "../hud/parts/screenshot_exporter";
@@ -350,6 +351,8 @@ export class RegularGameMode extends GameMode {
 
         if (!IS_MOBILE) {
             this.additionalHudParts.keybindingOverlay = HUDKeybindingOverlay;
+        } else {
+            this.additionalHudParts.mobileControls = HUDMobileControls;
         }
 
         if (this.root.app.settings.getAllSettings().offerHints) {

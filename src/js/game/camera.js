@@ -655,12 +655,17 @@ export class Camera extends BasicSerializableObject {
         }
 
         clickDetectorGlobals.lastTouchTime = performance.now();
-        if (event.changedTouches.length === 0) {
-            logger.warn("Touch end without changed touches");
-        }
 
+        // event.changedTouches can be empty (seen on some mobile browsers on touchcancel).
+        // Reading .clientX off an undefined touch would throw *before* combinedSingleTouchStopHandler
+        // runs, leaving currentlyMoving/lastDragTile stuck - the next tap would then draw a path from
+        // the stale position instead of starting fresh. Fall back to the last known position instead.
         const touch = event.changedTouches[0];
-        this.combinedSingleTouchStopHandler(touch.clientX, touch.clientY);
+        if (!touch) {
+            logger.warn("Touch end without changed touches, falling back to last known position");
+        }
+        const pos = touch ? new Vector(touch.clientX, touch.clientY) : this.lastMovingPosition || new Vector(0, 0);
+        this.combinedSingleTouchStopHandler(pos.x, pos.y);
         return false;
     }
 

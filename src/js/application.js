@@ -1,5 +1,6 @@
 import { AnimationFrame } from "./core/animation_frame";
 import { BackgroundResourcesLoader } from "./core/background_resources_loader";
+import { IS_MOBILE } from "./core/config";
 import { ErrorHandler } from "./core/error_handler";
 import { GameState } from "./core/game_state";
 import { setGlobalApp } from "./core/globals";
@@ -152,10 +153,16 @@ export class Application {
         window.addEventListener("resize", () => this.checkResize(), true);
         window.addEventListener("orientationchange", () => this.checkResize(), true);
 
-        window.addEventListener("mousemove", this.handleMousemove.bind(this));
-        window.addEventListener("mouseout", this.handleMousemove.bind(this));
-        window.addEventListener("mouseover", this.handleMousemove.bind(this));
-        window.addEventListener("mouseleave", this.handleMousemove.bind(this));
+        // On mobile there's no real cursor - a long-press can make Chrome/Android
+        // synthesize a mouseover/mousemove pair for hover-compatibility, which would
+        // otherwise "stick" mousePosition at that spot forever (nothing ever clears it
+        // back to null) and cause the building placement preview to freeze in place.
+        if (!IS_MOBILE) {
+            window.addEventListener("mousemove", this.handleMousemove.bind(this));
+            window.addEventListener("mouseout", this.handleMousemove.bind(this));
+            window.addEventListener("mouseover", this.handleMousemove.bind(this));
+            window.addEventListener("mouseleave", this.handleMousemove.bind(this));
+        }
 
         // Unload events
         window.addEventListener("beforeunload", this.onBeforeUnload.bind(this), true);

@@ -1,0 +1,65 @@
+@use "../mixins" as *;
+@use "../ui_resource" as *;
+@use "../variables" as *;
+
+#ingame_HUD_MobileControls {
+    position: absolute;
+    bottom: 1.5rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8rem;
+
+    // z-index:auto left this dynamically-populated absolute box uncomposited on real
+    // mobile Chrome - it never painted even though DOM/computed-style looked correct.
+    // Needs to be high enough to beat other HUD layers (buildings toolbar sits at
+    // 330) - matches the value blueprint_placer.scss already uses for the same
+    // "must render above everything" need.
+    z-index: 9999;
+
+    > button {
+        @include PlainText;
+        width: 5.6rem;
+        height: 5.6rem;
+        font-size: 2.2rem;
+        border-radius: 0.8rem;
+
+        pointer-events: all;
+        cursor: pointer;
+        transition: all 0.12s ease-in-out;
+        transition-property: opacity, transform, background-color, box-shadow;
+
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #ffffffcc;
+        color: #333438;
+
+        &.pressed {
+            transform: scale(0.9) !important;
+        }
+
+        @include DarkThemeOverride {
+            background-color: #28282ecc;
+            color: #fff;
+        }
+
+        // Toggles (drag mode / multiplace) get a clear white outline when enabled.
+        &.active {
+            box-shadow: 0 0 0 0.15rem #fff;
+        }
+
+        &.delete {
+            background-image: uiResource("icons/delete.png");
+            background-size: 45%;
+            background-repeat: no-repeat;
+            background-position: center center;
+
+            &.active {
+                background-color: #e0463f;
+                box-shadow: 0 0 0 0.15rem #fff;
+            }
+        }
+    }
+}

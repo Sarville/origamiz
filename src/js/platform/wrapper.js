@@ -205,7 +205,7 @@ export class PlatformWrapperImplBrowser {
      * Whether this platform supports a keyboard
      */
     getSupportsKeyboard() {
-        return true;
+        return !IS_MOBILE;
     }
 
     /**

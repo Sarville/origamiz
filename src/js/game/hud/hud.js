@@ -182,6 +182,7 @@ export class GameHUD {
             "massSelector",
             "buildingPlacer",
             "blueprintPlacer",
+            "mobileControls",
             "colorBlindHelper",
             "changesDebugger",
             "minerHighlight",
