@@ -15,12 +15,61 @@ async function run() {
     const dimensions = 192;
     const beltBorder = 23.5;
     const lineSize = 5;
+    const curbWidth = 10;
 
-    const borderColor = "#91949e";
-    const fillColor = "#d2d4d9";
-    const arrowColor = "#c0c2c7";
+    const borderColor = "#a87a42";
+    const arrowColor = "#f5efe0";
 
-    // Generate arrow sprite
+    const texture = await loadImage(path.join(__dirname, "belt_texture.png"));
+    const woodTexture = await loadImage(path.join(__dirname, "wood_texture.png"));
+
+    // Path helpers, parametrized by the border inset — used twice per frame:
+    // once with a wider inset (curbWidth less) filled in borderColor to make
+    // a raised-looking curb band along the sides, then again at the normal
+    // inset filled with the lane texture. Keeping this as one shared
+    // function (instead of copy-pasting the path twice) guarantees the
+    // curb and lane always stay perfectly parallel/concentric.
+    function forwardPath(context, border) {
+        context.beginPath();
+        context.rect(border, -10, dimensions - 2 * border, dimensions + 20);
+    }
+
+    function turnPath(context, border) {
+        const innerRadius = border;
+        const outerRadius = dimensions - 2 * border;
+        const originX = dimensions - innerRadius;
+        const originY = dimensions - innerRadius;
+        const sqrt = x => Math.pow(Math.abs(x), 0.975) * Math.sign(x);
+        const steps = 256;
+
+        context.beginPath();
+        context.moveTo(border, dimensions + 10);
+        context.lineTo(border, dimensions - innerRadius);
+        for (let k = 0; k <= steps; ++k) {
+            const pct = k / steps;
+            const angleRad = Math.PI + pct * Math.PI * 0.5;
+            context.lineTo(
+                originX + sqrt(Math.cos(angleRad)) * outerRadius,
+                originY + sqrt(Math.sin(angleRad)) * outerRadius
+            );
+        }
+        context.lineTo(dimensions + 10, border);
+        context.lineTo(dimensions + 10, dimensions - border);
+        context.lineTo(dimensions, dimensions - border);
+        for (let k = 0; k <= steps; ++k) {
+            const pct = 1 - k / steps;
+            const angleRad = Math.PI + pct * Math.PI * 0.5;
+            context.lineTo(
+                dimensions + Math.cos(angleRad) * innerRadius,
+                dimensions + Math.sin(angleRad) * innerRadius
+            );
+        }
+        context.lineTo(dimensions - border, dimensions + 10);
+        context.closePath();
+    }
+
+    // Generate arrow sprite — a chevron/bracket shape (notched at the back)
+    // instead of a solid triangle, closer to a conventional belt arrow.
 
     const arrowW = 60;
     const arrowH = arrowW / 2;
@@ -35,6 +84,9 @@ async function run() {
     arrowContext.moveTo(0, arrowH);
     arrowContext.lineTo(arrowW / 2, 0);
     arrowContext.lineTo(arrowW, arrowH);
+    arrowContext.lineTo(arrowW * 0.72, arrowH);
+    arrowContext.lineTo(arrowW / 2, arrowH * 0.42);
+    arrowContext.lineTo(arrowW * 0.28, arrowH);
     arrowContext.closePath();
     arrowContext.fill();
 
@@ -50,12 +102,17 @@ async function run() {
         const procentual = i / fps;
         context.clearRect(0, 0, dimensions, dimensions);
 
-        context.fillStyle = fillColor;
+        // curb band (wider inset, solid border color) then the textured
+        // lane on top (normal inset) — gives the belt raised-looking side
+        // edges instead of just a thin outline.
+        forwardPath(context, beltBorder - curbWidth);
+        context.fillStyle = context.createPattern(woodTexture, "repeat");
+        context.fill();
+
+        forwardPath(context, beltBorder);
+        context.fillStyle = context.createPattern(texture, "repeat");
         context.strokeStyle = borderColor;
         context.lineWidth = lineSize;
-
-        context.beginPath();
-        context.rect(beltBorder, -10, dimensions - 2 * beltBorder, dimensions + 20);
         context.fill();
         context.stroke();
 
@@ -81,51 +138,20 @@ async function run() {
         context.quality = "best";
 
         const procentual = i / fps;
-        const innerRadius = beltBorder;
         context.clearRect(0, 0, dimensions, dimensions);
 
-        context.fillStyle = fillColor;
+        // curb band, then the textured lane on top — same two-pass
+        // technique as the forward belt, so both share the same raised-edge
+        // look (this is also why the corner and straight piece can never
+        // drift apart in style: identical code, identical constants).
+        turnPath(context, beltBorder - curbWidth);
+        context.fillStyle = context.createPattern(woodTexture, "repeat");
+        context.fill();
+
+        turnPath(context, beltBorder);
+        context.fillStyle = context.createPattern(texture, "repeat");
         context.strokeStyle = borderColor;
         context.lineWidth = lineSize;
-
-        context.beginPath();
-        context.moveTo(beltBorder, dimensions + 10);
-        context.lineTo(beltBorder, dimensions - innerRadius);
-
-        const steps = 256;
-
-        const outerRadius = dimensions - 2 * beltBorder;
-
-        const originX = dimensions - innerRadius;
-        const originY = dimensions - innerRadius;
-
-        const sqrt = x => Math.pow(Math.abs(x), 0.975) * Math.sign(x);
-
-        for (let k = 0; k <= steps; ++k) {
-            const pct = k / steps;
-            const angleRad = Math.PI + pct * Math.PI * 0.5;
-            const offX = originX + sqrt(Math.cos(angleRad)) * outerRadius;
-            const offY = originY + sqrt(Math.sin(angleRad)) * outerRadius;
-
-            context.lineTo(offX, offY);
-        }
-
-        context.lineTo(dimensions + 10, beltBorder);
-        context.lineTo(dimensions + 10, dimensions - beltBorder);
-        context.lineTo(dimensions, dimensions - beltBorder);
-
-        for (let k = 0; k <= steps; ++k) {
-            const pct = 1 - k / steps;
-            const angleRad = Math.PI + pct * Math.PI * 0.5;
-            const offX = dimensions + Math.cos(angleRad) * innerRadius;
-            const offY = dimensions + Math.sin(angleRad) * innerRadius;
-
-            context.lineTo(offX, offY);
-        }
-
-        context.lineTo(dimensions - beltBorder, dimensions + 10);
-
-        context.closePath();
         context.fill();
         context.stroke();
 

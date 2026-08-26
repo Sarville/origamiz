@@ -3,6 +3,12 @@
 @use "../variables" as *;
 
 #ingame_HUD_TutorialHints {
+    // Hidden on mobile for now - the plan is to bring it back behind a toggle
+    // button once mobile has room for it.
+    html.is-mobile & {
+        display: none !important;
+    }
+
     position: absolute;
     left: 1rem;
     bottom: 1rem;

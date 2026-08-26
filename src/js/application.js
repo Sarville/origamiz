@@ -45,6 +45,10 @@ export class Application {
 
         this.errorHandler = new ErrorHandler();
 
+        if (IS_MOBILE) {
+            document.documentElement.classList.add("is-mobile");
+        }
+
         logger.log("Creating application, platform =", getPlatformName());
         setGlobalApp(this);
 

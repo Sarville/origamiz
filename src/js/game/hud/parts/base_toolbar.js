@@ -1,3 +1,4 @@
+import { IS_MOBILE } from "../../../core/config";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { Logger } from "../../../core/logging";
 import { STOP_PROPAGATION } from "../../../core/signal";
@@ -13,6 +14,10 @@ import { BaseHUDPart } from "../base_hud_part";
 import { DynamicDomAttach } from "../dynamic_dom_attach";
 
 const logger = new Logger("hud/base_toolbar");
+
+// Buildings per mobile toolbar page - matches the 10-column grid in
+// buildings_toolbar.scss's html.is-mobile rule.
+const MOBILE_PAGE_SIZE = 10;
 
 export class HUDBaseToolbar extends BaseHUDPart {
     /**
@@ -84,7 +89,7 @@ export class HUDBaseToolbar extends BaseHUDPart {
     initialize() {
         const actionMapper = this.root.keyMapper;
         let rowSecondary;
-        if (this.secondaryBuildings.length > 0) {
+        if (!IS_MOBILE && this.secondaryBuildings.length > 0) {
             rowSecondary = makeDiv(this.element, null, ["buildings", "secondary"]);
 
             this.secondaryDomAttach = new DynamicDomAttach(this.root, rowSecondary, {
@@ -92,7 +97,14 @@ export class HUDBaseToolbar extends BaseHUDPart {
             });
         }
 
-        const rowPrimary = makeDiv(this.element, null, ["buildings", "primary"]);
+        const rowPrimary = !IS_MOBILE ? makeDiv(this.element, null, ["buildings", "primary"]) : null;
+
+        // On mobile there's no room for permanent rows - buildings are grouped into
+        // pages of up to MOBILE_PAGE_SIZE instead, stacked bottom-to-top. Page 0 is
+        // always visible (like the desktop primary row); later pages appear once
+        // anything in them unlocks (like the desktop secondary row).
+        /** @type {Array<{element: HTMLElement, buildingIds: Array<string>}>} */
+        this.mobilePages = [];
 
         const allBuildings = this.allBuildings;
 
@@ -114,10 +126,17 @@ export class HUDBaseToolbar extends BaseHUDPart {
             }
 
             const itemContainer = makeDiv(
-                this.primaryBuildings.includes(allBuildings[i]) ? rowPrimary : rowSecondary,
+                IS_MOBILE
+                    ? this.getOrCreateMobilePage(Math.floor(i / MOBILE_PAGE_SIZE))
+                    : this.primaryBuildings.includes(allBuildings[i])
+                    ? rowPrimary
+                    : rowSecondary,
                 null,
                 ["building"]
             );
+            if (IS_MOBILE) {
+                this.mobilePages[Math.floor(i / MOBILE_PAGE_SIZE)].buildingIds.push(metaBuilding.id);
+            }
             itemContainer.setAttribute("data-icon", "building_icons/" + metaBuilding.getId() + ".png");
             itemContainer.setAttribute("data-id", metaBuilding.getId());
 
@@ -161,6 +180,25 @@ export class HUDBaseToolbar extends BaseHUDPart {
     }
 
     /**
+     * Creates (if necessary) and returns the mobile toolbar page for the given index
+     * @param {number} pageIndex
+     * @returns {HTMLElement}
+     */
+    getOrCreateMobilePage(pageIndex) {
+        if (!this.mobilePages[pageIndex]) {
+            const element = makeDiv(this.element, null, ["buildings", "page"]);
+            // Page 0 mirrors the desktop primary row and is always shown; kept
+            // permanently attached (rather than using DynamicDomAttach) so pages
+            // never get reordered in the DOM when later ones toggle visibility.
+            if (pageIndex === 0) {
+                element.classList.add("visible");
+            }
+            this.mobilePages[pageIndex] = { element, buildingIds: [] };
+        }
+        return this.mobilePages[pageIndex].element;
+    }
+
+    /**
      * Updates the toolbar
      */
     update() {
@@ -190,6 +228,14 @@ export class HUDBaseToolbar extends BaseHUDPart {
                 }
 
                 this.secondaryDomAttach.update(anyUnlocked);
+            }
+
+            if (IS_MOBILE) {
+                for (let i = 1; i < this.mobilePages.length; ++i) {
+                    const page = this.mobilePages[i];
+                    const anyUnlocked = page.buildingIds.some(id => this.buildingHandles[id].unlocked);
+                    page.element.classList.toggle("visible", anyUnlocked);
+                }
             }
         }
     }

@@ -2,14 +2,18 @@
 @use "../ui_resource" as *;
 @use "../variables" as *;
 
+@use "sass:color";
+
 #ingame_HUD_MobileControls {
     position: absolute;
-    bottom: 1.5rem;
+    // The buildings toolbar now spans the full width (see buildings_toolbar.scss),
+    // so there's no room beside it any more - this sits above whichever toolbar
+    // page is currently on top instead. --toolbar-height is measured and kept
+    // updated in HUDMobileControls.update() (the toolbar's own page count/height
+    // changes over the game as more buildings unlock, so this can't be a fixed
+    // number).
+    bottom: calc(1rem + var(--toolbar-height, 0px) + 2rem);
     right: 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.8rem;
 
     // z-index:auto left this dynamically-populated absolute box uncomposited on real
     // mobile Chrome - it never painted even though DOM/computed-style looked correct.
@@ -18,11 +22,12 @@
     // "must render above everything" need.
     z-index: 9999;
 
-    > button {
+    // Idle state: just the trash icon.
+    > .delete {
         @include PlainText;
-        width: 5.6rem;
-        height: 5.6rem;
-        font-size: 2.2rem;
+        width: $mobileCell;
+        height: $mobileCell;
+        font-size: calc($mobileCell * 0.4);
         border-radius: 0.8rem;
 
         pointer-events: all;
@@ -45,20 +50,160 @@
             color: #fff;
         }
 
-        // Toggles (drag mode / multiplace) get a clear white outline when enabled.
         &.active {
             box-shadow: 0 0 0 0.15rem #fff;
         }
 
-        &.delete {
-            background-image: uiResource("icons/delete.png");
-            background-size: 45%;
-            background-repeat: no-repeat;
-            background-position: center center;
+        background-image: uiResource("icons/delete.png");
+        background-size: 45%;
+        background-repeat: no-repeat;
+        background-position: center center;
 
-            &.active {
-                background-color: #e0463f;
-                box-shadow: 0 0 0 0.15rem #fff;
+        &.active {
+            background-color: #e0463f;
+            box-shadow: 0 0 0 0.15rem #fff;
+        }
+    }
+
+    // Active state: building preview + controls, replacing the trash icon in the
+    // same spot while a building is selected for placement.
+    .buildingPreview {
+        display: none;
+    }
+
+    &.placing {
+        > .delete {
+            display: none;
+        }
+        .buildingPreview {
+            display: flex;
+        }
+    }
+
+    .buildingPreview {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.6rem;
+
+        padding: 1.5vmin;
+        // Big enough to comfortably cover even a 1x1 building's small sprite -
+        // pointer-events:all below means everything inside this box (padding,
+        // gaps, the swipe hint text) eats taps instead of letting them fall
+        // through to the canvas and place a building underneath the panel.
+        min-width: calc($mobileCell * 2.25);
+        border-radius: $globalBorderRadius;
+        background-color: rgba($ingameHudBg, 0.07);
+        pointer-events: all;
+
+        @include DarkThemeOverride {
+            background-color: rgba(
+                color.adjust($darkModeGameBackground, $lightness: -15%, $space: hsl),
+                0.95
+            );
+        }
+
+        .swipeHint {
+            @include SuperSmallText;
+            color: #fff;
+            text-transform: uppercase;
+            text-align: center;
+            visibility: hidden;
+
+            @include DarkThemeInvert;
+        }
+
+        &.hasVariants .swipeHint {
+            visibility: visible;
+        }
+
+        // Not a fixed-size box: sizing the wrap itself (instead of just centering
+        // an oversized .sprite inside a smaller fixed one) avoids flexbox
+        // shrinking .sprite's width to fit and squashing multi-tile buildings out
+        // of proportion. .sprite is sized per its real tile footprint below, and
+        // flex-shrink:0 guarantees it never gets compressed either way.
+        .spriteWrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            touch-action: none;
+
+            .sprite {
+                position: relative;
+                flex-shrink: 0;
+                width: $mobileCell;
+                height: $mobileCell;
+                transition: transform 0.15s ease;
+
+                &[data-tile-w="2"] {
+                    width: 2 * $mobileCell;
+                }
+                &[data-tile-h="2"] {
+                    height: 2 * $mobileCell;
+                }
+                &[data-tile-h="3"] {
+                    height: 3 * $mobileCell;
+                }
+                &[data-tile-w="3"] {
+                    width: 3 * $mobileCell;
+                }
+                &[data-tile-w="4"] {
+                    width: 4 * $mobileCell;
+                }
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            // Extra breathing room from the sprite above - the column gap on
+            // .buildingPreview is shared with the (much smaller) swipe hint above
+            // the sprite, so it's not enough here on its own.
+            margin-top: 1vmin;
+
+            > button {
+                @include PlainText;
+                width: $mobileCell;
+                height: $mobileCell;
+                font-size: calc($mobileCell * 0.42);
+                border-radius: 0.7rem;
+
+                pointer-events: all;
+                cursor: pointer;
+                transition: all 0.12s ease-in-out;
+                transition-property: opacity, transform, background-color, box-shadow;
+
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                background-color: #ffffffcc;
+                color: #333438;
+                background-position: center center;
+                background-repeat: no-repeat;
+
+                &.pressed {
+                    transform: scale(0.9) !important;
+                }
+
+                @include DarkThemeOverride {
+                    background-color: #28282ecc;
+                    color: #fff;
+                }
+
+                &.active {
+                    box-shadow: 0 0 0 0.15rem #fff;
+                }
+
+                &.cancel {
+                    background-image: uiResource("icons/close.png");
+                    background-size: 45%;
+                }
+
+                &.info {
+                    background-image: uiResource("icons/info_button.png");
+                    background-size: 55%;
+                }
             }
         }
     }

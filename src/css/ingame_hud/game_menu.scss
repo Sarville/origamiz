@@ -12,6 +12,10 @@
 
     backdrop-filter: blur(0.1rem);
 
+    html.is-mobile & {
+        grid-gap: 1.5vmin;
+    }
+
     > button,
     > .button {
         @include PlainText;
@@ -108,6 +112,11 @@
 
         &:not(.hasBadge) .badge {
             display: none;
+        }
+
+        html.is-mobile & {
+            width: 9vmin;
+            height: 9vmin;
         }
 
         &.hasBadge {

@@ -202,3 +202,68 @@
         }
     }
 }
+
+html.is-mobile .ingame_buildingsToolbar {
+    left: 0;
+    right: 0;
+    bottom: 1rem;
+    padding: 0 0.6rem;
+    transform: none;
+
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: stretch;
+    grid-gap: unset;
+    gap: 0.6rem;
+
+    &:not(.visible) {
+        transform: translateY(10rem);
+    }
+
+    // Full width, 10 even columns (matches MOBILE_PAGE_SIZE in base_toolbar.js) -
+    // cells size themselves instead of a hand-picked width that has to be
+    // re-checked against every screen size.
+    .buildings {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        grid-auto-flow: row;
+        grid-row: unset;
+        grid-gap: 0.6vmin;
+        // The shared (desktop) rule above sets justify-items:center, which sizes
+        // each grid item to its own shrink-to-fit content width instead of
+        // filling its 1fr column - with .icon's background-image having no
+        // intrinsic size, that collapsed cells down to near-nothing.
+        justify-items: stretch;
+        // ...and align-self:center there overrides this row's own cross-axis
+        // stretch from .ingame_buildingsToolbar's align-items:stretch, shrinking
+        // the whole row (not just the cells in it) to fit its content and
+        // centering it - confirmed via computed styles in a real mobile-emulated
+        // browser: this row measured 45px wide instead of the full screen, which
+        // is what was actually making the toolbar disappear.
+        align-self: stretch;
+
+        &.page:not(.visible) {
+            display: none;
+        }
+    }
+
+    // Height in vw, not derived from the cell's own width: both the earlier
+    // aspect-ratio attempt (height:auto from width, .icon sized off that via
+    // height:100%) and the padding-bottom:100% square trick collapsed the whole
+    // toolbar to nothing on real devices, even though both looked right compiled/
+    // in a desktop browser. 10 columns means each is roughly 100vw/10 wide anyway
+    // (minus gaps/padding), so a plain vw height lands close to square without
+    // depending on any of that.
+    .building {
+        width: auto;
+        height: 9vw;
+
+        &:not(.unlocked) {
+            width: auto;
+        }
+
+        .icon {
+            background-size: 75%;
+        }
+    }
+}

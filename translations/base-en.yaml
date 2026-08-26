@@ -426,6 +426,10 @@ ingame:
         # and this is the hint shown when there are multiple variants available.
         cycleBuildingVariants: Press <key> to cycle variants.
 
+        # Mobile only: hint shown above the building preview when it has multiple
+        # variants, telling the player they can swipe it to cycle through them.
+        swipeForVariants: Swipe for variants
+
         # Shows the hotkey in the ui, e.g. "Hotkey: Q"
         hotkeyLabel: >-
             Hotkey: <key>

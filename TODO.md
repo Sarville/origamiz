@@ -20,6 +20,17 @@ logs.
   `generate_belt_sprites.js` — reskin the script's color/texture constants only,
   never the geometry, or the loop desyncs), plus UI icons/logo/font replacement
   and the rebuild order.
+- **Working rebrand name: "Origamiz"** (chosen 2026-08-26), Japanese/origami
+  theme (paper, wood, bamboo). Pilot batch of 10 buildings + 8 toolbar icons +
+  toolbar/belt in this style is done — preview stage only, not yet copied into
+  `res_raw/`/`res/`. Full writeup, layer pipeline, reusable scripts, and a long
+  list of pitfalls (read before continuing this work) in
+  `sessions/2026-08-26-2232-session.md`. Everything lives in
+  `assets_wip/origamiz_pilot/` for now. Belt is procedurally generated per the
+  plan above (`generate_belt_sprites.js` already recolored/retextured in place,
+  not scratch). Next decision needed from the user: wire this pilot batch into
+  the live engine for a real screenshot, or scale the same pipeline to the
+  remaining 41 buildings first — ask before picking.
 
 ## Chunks
 
@@ -85,6 +96,44 @@ logs.
       `<script src="https://yandex.ru/games/sdk/v2">` in the web HTML template.
       TBD: verify IndexedDB works from inside Yandex's cross-origin iframe context
       (storage partitioning risk, not yet tested).
+
+- [ ] **Chunk 5 — Puzzle mode as a standalone mini-game (separate build/ship).**
+      Confirmed 2026-08-25: puzzle creation + local playtesting already works with
+      zero network dependency — no new engine work needed, only trimming.
+      `LoginState` has a first-class "play offline" path (`src/js/states/login.js:47-65`),
+      `puzzle_menu.js:598-614` lets you open the editor unauthenticated, and the
+      editor's "test my puzzle" simulation (`puzzle_editor_review.js` `startReview()`)
+      runs entirely client-side — no `fetch` anywhere in that path. Only the online
+      catalog (browse/search/submit/like/report/complete, all gated by `isLoggedIn()`
+      in `src/js/platform/api.js`) needs `api.shapez.io` and won't work.
+      To ship as its own build: hide the catalog tabs and the submit dialog's final
+      "ok" in `puzzle_menu.js`/`puzzle_editor_review.js`, force the offline-login path,
+      bundle a local set of puzzle levels (format is self-contained JSON per
+      `src/js/savegame/puzzle_serializer.js` — building list + zone bounds + goal
+      shapes, no server-issued ID — so hand-authored/local files load fine, see
+      `puzzle_play.js:110-120`). Needs a content source for levels — see below.
+      **Open question: where do the actual puzzle levels come from?** No levels are
+      bundled in this repo (checked 2026-08-25 — only UI assets, no puzzle JSON
+      anywhere). Options, not yet decided:
+      - Author a small original set by hand in the built-in editor — zero licensing
+        risk, but time-per-puzzle.
+      - Pull specific puzzles from the official api.shapez.io catalog via
+        "download by short key" — legally murky (user-submitted content on a
+        third-party live service, not part of this repo's GPL code), needs a
+        deliberate license/ToS check before bulk-reuse, not just "it's shapez so
+        it's fine."
+      - Search for community-shared puzzle packs (GitHub/Reddit/Discord exports)
+        with an explicit open license — same caveat, verify per-source.
+      Since puzzle content is just building layout + shape goals (theme-agnostic),
+      it'll automatically pick up whatever rebranded building sprites Chunk 1's
+      asset work produces — no puzzle-specific rebrand work needed.
+
+## Later
+
+- [ ] Browse https://mod.io/g/shapez (top mods for original shapez.io) for ideas
+      worth pulling into the new version — mods are Electron-only in the current
+      CE modloader (`src/js/mods/modloader.ts`) and disabled in the web port, so
+      this is about inspiration/features, not running mods as-is.
 
 ## Infra notes
 

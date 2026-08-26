@@ -2,6 +2,12 @@
 @use "../variables" as *;
 
 #ingame_HUD_InteractiveTutorial {
+    // Hidden on mobile for now - it sits in the same corner as the buildings
+    // toolbar and covers it. The plan is to bring it back behind a toggle button.
+    html.is-mobile & {
+        display: none !important;
+    }
+
     position: absolute;
     left: 1rem;
     bottom: 1rem;

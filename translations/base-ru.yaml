@@ -261,6 +261,7 @@ ingame:
         black: Черный
     buildingPlacement:
         cycleBuildingVariants: Нажмите <key> для переключения вариантов.
+        swipeForVariants: Свайп для вариантов
         hotkeyLabel: "Клавиша: <key>"
         infoTexts:
             speed: Скорость

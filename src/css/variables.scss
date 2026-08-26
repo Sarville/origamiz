@@ -2,6 +2,18 @@
 
 $globalBorderRadius: 0.6rem;
 
+// Base touch-target size for the mobile building preview panel (idle trash
+// button, preview sprite, control buttons - see mobile_controls.scss). In vmin
+// (percent of the smaller viewport dimension) rather than rem: mobile pins the
+// root font-size from a user-configurable "UI scale" setting
+// (Application.getEffectiveUiScale) that a saved profile can carry in anywhere
+// from 0.6x to 1.05x, so anything sized in rem can end up much smaller than
+// intended regardless of the value chosen here. vmin ties it to the actual
+// screen instead. (The buildings toolbar itself uses plain vw - see
+// buildings_toolbar.scss - since its cell size is driven by column count, not
+// this.)
+$mobileCell: 9.1vmin;
+
 // Font sizes and line heights
 $superHeadingFontSize: 2.5rem;
 $superHeadingLineHeight: 2.4rem;
