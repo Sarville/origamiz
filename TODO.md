@@ -23,14 +23,22 @@ logs.
 - **Working rebrand name: "Origamiz"** (chosen 2026-08-26), Japanese/origami
   theme (paper, wood, bamboo). Pilot batch of 10 buildings + 8 toolbar icons +
   toolbar/belt in this style is done — preview stage only, not yet copied into
-  `res_raw/`/`res/`. Full writeup, layer pipeline, reusable scripts, and a long
-  list of pitfalls (read before continuing this work) in
-  `sessions/2026-08-26-2232-session.md`. Everything lives in
-  `assets_wip/origamiz_pilot/` for now. Belt is procedurally generated per the
-  plan above (`generate_belt_sprites.js` already recolored/retextured in place,
-  not scratch). Next decision needed from the user: wire this pilot batch into
-  the live engine for a real screenshot, or scale the same pipeline to the
-  remaining 41 buildings first — ask before picking.
+  `res_raw/`/`res/`. Everything lives in `assets_wip/origamiz_pilot/` for now.
+  Belt is procedurally generated per the plan above (`generate_belt_sprites.js`
+  already recolored/retextured in place, not scratch).
+- **2026-08-27: construction algorithm replaced.** The old AI-drawn hut/frame
+  look (`ui/hut_frame_template.png`, `low_platform_frame_template.png`) is
+  superseded by a fully procedural platform+curb algorithm — see
+  `sessions/2026-08-27-1456-session.md` for the full spec, every measured
+  constant, and the pitfalls hit getting there (read before touching
+  `assets_wip/origamiz_pilot/build_platform.py` or `build_batch.py`). Applied
+  so far to all 10 pilot buildings (`buildings/*_v2.png`); the hub (768×768,
+  own identity) and the remaining ~41 buildings are not started. Belt curb
+  recolor exists only as a preview copy (`ui/belt_straight_v2.png`) — not yet
+  ported into the live `generate_belt_sprites.js`. Next decision needed from
+  the user: scale this algorithm to the remaining buildings, do the hub, or
+  wire the pilot batch into the live engine for a real screenshot — ask
+  before picking.
 
 ## Chunks
 
