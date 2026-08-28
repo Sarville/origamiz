@@ -438,6 +438,133 @@ logs.
   Verified live in-browser (screenshot): toolbar belt/extractor icons now
   render as origami paper icons, matching the in-world building art from
   the previous entry, no broken images.
+- **2026-08-28 (toolbar panel wired, all 59 `res/ui/icons/` general icons
+  done, hub HUD redesigned).** See `sessions/2026-08-28-1012-session.md`
+  for full detail. Summary: (1) `toolbar_panel.png` (a wood-plank capsule
+  made in an earlier session but never wired in) is now the toolbar row's
+  background via CSS `border-image` 9-slice, replacing the flat
+  `rgba()` fill — `src/css/ingame_hud/buildings_toolbar.scss`. (2) All 59
+  `res/ui/icons/*.png` (the general interface glyphs, §6.2 — distinct
+  from `building_icons/`) generated via 3 parallel `codex exec` batches
+  by REBRANDING_PLAN's 5 sub-styles (flat dark glyph / white-inverted
+  twin / pure white / colored badge / mouse diagram / accent color),
+  fixed 2 codex misses by hand (`notification_saved` came back blank,
+  `puzzle_action_liked_no`/`_yes` were indistinguishable), copied into
+  `res/ui/icons/`, `touch`ed `resources.scss` for the same inline() gotcha
+  as building_icons, verified live (main menu + settings screen).
+  (3) `HubSystem.redrawHubBaseTexture` (`src/js/game/systems/hub.js`)
+  rewritten per the user's own `mockup_hub_hud.py` design from a prior
+  session (never wired in until now): red seal-badge level chip (echoes
+  the ink stamp already on `hub.png`'s roof) instead of tiny white "LVL
+  8" text, icon+numbers goal display with no "DELIVER"/"TO UNLOCK"
+  wording, red reward name on its own row. Hit and fixed a real bug: first
+  draft assumed `globalConfig.tileSize`=192 (the building PNG export
+  size) instead of the actual 32 (logical world units) — hub canvas is
+  128×128, not 768×768, so the first attempt rendered a chip 6x too big.
+  Also: `assets_wip/origamiz_pilot/__pycache__/*.pyc` was partly
+  git-tracked by accident — deleted, `__pycache__/` added to
+  `.gitignore`.
+  **Follow-up same session, from live user feedback on a screenshot:**
+  (a) the hub HUD cluster still visually overlapped the roof art — measured
+  `hub.png`'s actual pixel data and found the clear background only
+  survives in narrow pockets left/right of the tall center peak (the
+  roof+base silhouette fills most of the width the rest of the way down);
+  moved the whole chip/icon/numbers/reward-name cluster into the left
+  pocket, word-wrapped the reward name to fit its ~30px width instead of
+  single-line-centered on the peak. (b) the ground was still the vanilla
+  cold grey-blue, not paper — `map_view.js` paints it as a flat
+  `THEME.map.background` color with no image/texture involved at all (the
+  `RegularSprite`/`game_misc` loader path exists but nothing calls it with
+  real data); recolored `themes/light.json`'s `map.background`/
+  `gridRegular` to the exact same `#ece3c8`/`#cdb68a` already used for
+  every building's paper platform, instead of the real
+  `paper_background.png` texture — its mottling is too broad to survive
+  being tiled at the game's 1-tile repeat unit (reads as flat either way);
+  real per-pixel grain would need re-tiling at 1-chunk (16 tiles) instead,
+  a bigger change to shared map-rendering code, left for the user to
+  request if they want it. Both fixed and verified live, see
+  `sessions/2026-08-28-1012-session.md` §3b for the full pixel-measurement
+  reasoning.
+  **Not done: §16/§17 tutorial assets (44 `building_tutorials/*.png`
+  screenshots + 11 `interactive_tutorial.noinline/*.gif` recordings)** —
+  user asked for this as the 4th step but it's a much larger, differently-
+  shaped task (44 individual in-game scenes to build + export, or a real
+  screen recording per GIF) — deliberately deferred to its own session,
+  see the session file's "What's NOT done" section for the concrete
+  per-file breakdown and the existing `screenshot_exporter.js` tool to
+  use for §16.
+- **2026-08-28 (belt curb color ported into the live generator — the gap
+  flagged two entries up is now closed).** `generate_belt_sprites.js`'s
+  curb was still a flat `wood_texture.png` fill; ported the same
+  dark/mid/light banded-plank coloring buildings use
+  (`build_platform.py`'s `DARK`/`MID`/`LIGHT`/`_band_color`) via a linear
+  gradient (straight piece) and an approximating radial gradient (turn
+  piece). Geometry/position untouched (that was already correct per the
+  belt-width-check entry above) — only the color changed. Re-ran
+  `node generate_belt_sprites.js` (regenerates `built/*.png` and
+  auto-copies frame 0 into `buildings/belt_{top,right,left}.png`), full
+  atlas rebuild, verified live: a belt's curb now visually matches an
+  adjacent building's curb instead of standing out as a different
+  material. See `sessions/2026-08-28-1012-session.md` §4.
+- **2026-08-28 (root cause of "buildings look bigger than tiles" found and
+  fixed for the 28 pure belt-platform buildings).** Every procedurally-
+  generated building's platform touched the true 192px tile edge with
+  zero margin — confirmed against both the vanilla original sprite (has a
+  ~9px margin) and the engine's own `showEntityBounds` debug overlay
+  (logical tile bounds were always correct; only the art had no margin).
+  Added `MARGIN_PX = 9` to `build_platform.py`/`build_batch.py` and
+  reworked the platform/curb/post/flank-rail geometry so nothing (not even
+  at belt connections, superseding the 2026-08-27 "seam problem" curb-to-
+  true-edge work) reaches the true tile edge except the direction arrow.
+  Regenerated and copied 28 buildings (balancer family, cutter, stacker,
+  painter family, miner family, trash, underground_belt family, block,
+  constant/item producer, goal_acceptor, mixer, cutter/painter-quad,
+  storage, painter-double, rotator family), blueprints + atlas rebuilt.
+  **Explicitly NOT touched**: wires-layer-only buildings (photoreal AI
+  art, connector tabs are supposed to reach the edge — different
+  convention), `filter`/`reader` (hybrid belt+wire, regenerating would
+  drop their separately-added bamboo wire tab — needs a dedicated
+  follow-up), `hub.png` (own identity). Also a handful of buildings with
+  `cut_polys`/`notch_ellipses` chamfer decorations weren't individually
+  re-verified after the shift (spot-checked `cutter`, looks right) — worth
+  a visual pass on `filter`/`cutter-quad`/`painter-quad`/`storage`/
+  `painter-mirrored` if any read oddly. Full reasoning + every code change
+  in `sessions/2026-08-28-1012-session.md` §5.
+  **Corrected twice more the same day, final formula below** — see the
+  next two entries.
+- **2026-08-28 (margin fix §5 was overcorrected, then correctly finished
+  — flat `MARGIN_PX=9` is gone).** Live testing of §5 surfaced a real
+  regression (belt-connection curbs stopped short of the true edge same
+  as free sides, doubling the visible gap against the belt's own separate
+  ~13.5px connector margin, read as "curbs spreading apart"). First
+  attempt (§6) reverted connections back to reaching the true edge and
+  made the margin per-side (free sides only) — this seemed right on
+  1-tile buildings but was itself wrong: user measured `miner`'s art at
+  exactly 174×183 inside its 192×192 canvas (not 174×174) and proved the
+  true grid cell is 174×174 on *every* side, connections included, full
+  stop. §6 was reverted back to a uniform inset on all four sides. A
+  flank-rail "jog" bug then surfaced (two rail pieces meeting at
+  different x/y because only one piece's column position had been
+  updated for the new inset) — fixed with per-flank column shifts. See
+  `sessions/2026-08-28-1012-session.md` §7 for the full two-round
+  correction.
+- **2026-08-28 (margin must scale per tile — `MARGIN_PX=9` replaced by
+  `_mg(dim) = (dim // 192) * 9`).** User caught that a flat 9px margin
+  was correct for a 1-tile axis but far too small for a 2-tile axis
+  (`cutter.png`, 384×192 wide, needs 18px off each width edge, not 9,
+  since the true tile is 174px *per tile*). Confirmed via `AskUserQuestion`
+  before implementing this time (rather than reinterpreting feedback
+  solo, as happened earlier the same day) — exact rule confirmed by the
+  user: a 1×2-tile building's content must be ≤174×348 inside its
+  192×384 canvas, i.e. 9px margin on the 1-tile axis, 18px on the 2-tile
+  axis. Added an `_mg(dim)` helper implementing that formula, threaded
+  through every geometry function in `build_batch.py`/`build_platform.py`
+  that used to take the flat constant. Verified via pixel bbox
+  measurement and live in-game placement of both a 1-tile (`miner`) and a
+  genuine 2-tile (`balancer`, not its 1-tile `-merger` variant) building.
+  Regenerated the same 28 buildings a third time. This is the current,
+  final state of the margin fix. See
+  `sessions/2026-08-28-1012-session.md` §7.
 
 ## Chunks
 

@@ -30,15 +30,32 @@ BELT_WIDTH = 145   # == cut_openings.py
 DEPTH = 28         # == cut_openings.py (>= CURB_INSET+CURB_THICK so it fully clears the ring)
 
 
+def _mg(dim):
+    """MARGIN_PX scales with how many tiles a dimension spans - the true
+    grid cell is 174x174 *per tile*, so a 2-tile-wide building's content
+    must fit 2*174=348 into its 384px canvas (18px margin/side, not 9) -
+    confirmed empirically 2026-08-28 (user measured a 1x2 building's
+    canvas at 384px against a 174-per-tile grid). `dim` is a pixel
+    dimension (w or h) that's always an exact multiple of TILE."""
+    return (dim // TILE) * bp.MARGIN_PX
+
+
 def _belt_opening_rect(edge, offset, w, h):
+    # Margin-shifted like every other side now - the true grid cell is
+    # 174x174 *per tile* (confirmed empirically, see _mg's comment), so a
+    # connection also stays clear of the true 192px-per-tile canvas edge by
+    # _mg(dim), same as a free side. Only the connector arrow crosses into
+    # that margin (see _arrow/apply_arrows). Top/bottom depth uses _mg(h)
+    # (the axis they're inset along); left/right uses _mg(w).
+    mgw, mgh = _mg(w), _mg(h)
     if edge == "bottom":
-        return offset + MARGIN, offset + MARGIN + BELT_WIDTH, h - DEPTH, h
+        return offset + MARGIN, offset + MARGIN + BELT_WIDTH, h - mgh - DEPTH, h - mgh
     if edge == "top":
-        return offset + MARGIN, offset + MARGIN + BELT_WIDTH, 0, DEPTH
+        return offset + MARGIN, offset + MARGIN + BELT_WIDTH, mgh, mgh + DEPTH
     if edge == "left":
-        return 0, DEPTH, offset + MARGIN, offset + MARGIN + BELT_WIDTH
+        return mgw, mgw + DEPTH, offset + MARGIN, offset + MARGIN + BELT_WIDTH
     if edge == "right":
-        return w - DEPTH, w, offset + MARGIN, offset + MARGIN + BELT_WIDTH
+        return w - mgw - DEPTH, w - mgw, offset + MARGIN, offset + MARGIN + BELT_WIDTH
     raise ValueError(edge)
 
 
@@ -51,17 +68,21 @@ def _band_color_np(t):
     return out
 
 
-def _silhouette(w_tiles, h_tiles, cut_polys, notch_ellipses):
+def _silhouette(w_tiles, h_tiles, cut_polys, notch_ellipses, belt_edges=()):
     W, H = w_tiles * TILE * SS, h_tiles * TILE * SS
+    # MARGIN_PX applies uniformly on all 4 sides, connection or not, and
+    # scales with tile count per axis via _mg (a 2-tile-wide side needs
+    # 18px, not 9 - see _mg's comment). `belt_edges` kept as a parameter
+    # (unused) in case a future per-side tweak is needed again.
+    mgx, mgy = _mg(w_tiles * TILE) * SS, _mg(h_tiles * TILE) * SS
     m = Image.new("L", (W, H), 0)
     d = ImageDraw.Draw(m)
-    d.rectangle([0, 0, W - 1, H - 1], fill=255)
+    d.rounded_rectangle([mgx, mgy, W - 1 - mgx, H - 1 - mgy], radius=bp.CORNER_R * SS, fill=255)
     for poly in cut_polys or []:
         d.polygon([(x * SS, y * SS) for x, y in poly], fill=0)
     for cx, cy, rx, ry in notch_ellipses or []:
         d.ellipse([(cx - rx) * SS, (cy - ry) * SS, (cx + rx) * SS, (cy + ry) * SS], fill=0)
-    corner_mask = bp._corner_round_mask(W, H, bp.CORNER_R * SS)
-    return (np.array(m) > 127) & (np.array(corner_mask) > 127)
+    return np.array(m) > 127
 
 
 FLANK_DEPTH = 28   # how far a flank rail reaches in from the tile edge — same
@@ -84,14 +105,29 @@ def _flank_patches(w_tiles, h_tiles, belt_edges, plat):
     HORIZONTAL rails banded across Y, symmetrically."""
     W, H = w_tiles * TILE * SS, h_tiles * TILE * SS
     w, h = w_tiles * TILE, h_tiles * TILE
+    # Margin-shifted like every other side now - see _belt_opening_rect's
+    # comment, the true grid cell is 174x174 *per tile* so a flank rail
+    # also stays _mg(dim) clear of the true edge, same as a free side's
+    # curb (dim = the axis it's inset along - h for top/bottom depth,
+    # w for left/right depth).
+    mgw, mgh = _mg(w), _mg(h)
     c_inset, c_thick = bp.CURB_INSET, bp.CURB_THICK
     mask = np.zeros((H, W), dtype=bool)
     tvals = np.zeros((H, W), dtype=np.float64)
     for edge, offset in belt_edges:
         if edge in ("top", "bottom"):
-            y0, y1 = (0, FLANK_DEPTH) if edge == "top" else (h - FLANK_DEPTH, h)
-            left_rail = (offset + c_inset, offset + c_inset + c_thick)
-            right_rail = (offset + TILE - c_inset - c_thick, offset + TILE - c_inset)
+            y0, y1 = (mgh, mgh + FLANK_DEPTH) if edge == "top" else (h - mgh - FLANK_DEPTH, h - mgh)
+            # Shifted inward on whichever flank sits at this opening's own
+            # true tile edge (offset==0 -> left flank is at the tile's
+            # true left edge; offset+TILE==w -> right flank is at the
+            # tile's true right edge) - so it lines up with the adjacent
+            # free side's own margin-shifted ring instead of jogging
+            # sideways where the two meet (2026-08-28 bug, caught live).
+            # This shift is along the width axis, so uses mgw.
+            lmg = mgw if offset == 0 else 0
+            rmg = mgw if offset + TILE == w else 0
+            left_rail = (offset + lmg + c_inset, offset + lmg + c_inset + c_thick)
+            right_rail = (offset + TILE - rmg - c_inset - c_thick, offset + TILE - rmg - c_inset)
             for (rx0, rx1), outer_at_x0 in ((left_rail, True), (right_rail, False)):
                 rx0, rx1 = max(0, rx0), min(w, rx1)
                 if rx1 <= rx0:
@@ -102,9 +138,11 @@ def _flank_patches(w_tiles, h_tiles, belt_edges, plat):
                 t = (xx - rx0 * SS) if outer_at_x0 else (rx1 * SS - 1 - xx)
                 tvals[sl] = (t / (c_thick * SS))[None, :]
         else:
-            x0, x1 = (0, FLANK_DEPTH) if edge == "left" else (w - FLANK_DEPTH, w)
-            top_rail = (offset + c_inset, offset + c_inset + c_thick)
-            bottom_rail = (offset + TILE - c_inset - c_thick, offset + TILE - c_inset)
+            x0, x1 = (mgw, mgw + FLANK_DEPTH) if edge == "left" else (w - mgw - FLANK_DEPTH, w - mgw)
+            tmg = mgh if offset == 0 else 0
+            bmg = mgh if offset + TILE == h else 0
+            top_rail = (offset + tmg + c_inset, offset + tmg + c_inset + c_thick)
+            bottom_rail = (offset + TILE - bmg - c_inset - c_thick, offset + TILE - bmg - c_inset)
             for (ry0, ry1), outer_at_y0 in ((top_rail, True), (bottom_rail, False)):
                 ry0, ry1 = max(0, ry0), min(h, ry1)
                 if ry1 <= ry0:
@@ -114,7 +152,6 @@ def _flank_patches(w_tiles, h_tiles, belt_edges, plat):
                 yy = np.arange(ry0 * SS, ry1 * SS)
                 t = (yy - ry0 * SS) if outer_at_y0 else (ry1 * SS - 1 - yy)
                 tvals[sl] = (t / (c_thick * SS))[:, None]
-    mask &= plat
     return mask, tvals
 
 
@@ -130,12 +167,24 @@ def _auto_flank_posts(w_tiles, h_tiles, belt_edges):
     sitting right next to each other, same level, no bare joint.
     A rail right under a true corner needs no separate post — _merge_posts
     drops anything within min_dist of an explicit one."""
+    # Margin-shifted like the flank rail it caps (see _belt_opening_rect's
+    # and _flank_patches's comments) - true grid cell is 174x174 *per
+    # tile*, and the rail's own column shift (lmg/rmg, matching
+    # _flank_patches) is needed here too so the post sits centered on the
+    # actual (possibly shifted) rail instead of the old unshifted span.
     w, h = w_tiles * TILE, h_tiles * TILE
+    mgw, mgh = _mg(w), _mg(h)
     c_inset, c_thick = bp.CURB_INSET, bp.CURB_THICK
     posts = []
     for edge, offset in belt_edges:
-        span = ((offset + c_inset, offset + c_inset + c_thick),
-                (offset + TILE - c_inset - c_thick, offset + TILE - c_inset))
+        if edge in ("top", "bottom"):
+            lmg = mgw if offset == 0 else 0
+            rmg = mgw if offset + TILE == w else 0
+        else:
+            lmg = mgh if offset == 0 else 0
+            rmg = mgh if offset + TILE == h else 0
+        span = ((offset + lmg + c_inset, offset + lmg + c_inset + c_thick),
+                (offset + TILE - rmg - c_inset - c_thick, offset + TILE - rmg - c_inset))
         bound = w if edge in ("top", "bottom") else h
         for r0, r1 in span:
             r0, r1 = max(0, r0), min(bound, r1)
@@ -143,13 +192,13 @@ def _auto_flank_posts(w_tiles, h_tiles, belt_edges):
                 continue
             mid = (r0 + r1) / 2
             if edge == "top":
-                posts.append((mid, INSET))
+                posts.append((mid, mgh + INSET))
             elif edge == "bottom":
-                posts.append((mid, h - INSET))
+                posts.append((mid, h - mgh - INSET))
             elif edge == "left":
-                posts.append((INSET, mid))
+                posts.append((mgw + INSET, mid))
             else:
-                posts.append((w - INSET, mid))
+                posts.append((w - mgw - INSET, mid))
     return posts
 
 
@@ -166,7 +215,7 @@ def build_generic(w_tiles, h_tiles, belt_edges, post_centers,
     W, H = w_tiles * TILE * SS, h_tiles * TILE * SS
     w, h = w_tiles * TILE, h_tiles * TILE
 
-    plat = _silhouette(w_tiles, h_tiles, cut_polys, notch_ellipses)
+    plat = _silhouette(w_tiles, h_tiles, cut_polys, notch_ellipses, belt_edges)
     # most of these silhouettes fill the ENTIRE canvas (no transparent
     # margin at the tile's own edge, unlike rotator's pinch) — pad with a
     # 1px false border first, otherwise scipy's EDT has no "outside" to
@@ -217,10 +266,17 @@ def build_generic(w_tiles, h_tiles, belt_edges, post_centers,
 # apply_arrows.py; only reused here, not re-derived.
 # ---------------------------------------------------------------------------
 
-def _corners(w, h, skip=()):
+def _corners(w, h, skip=(), belt_edges=()):
+    """Uniform margin on every corner, connection or not - the true grid
+    cell is 174x174 *per tile* (see _mg's comment), so a corner's offset
+    from the true canvas edge is _mg(w)+INSET / _mg(h)+INSET on its two
+    axes (equal only for single-tile-per-axis buildings). `belt_edges`
+    kept as a parameter (unused) in case a future per-side tweak is needed
+    again."""
+    mgw, mgh = _mg(w), _mg(h)
     pts = {
-        "tl": (INSET, INSET), "tr": (w - INSET, INSET),
-        "bl": (INSET, h - INSET), "br": (w - INSET, h - INSET),
+        "tl": (mgw + INSET, mgh + INSET), "tr": (w - mgw - INSET, mgh + INSET),
+        "bl": (mgw + INSET, h - mgh - INSET), "br": (w - mgw - INSET, h - mgh - INSET),
     }
     return [pts[k] for k in pts if k not in skip]
 
@@ -231,16 +287,17 @@ def _free_side_mid_posts(w, h, belt_edges):
     free sides each get a mid-post, not just the 4 corners). A side with at
     least one opening already gets posts from _auto_flank_posts, so it's
     skipped here to avoid a redundant/clashing post."""
+    mgw, mgh = _mg(w), _mg(h)
     used = {edge for edge, _ in belt_edges}
     posts = []
     if "top" not in used:
-        posts.append((w / 2, INSET))
+        posts.append((w / 2, mgh + INSET))
     if "bottom" not in used:
-        posts.append((w / 2, h - INSET))
+        posts.append((w / 2, h - mgh - INSET))
     if "left" not in used:
-        posts.append((INSET, h / 2))
+        posts.append((mgw + INSET, h / 2))
     if "right" not in used:
-        posts.append((w - INSET, h / 2))
+        posts.append((w - mgw - INSET, h / 2))
     return posts
 
 
@@ -261,7 +318,9 @@ _ARROW_DEG = {
 
 def _arrow(edge, offset, kind, w, h):
     """(cx, cy, deg) for one opening, cx/cy at the tile edge itself (same
-    convention apply_arrows already insets from), deg from _ARROW_DEG."""
+    convention apply_arrows already insets from), deg from _ARROW_DEG - NOT
+    margin-shifted on purpose, the arrow is the one thing allowed to reach
+    toward the true edge, poking past the platform's own MARGIN_PX."""
     if edge == "top":
         return (offset + 96, 0, _ARROW_DEG[(edge, kind)])
     if edge == "bottom":
@@ -271,11 +330,17 @@ def _arrow(edge, offset, kind, w, h):
     return (w, offset + 96, _ARROW_DEG[(edge, kind)])
 
 
+_MG = bp.MARGIN_PX      # short alias for the single-tile-per-axis margin (9px) -
+                         # correct as-is for every 192x192 hand-written spec below
+_MGW2 = _mg(384)         # margin on the WIDTH axis for a 2-tile-wide (384px) spec
+                         # (balancer/cutter/stacker/painter) - 18px, not 9
+
 SPECS = {
     "balancer.png": dict(
         w_tiles=2, h_tiles=1,
         belt_edges=[("bottom", 0), ("bottom", 192), ("top", 0), ("top", 192)],
-        post_centers=_corners(384, 192) + [(INSET, 96), (384 - INSET, 96)],
+        post_centers=_corners(384, 192, belt_edges=[("bottom", 0), ("top", 0)])
+        + [(_MGW2 + INSET, 96), (384 - _MGW2 - INSET, 96)],
         plaque=("balancer.png", 150, (192, 96)),
         arrows=[(96, 192, 0), (288, 192, 0), (96, 0, 0), (288, 0, 0)],
     ),
@@ -283,8 +348,8 @@ SPECS = {
         w_tiles=2, h_tiles=1,
         belt_edges=[("bottom", 0), ("top", 0), ("top", 192)],
         cut_polys=[[(384 - 80, 192), (384, 192), (384, 192 - 80)]],
-        post_centers=_corners(384, 192, skip=("br",)) + [
-            (384 - 80, 192 - INSET), (384 - INSET, 192 - 80), (INSET, 96),
+        post_centers=_corners(384, 192, skip=("br",), belt_edges=[("bottom", 0), ("top", 0)]) + [
+            (384 - 80, 192 - _MG - INSET), (384 - _MGW2 - INSET, 192 - 80), (_MGW2 + INSET, 96),
         ],
         plaque=("cutter.png", 150, (192, 96)),
         arrows=[(96, 192, 0), (96, 0, 0), (288, 0, 0)],
@@ -294,8 +359,9 @@ SPECS = {
         belt_edges=[("bottom", 0), ("bottom", 192), ("top", 0)],
         cut_polys=[[(384 - 75, 0), (384 - 75, 25), (384 - 50, 25), (384 - 50, 50),
                      (384 - 25, 50), (384 - 25, 75), (384, 75), (384, 0)]],
-        post_centers=_corners(384, 192, skip=("tr",)) + [
-            (384 - 75, INSET), (384 - INSET, 75 + INSET), (INSET, 96), (384 - INSET, 133.5),
+        post_centers=_corners(384, 192, skip=("tr",), belt_edges=[("bottom", 0), ("top", 0)]) + [
+            (384 - 75, _MG + INSET), (384 - _MGW2 - INSET, 75 + INSET), (_MGW2 + INSET, 96),
+            (384 - _MGW2 - INSET, 133.5),
         ],
         plaque=("stacker.png", 150, (192, 96)),
         arrows=[(96, 192, 0), (288, 192, 0), (96, 0, 0)],
@@ -304,35 +370,44 @@ SPECS = {
         w_tiles=2, h_tiles=1,
         belt_edges=[("left", 0), ("top", 192), ("right", 0)],
         notch_ellipses=[(110, 192, 60, 35), (280, 192, 60, 35)],
-        post_centers=_corners(384, 192) + [(96, INSET), (195, 192 - INSET)],
+        post_centers=_corners(384, 192, belt_edges=[("left", 0), ("top", 0), ("right", 0)])
+        + [(96, _MG + INSET), (195, 192 - _MG - INSET)],
         plaque=("painter.png", 150, (192, 96)),
         arrows=[(0, 96, 90), (288, 0, 180), (384, 96, 90)],
     ),
     "miner.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("top", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, 192 - INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("top", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, 192 - _MG - INSET),
+        ],
         content="pre_platform_miner.png",
         arrows=[(96, 0, 0)],
     ),
     "trash.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("bottom", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("bottom", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, _MG + INSET),
+        ],
         content="pre_platform_trash.png",
         arrows=[(96, 192, 0)],
     ),
     "underground_belt_entry.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("bottom", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("bottom", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, _MG + INSET),
+        ],
         content="pre_platform_underground_belt_entry.png",
         arrows=[],
     ),
     "underground_belt_exit.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("top", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, 192 - INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("top", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, 192 - _MG - INSET),
+        ],
         content="pre_platform_underground_belt_exit.png",
         arrows=[],
     ),
@@ -349,7 +424,7 @@ def _mk(w_t, h_t, edges_kinds, plaque=None, content=None, mirror=False, plaque_s
     cuts like cutter/stacker/painter did)."""
     w, h = w_t * TILE, h_t * TILE
     belt_edges = [(e, o) for e, o, k in edges_kinds]
-    posts = _corners(w, h, skip=corner_skip)
+    posts = _corners(w, h, skip=corner_skip, belt_edges=belt_edges)
     if free_side_mid_posts:
         posts += _free_side_mid_posts(w, h, belt_edges)
     d = dict(
@@ -408,21 +483,27 @@ SPECS.update({
     "miner-chainable.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("top", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, 192 - INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("top", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, 192 - _MG - INSET),
+        ],
         content="pre_platform_miner.png",
         arrows=[(96, 0, 0)],
     ),
     "underground_belt_entry-tier2.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("bottom", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("bottom", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, _MG + INSET),
+        ],
         content="pre_platform_underground_belt_entry.png",
         arrows=[],
     ),
     "underground_belt_exit-tier2.png": dict(
         w_tiles=1, h_tiles=1,
         belt_edges=[("top", 0)],
-        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, 192 - INSET)],
+        post_centers=_corners(192, 192, belt_edges=[("top", 0)]) + [
+            (_MG + INSET, 96), (192 - _MG - INSET, 96), (96, 192 - _MG - INSET),
+        ],
         content="pre_platform_underground_belt_exit.png",
         arrows=[],
     ),

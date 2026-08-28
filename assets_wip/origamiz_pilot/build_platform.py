@@ -20,6 +20,19 @@ I = os.path.join(BASE, "icons")
 
 TILE = 192
 
+# Every building's platform (incl. curb, incl. belt-connection flank rails)
+# must fit inside a 174x174-per-tile box, leaving a flat 9px transparent
+# margin against the true tile edge on every side - matches the vanilla
+# reference sprite (measured directly: an original building icon sits 9px
+# in from its own canvas edge). Only the direction arrow is allowed to
+# poke past this margin toward the true edge - see apply_arrows below,
+# unaffected by this constant. Found/measured 2026-08-28 after a user
+# side-by-side compared our buildings against the vanilla original and
+# found ours reach the true edge with zero margin at all, which is what
+# made two adjacent buildings' curbs read as touching/overlapping instead
+# of two separate tiles with a normal gap between them.
+MARGIN_PX = 9
+
 CORNER_R = 8        # platform corner fillet radius
 # CURB_INSET/CURB_THICK are measured directly off ui/belt_straight.png (not
 # guessed) so the building curb lands on the exact same columns as the
@@ -96,61 +109,74 @@ def build_platform_pinched(w=TILE, h=TILE, max_pinch=30):
     no curb at all, not even a stub.
 
     Built at SS supersample resolution and downsampled at the very end —
-    see SS above."""
+    see SS above.
+
+    Everything is built within an INSET working area (iw x ih, MARGIN_PX
+    smaller on every side than the true w x h canvas), then pasted into the
+    true-size canvas offset by MARGIN_PX — so the whole platform+curb+posts
+    stays MARGIN_PX clear of the true tile edge everywhere, matching the
+    vanilla-reference margin (see MARGIN_PX's comment). Only the arrow,
+    composited separately afterward by apply_arrows, is allowed to poke
+    past this margin toward the true edge."""
     W, H = w * SS, h * SS
+    m = MARGIN_PX * SS
+    iw, ih = W - 2 * m, H - 2 * m
     pinch = max_pinch * SS
     c_inset, c_thick, corner_r, post_size = (CURB_INSET * SS, CURB_THICK * SS,
                                               CORNER_R * SS, POST_SIZE * SS)
 
-    canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    corner_mask = _corner_round_mask(W, H, corner_r)
+    inset_canvas = Image.new("RGBA", (iw, ih), (0, 0, 0, 0))
+    corner_mask = _corner_round_mask(iw, ih, corner_r)
 
     # 1. platform silhouette -----------------------------------------------
-    plat_mask = Image.new("L", (W, H), 0)
+    plat_mask = Image.new("L", (iw, ih), 0)
     pmd = ImageDraw.Draw(plat_mask)
-    for y in range(H):
-        lb = _pinch(y, H, pinch)
-        pmd.line([(lb, y), (W - 1 - lb, y)], fill=255)
+    for y in range(ih):
+        lb = _pinch(y, ih, pinch)
+        pmd.line([(lb, y), (iw - 1 - lb, y)], fill=255)
     plat_mask = ImageChops.multiply(plat_mask, corner_mask)
 
-    plat = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    plat.paste(Image.new("RGBA", (W, H), PLATFORM_FILL), (0, 0), plat_mask)
-    canvas.alpha_composite(plat)
+    plat = Image.new("RGBA", (iw, ih), (0, 0, 0, 0))
+    plat.paste(Image.new("RGBA", (iw, ih), PLATFORM_FILL), (0, 0), plat_mask)
+    inset_canvas.alpha_composite(plat)
 
     eroded = plat_mask.filter(ImageFilter.MinFilter(3))
     ring = ImageChops.subtract(plat_mask, eroded)
-    outline = Image.new("RGBA", (W, H), PLATFORM_OUTLINE)
+    outline = Image.new("RGBA", (iw, ih), PLATFORM_OUTLINE)
     outline.putalpha(ring)
-    canvas.alpha_composite(outline)
+    inset_canvas.alpha_composite(outline)
 
     # 2. curb — banded ribbons following the same curve, drawn, THEN any
     # cutout would go here, THEN posts on top (posts last so nothing can
     # ever clip them) ------------------------------------------------------
-    curb = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    curb = Image.new("RGBA", (iw, ih), (0, 0, 0, 0))
     cpx = curb.load()
-    for y in range(H):
-        lb = _pinch(y, H, pinch)
+    for y in range(ih):
+        lb = _pinch(y, ih, pinch)
         outer_l = lb + c_inset
         inner_l = outer_l + c_thick
         for x in range(int(outer_l), int(inner_l)):
             t = (x - outer_l) / c_thick
             cpx[x, y] = _band_color(t)
-        outer_r = W - 1 - outer_l
-        inner_r = W - 1 - inner_l
+        outer_r = iw - 1 - outer_l
+        inner_r = iw - 1 - inner_l
         for x in range(int(inner_r), int(outer_r) + 1):
             t = (outer_r - x) / c_thick
             cpx[x, y] = _band_color(t)
     curb.putalpha(ImageChops.multiply(curb.split()[3], corner_mask))
-    canvas.alpha_composite(curb)
+    inset_canvas.alpha_composite(curb)
+
+    canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    canvas.alpha_composite(inset_canvas, (m, m))
 
     # 3. posts — corners + one at each pinch midpoint (the only free-side
     # midpoint here) -- drawn last, unclippable ------------------------
-    mid_x = _pinch(H / 2, H, pinch) + c_inset + c_thick / 2
+    mid_x = m + _pinch(ih / 2, ih, pinch) + c_inset + c_thick / 2
     post_centers = [
-        (c_inset + c_thick / 2, c_inset + c_thick / 2),
-        (W - 1 - c_inset - c_thick / 2, c_inset + c_thick / 2),
-        (c_inset + c_thick / 2, H - 1 - c_inset - c_thick / 2),
-        (W - 1 - c_inset - c_thick / 2, H - 1 - c_inset - c_thick / 2),
+        (m + c_inset + c_thick / 2, m + c_inset + c_thick / 2),
+        (W - 1 - m - c_inset - c_thick / 2, m + c_inset + c_thick / 2),
+        (m + c_inset + c_thick / 2, H - 1 - m - c_inset - c_thick / 2),
+        (W - 1 - m - c_inset - c_thick / 2, H - 1 - m - c_inset - c_thick / 2),
         (mid_x, H / 2),
         (W - 1 - mid_x, H / 2),
     ]

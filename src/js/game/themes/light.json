@@ -1,9 +1,9 @@
 {
     "map": {
-        "background": "#eceef2",
+        "background": "#ece3c8",
 
-        "gridRegular": "#e3e7ea",
-        "gridPlacing": "#dadff0",
+        "gridRegular": "#ddd0a8",
+        "gridPlacing": "#c9d8f0",
 
         "gridLineWidth": 0.5,
 

@@ -17,11 +17,75 @@ async function run() {
     const lineSize = 5;
     const curbWidth = 10;
 
-    const borderColor = "#a87a42";
+    const borderColor = "#5A3418";
     const arrowColor = "#f5efe0";
 
     const texture = await loadImage(path.join(__dirname, "belt_texture.png"));
-    const woodTexture = await loadImage(path.join(__dirname, "wood_texture.png"));
+
+    // Curb banding - matches the buildings' own platform-curb coloring
+    // (assets_wip/origamiz_pilot/build_platform.py's DARK/MID/LIGHT/_band_color:
+    // dark rim, mid, light core, mid, dark rim) so a belt's curb and an
+    // adjacent building's curb read as the same material where they meet,
+    // instead of the belt using a separate photo-textured wood fill.
+    const CURB_DARK = "#5A3418";
+    const CURB_MID = "#8F5A2C";
+    const CURB_LIGHT = "#C9925A";
+
+    function addBandStops(gradient, offsetA, offsetB) {
+        const lo = Math.min(offsetA, offsetB);
+        const hi = Math.max(offsetA, offsetB);
+        const lerp = t => lo + (hi - lo) * t;
+        const stops = [
+            [0.0, CURB_DARK],
+            [0.15, CURB_DARK],
+            [0.15, CURB_MID],
+            [0.35, CURB_MID],
+            [0.35, CURB_LIGHT],
+            [0.65, CURB_LIGHT],
+            [0.65, CURB_MID],
+            [0.85, CURB_MID],
+            [0.85, CURB_DARK],
+            [1.0, CURB_DARK],
+        ];
+        for (const [t, color] of stops) {
+            gradient.addColorStop(Math.max(0, Math.min(1, lerp(t))), color);
+        }
+    }
+
+    // Straight belt: the curb is just the outer curbWidth-wide strip on the
+    // left and right of the lane - one linear gradient across the full tile
+    // width covers both strips at once (the band pattern is symmetric
+    // dark/mid/light/mid/dark, so stop order doesn't need to track which
+    // edge is the "outer" one).
+    function curbGradientForward(context) {
+        const gradient = context.createLinearGradient(0, 0, dimensions, 0);
+        addBandStops(gradient, (beltBorder - curbWidth) / dimensions, beltBorder / dimensions);
+        addBandStops(
+            gradient,
+            (dimensions - beltBorder) / dimensions,
+            (dimensions - beltBorder + curbWidth) / dimensions
+        );
+        return gradient;
+    }
+
+    // Turn belt: the curb is the outer ring of the wide arc pass (the rest
+    // of that pass is covered by the narrower lane pass on top) - a radial
+    // gradient centered on the wide pass's own origin, banded across just
+    // the fraction of its radius that the visible ring actually occupies.
+    // Approximate (the outer edge is a slightly distorted, non-circular
+    // curve, and the narrow pass has its own, differently-shifted origin),
+    // but close enough to read as the same banded material.
+    function curbGradientTurn(context, wideBorder, narrowBorder) {
+        const innerRadius = wideBorder;
+        const outerRadius = dimensions - 2 * wideBorder;
+        const originX = dimensions - innerRadius;
+        const originY = dimensions - innerRadius;
+        const narrowOuterRadius = dimensions - 2 * narrowBorder;
+        const gradient = context.createRadialGradient(originX, originY, innerRadius, originX, originY, outerRadius);
+        const ringStart = (narrowOuterRadius - innerRadius) / (outerRadius - innerRadius);
+        addBandStops(gradient, ringStart, 1.0);
+        return gradient;
+    }
 
     // Path helpers, parametrized by the border inset — used twice per frame:
     // once with a wider inset (curbWidth less) filled in borderColor to make
@@ -106,7 +170,7 @@ async function run() {
         // lane on top (normal inset) — gives the belt raised-looking side
         // edges instead of just a thin outline.
         forwardPath(context, beltBorder - curbWidth);
-        context.fillStyle = context.createPattern(woodTexture, "repeat");
+        context.fillStyle = curbGradientForward(context);
         context.fill();
 
         forwardPath(context, beltBorder);
@@ -145,7 +209,7 @@ async function run() {
         // look (this is also why the corner and straight piece can never
         // drift apart in style: identical code, identical constants).
         turnPath(context, beltBorder - curbWidth);
-        context.fillStyle = context.createPattern(woodTexture, "repeat");
+        context.fillStyle = curbGradientTurn(context, beltBorder - curbWidth, beltBorder);
         context.fill();
 
         turnPath(context, beltBorder);

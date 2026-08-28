@@ -72,83 +72,99 @@ export class HubSystem extends GameSystemWithFilter {
             return;
         }
 
-        const definition = this.root.hubGoals.currentGoal.definition;
-        definition.drawCentered(45, 58, parameters, 36);
-
         const goals = this.root.hubGoals.currentGoal;
+        const definition = goals.definition;
 
-        const textOffsetX = 70;
-        const textOffsetY = 61;
+        // Layout per the user's reference mockup: goal cluster fills the top-right
+        // corner (big, reaching almost down to the roof); the level chip sits as an
+        // opaque red seal badge centered ON the roof itself (it doesn't need clear
+        // background - it's a solid-color badge, not transparent text, so it reads
+        // fine over the paper-fold pattern); the reward name centers in the leftover
+        // rectangle between the left/top border and the goal cluster/roof, wrapping to
+        // a second line if it doesn't fit on one.
+        // (the roof was shifted down 40px this session so there's a clear band above
+        // it at all - see buildings/hub.png's session-log entry).
 
+        // Goal cluster: shape icon + delivered/required (or throughput), top-right.
+        const goalCenterX = 104;
+        definition.drawCentered(goalCenterX, 14, parameters, 22);
+
+        context.textAlign = "center";
         if (goals.throughputOnly) {
-            // Throughput
-            const deliveredText = T.ingame.statistics.shapesDisplayUnits.second.replace(
+            const rateText = T.ingame.statistics.shapesDisplayUnits.second.replace(
                 "<shapes>",
                 formatBigNumber(goals.required)
             );
 
-            context.font = "bold 12px GameFont";
+            context.font = "bold 7px GameFont";
             context.fillStyle = "#64666e";
-            context.textAlign = "left";
-            context.fillText(deliveredText, textOffsetX, textOffsetY);
+            context.fillText(rateText, goalCenterX, 28);
         } else {
-            // Deliver count
             const delivered = this.root.hubGoals.getCurrentGoalDelivered();
-            const deliveredText = "" + formatBigNumber(delivered);
-
-            if (delivered > 9999) {
-                context.font = "bold 16px GameFont";
-            } else if (delivered > 999) {
-                context.font = "bold 20px GameFont";
-            } else {
-                context.font = "bold 25px GameFont";
-            }
+            context.font = "bold 7px GameFont";
             context.fillStyle = "#64666e";
-            context.textAlign = "left";
-            context.fillText(deliveredText, textOffsetX, textOffsetY);
-
-            // Required
-            context.font = "13px GameFont";
-            context.fillStyle = "#a4a6b0";
-            context.fillText("/ " + formatBigNumber(goals.required), textOffsetX, textOffsetY + 13);
+            context.fillText(formatBigNumber(delivered) + " / " + formatBigNumber(goals.required), goalCenterX, 28);
         }
 
-        // Reward
+        // Level chip: red rounded seal badge, centered on the roof.
+        const chipX0 = 50;
+        const chipY0 = 58;
+        const chipX1 = 78;
+        const chipY1 = 78;
+        const chipR = 4;
+        context.fillStyle = "#db2b13";
+        context.beginPath();
+        context.moveTo(chipX0 + chipR, chipY0);
+        context.lineTo(chipX1 - chipR, chipY0);
+        context.quadraticCurveTo(chipX1, chipY0, chipX1, chipY0 + chipR);
+        context.lineTo(chipX1, chipY1 - chipR);
+        context.quadraticCurveTo(chipX1, chipY1, chipX1 - chipR, chipY1);
+        context.lineTo(chipX0 + chipR, chipY1);
+        context.quadraticCurveTo(chipX0, chipY1, chipX0, chipY1 - chipR);
+        context.lineTo(chipX0, chipY0 + chipR);
+        context.quadraticCurveTo(chipX0, chipY0, chipX0 + chipR, chipY0);
+        context.closePath();
+        context.fill();
+
+        const chipCenterX = (chipX0 + chipX1) / 2;
+        context.textAlign = "center";
+        context.fillStyle = "#fff";
+        context.font = "bold 4px GameFont";
+        context.fillText(T.buildings.hub.levelShortcut, chipCenterX, chipY0 + 7);
+
+        context.font = "bold 11px GameFont";
+        context.fillText("" + this.root.hubGoals.level, chipCenterX, chipY0 + 18);
+
+        // Next unlock: red ink-seal name, centered in the leftover rectangle between
+        // the left/top border and the goal cluster/roof - word-wraps to a 2nd line if
+        // it doesn't fit on one.
         const rewardText = T.storyRewards[goals.reward].title.toUpperCase();
-        if (rewardText.length > 12) {
-            context.font = "bold 8px GameFont";
-        } else {
-            context.font = "bold 10px GameFont";
-        }
-        context.fillStyle = "#fd0752";
+        const nameCenterX = 46;
+        const nameMaxWidth = 78;
+        context.fillStyle = "#db2b13";
         context.textAlign = "center";
 
-        context.fillText(rewardText, HUB_SIZE_PIXELS / 2, 105);
-
-        // Level "8"
-        context.font = "bold 10px GameFont";
-        context.fillStyle = "#fff";
-        context.fillText("" + this.root.hubGoals.level, 27, 32);
-
-        // "LVL"
-        context.textAlign = "center";
-        context.fillStyle = "#fff";
-        context.font = "bold 6px GameFont";
-        context.fillText(T.buildings.hub.levelShortcut, 27, 22);
-
-        // "Deliver"
-        context.fillStyle = "#64666e";
-        context.font = "bold 10px GameFont";
-        context.fillText(T.buildings.hub.deliver.toUpperCase(), HUB_SIZE_PIXELS / 2, 30);
-
-        // "To unlock"
-        const unlockText = T.buildings.hub.toUnlock.toUpperCase();
-        if (unlockText.length > 15) {
-            context.font = "bold 8px GameFont";
+        context.font = "bold 9px GameFont";
+        if (context.measureText(rewardText).width <= nameMaxWidth) {
+            context.fillText(rewardText, nameCenterX, 21);
         } else {
-            context.font = "bold 10px GameFont";
+            const words = rewardText.split(" ");
+            let line1 = words[0] || "";
+            let i = 1;
+            while (i < words.length && context.measureText(line1 + " " + words[i]).width <= nameMaxWidth) {
+                line1 += " " + words[i];
+                ++i;
+            }
+            const line2 = words.slice(i).join(" ");
+
+            if (context.measureText(line1).width > nameMaxWidth || context.measureText(line2).width > nameMaxWidth) {
+                context.font = "bold 7px GameFont";
+            }
+            context.fillText(line1, nameCenterX, 17);
+            if (line2) {
+                context.fillText(line2, nameCenterX, 26);
+            }
         }
-        context.fillText(T.buildings.hub.toUnlock.toUpperCase(), HUB_SIZE_PIXELS / 2, 92);
 
         context.textAlign = "left";
     }

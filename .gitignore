@@ -56,3 +56,4 @@ gulp/additional_build_files
 
 electron/dist
 assets_backup_original/
+__pycache__/

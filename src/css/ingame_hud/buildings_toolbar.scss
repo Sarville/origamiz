@@ -31,20 +31,15 @@
         grid-gap: 0.2rem;
         grid-row: 2 / 3;
 
-        border-radius: $globalBorderRadius;
-        padding: 0.2rem;
-        background-color: rgba($ingameHudBg, 0.07);
-        transition: background-color 0.12s ease-in-out;
+        padding: 0.35rem 0.5rem;
+
+        border-image: uiResource("toolbar_panel.png") 0 140 fill / 0 1.4rem;
+        border-style: solid;
+        border-width: 0 1.4rem;
+        transition: filter 0.12s ease-in-out;
 
         &:hover {
-            background-color: rgba($ingameHudBg, 0.2);
-        }
-
-        @include DarkThemeOverride {
-            background-color: rgba(
-                color.adjust($darkModeGameBackground, $lightness: -15%, $space: hsl),
-                0.95
-            );
+            filter: brightness(1.06);
         }
 
         &.secondary {
