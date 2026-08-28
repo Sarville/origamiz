@@ -40,9 +40,9 @@
         },
 
         "chunkOverview": {
-            "empty": "#a6afbb",
-            "filled": "#c5ccd6",
-            "beltColor": "#777"
+            "empty": "#d9cc9f",
+            "filled": "#f2e8c9",
+            "beltColor": "#8f5a2c"
         },
 
         "wires": {

@@ -7,6 +7,95 @@ import { BasicSerializableObject, types } from "../savegame/serialization";
 import { enumColors, enumColorsToHexCode, enumColorToShortcode, enumShortcodeToColor } from "./colors";
 import { THEME } from "./theme";
 
+// ------------------------------------------------------------
+// Pseudo-3D "origami" shading for shape quadrants.
+// Each quadrant is split into two triangular/sector faces which
+// are tinted lighter or darker depending on their angle relative
+// to a fixed light source, giving a folded-paper look.
+// ------------------------------------------------------------
+
+const SHAPE_LIGHT_ANGLE = -135;
+
+function clampByte(v) {
+    return Math.max(0, Math.min(255, v));
+}
+
+function hexToRgb(hex) {
+    hex = hex.replace("#", "");
+    if (hex.length === 3) {
+        hex = hex
+            .split("")
+            .map(c => c + c)
+            .join("");
+    }
+    return {
+        r: parseInt(hex.slice(0, 2), 16),
+        g: parseInt(hex.slice(2, 4), 16),
+        b: parseInt(hex.slice(4, 6), 16),
+    };
+}
+
+function mixColors(colorA, colorB, amount) {
+    const a = hexToRgb(colorA);
+    const b = hexToRgb(colorB);
+    const r = clampByte(Math.round(a.r + (b.r - a.r) * amount));
+    const g = clampByte(Math.round(a.g + (b.g - a.g) * amount));
+    const bl = clampByte(Math.round(a.b + (b.b - a.b) * amount));
+    return "#" + [r, g, bl].map(v => v.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Tints a base color lighter or darker depending on the angle of the
+ * face it's applied to, relative to a fixed light source.
+ * @param {string} baseColor
+ * @param {number} faceAngleDeg
+ */
+function litColor(baseColor, faceAngleDeg) {
+    const light = Math.cos(((faceAngleDeg - SHAPE_LIGHT_ANGLE) * Math.PI) / 180);
+    if (light >= 0) {
+        return mixColors(baseColor, "#ffffff", light * 0.2);
+    }
+    return mixColors(baseColor, "#000000", -light * 0.16);
+}
+
+function creaseColor(baseColor) {
+    return mixColors(baseColor, "#202326", 0.48);
+}
+
+/**
+ * Fills a triangular (or sector) face of a quadrant with a flat color.
+ * @param {CanvasRenderingContext2D} context
+ * @param {string} fillColor
+ * @param {Array<[number, number]>} points
+ */
+function fillFace(context, fillColor, points) {
+    context.fillStyle = fillColor;
+    context.beginPath();
+    context.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; ++i) {
+        context.lineTo(points[i][0], points[i][1]);
+    }
+    context.closePath();
+    context.fill();
+}
+
+/**
+ * Draws the fold line between a quadrant's two lit faces.
+ * @param {CanvasRenderingContext2D} context
+ */
+function drawCrease(context, baseHex, x1, y1, x2, y2) {
+    const prevStroke = context.strokeStyle;
+    const prevAlpha = context.globalAlpha;
+    context.strokeStyle = creaseColor(baseHex);
+    context.globalAlpha = prevAlpha * 0.55;
+    context.beginPath();
+    context.moveTo(x1, y1);
+    context.lineTo(x2, y2);
+    context.stroke();
+    context.globalAlpha = prevAlpha;
+    context.strokeStyle = prevStroke;
+}
+
 /**
  * @typedef {{
  *   context: CanvasRenderingContext2D,
@@ -391,63 +480,140 @@ export class ShapeDefinition extends BasicSerializableObject {
                         quadrantSize,
                     });
                 } else {
+                    const baseHex = enumColorsToHexCode[color];
+                    const rotationDeg = quadrantIndex * 90;
+                    // Corner shared by all quadrants of this layer - the shape grows outwards from here.
+                    const pivotX = -quadrantHalfSize;
+                    const pivotY = quadrantHalfSize;
+
                     switch (subShape) {
                         case enumSubShape.rect: {
-                            context.beginPath();
                             const dims = quadrantSize * layerScale;
-                            context.rect(-quadrantHalfSize, quadrantHalfSize - dims, dims, dims);
-                            context.fill();
+                            const topX = pivotX;
+                            const topY = pivotY - dims;
+                            const tipX = pivotX + dims;
+                            const tipY = pivotY - dims;
+                            const rightX = pivotX + dims;
+                            const rightY = pivotY;
+
+                            fillFace(context, litColor(baseHex, rotationDeg - 35), [
+                                [pivotX, pivotY],
+                                [topX, topY],
+                                [tipX, tipY],
+                            ]);
+                            fillFace(context, litColor(baseHex, rotationDeg + 35), [
+                                [pivotX, pivotY],
+                                [tipX, tipY],
+                                [rightX, rightY],
+                            ]);
+
+                            context.beginPath();
+                            context.rect(pivotX, topY, dims, dims);
                             context.stroke();
+
+                            drawCrease(context, baseHex, pivotX, pivotY, tipX, tipY);
                             break;
                         }
                         case enumSubShape.star: {
-                            context.beginPath();
                             const dims = quadrantSize * layerScale;
-
-                            let originX = -quadrantHalfSize;
-                            let originY = quadrantHalfSize - dims;
-
                             const moveInwards = dims * 0.4;
-                            context.moveTo(originX, originY + moveInwards);
-                            context.lineTo(originX + dims, originY);
-                            context.lineTo(originX + dims - moveInwards, originY + dims);
-                            context.lineTo(originX, originY + dims);
+                            const tipX = pivotX + dims;
+                            const tipY = pivotY - dims;
+                            const notch1X = pivotX;
+                            const notch1Y = pivotY - dims + moveInwards;
+                            const notch2X = pivotX + dims - moveInwards;
+                            const notch2Y = pivotY;
+
+                            fillFace(context, litColor(baseHex, rotationDeg - 40), [
+                                [pivotX, pivotY],
+                                [notch1X, notch1Y],
+                                [tipX, tipY],
+                            ]);
+                            fillFace(context, litColor(baseHex, rotationDeg + 40), [
+                                [pivotX, pivotY],
+                                [tipX, tipY],
+                                [notch2X, notch2Y],
+                            ]);
+
+                            context.beginPath();
+                            context.moveTo(notch1X, notch1Y);
+                            context.lineTo(tipX, tipY);
+                            context.lineTo(notch2X, notch2Y);
+                            context.lineTo(pivotX, pivotY);
                             context.closePath();
-                            context.fill();
                             context.stroke();
+
+                            drawCrease(context, baseHex, pivotX, pivotY, tipX, tipY);
                             break;
                         }
 
                         case enumSubShape.windmill: {
-                            context.beginPath();
                             const dims = quadrantSize * layerScale;
-
-                            let originX = -quadrantHalfSize;
-                            let originY = quadrantHalfSize - dims;
                             const moveInwards = dims * 0.4;
-                            context.moveTo(originX, originY + moveInwards);
-                            context.lineTo(originX + dims, originY);
-                            context.lineTo(originX + dims, originY + dims);
-                            context.lineTo(originX, originY + dims);
+                            const tipX = pivotX + dims;
+                            const tipY = pivotY - dims;
+                            const notchX = pivotX;
+                            const notchY = pivotY - dims + moveInwards;
+                            const cornerX = pivotX + dims;
+                            const cornerY = pivotY;
+
+                            fillFace(context, litColor(baseHex, rotationDeg - 20), [
+                                [pivotX, pivotY],
+                                [notchX, notchY],
+                                [tipX, tipY],
+                            ]);
+                            fillFace(context, litColor(baseHex, rotationDeg + 55), [
+                                [pivotX, pivotY],
+                                [tipX, tipY],
+                                [cornerX, cornerY],
+                            ]);
+
+                            context.beginPath();
+                            context.moveTo(notchX, notchY);
+                            context.lineTo(tipX, tipY);
+                            context.lineTo(cornerX, cornerY);
+                            context.lineTo(pivotX, pivotY);
                             context.closePath();
-                            context.fill();
                             context.stroke();
+
+                            drawCrease(context, baseHex, pivotX, pivotY, tipX, tipY);
                             break;
                         }
 
                         case enumSubShape.circle: {
+                            const radius = quadrantSize * layerScale;
+                            const startAngle = -Math.PI * 0.5;
+                            const bisectorAngle = -Math.PI * 0.25;
+                            const endAngle = 0;
+
+                            context.fillStyle = litColor(baseHex, rotationDeg - 35);
                             context.beginPath();
-                            context.moveTo(-quadrantHalfSize, quadrantHalfSize);
-                            context.arc(
-                                -quadrantHalfSize,
-                                quadrantHalfSize,
-                                quadrantSize * layerScale,
-                                -Math.PI * 0.5,
-                                0
-                            );
+                            context.moveTo(pivotX, pivotY);
+                            context.arc(pivotX, pivotY, radius, startAngle, bisectorAngle);
                             context.closePath();
                             context.fill();
+
+                            context.fillStyle = litColor(baseHex, rotationDeg + 35);
+                            context.beginPath();
+                            context.moveTo(pivotX, pivotY);
+                            context.arc(pivotX, pivotY, radius, bisectorAngle, endAngle);
+                            context.closePath();
+                            context.fill();
+
+                            context.beginPath();
+                            context.moveTo(pivotX, pivotY);
+                            context.arc(pivotX, pivotY, radius, startAngle, endAngle);
+                            context.closePath();
                             context.stroke();
+
+                            drawCrease(
+                                context,
+                                baseHex,
+                                pivotX,
+                                pivotY,
+                                pivotX + radius * Math.cos(bisectorAngle),
+                                pivotY + radius * Math.sin(bisectorAngle)
+                            );
                             break;
                         }
 

@@ -14,7 +14,7 @@ export class AboutState extends TextualGameState {
     getMainContentHTML() {
         return `
             <div class="head">
-                <img src="res/logo.png" alt="shapez.io Logo">
+                <img src="res/logo.png" alt="Origamiz Logo">
             </div>
             <div class="text">
             ${T.about.body

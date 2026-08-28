@@ -116,15 +116,6 @@ export class MainMenuState extends GameState {
                     <a class="changelog">${T.changelog.title}</a>
                     <a class="helpTranslate">${T.mainMenu.helpTranslate}</a>
                 </div>
-
-                <div class="author">
-                    <a class="producerLink" href="https://tobspr.io" target="_blank" title="tobspr Games" rel="follow">
-                        <img src="res/logo-tobspr-games.svg" alt="tobspr Games"
-                        height="${25 * 0.8 * this.app.getEffectiveUiScale()}"
-                        width="${82 * 0.8 * this.app.getEffectiveUiScale()}"
-                        >
-                    </a>
-                </div>
             </div>
         `;
     }

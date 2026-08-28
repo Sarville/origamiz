@@ -35,23 +35,23 @@ for (const key in enumColorToShortcode) {
 
 /** @enum {string} */
 export const enumColorsToHexCode = {
-    [c.red]: "#ff666a",
-    [c.green]: "#78ff66",
-    [c.blue]: "#66a7ff",
+    [c.red]: "#fd837f",
+    [c.green]: "#94fb7c",
+    [c.blue]: "#86b6f3",
 
     // red + green
-    [c.yellow]: "#fcf52a",
+    [c.yellow]: "#fbf34d",
 
     // red + blue
-    [c.purple]: "#dd66ff",
+    [c.purple]: "#e383f3",
 
     // blue + green
-    [c.cyan]: "#00fcff",
+    [c.cyan]: "#36f8f3",
 
     // blue + green + red
-    [c.white]: "#ffffff",
+    [c.white]: "#fdfbf3",
 
-    [c.uncolored]: "#aaaaaa",
+    [c.uncolored]: "#bbb9b1",
 };
 
 /** @enum {Object.<string, string>} */
