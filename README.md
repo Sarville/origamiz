@@ -1,43 +1,27 @@
-# shapez Community Edition <img src="./electron/favicon.png" alt="shapez Logo" align="right" height="40">
+# Origamiz <img src="./electron/favicon.png" alt="Origamiz Logo" align="right" height="40">
 
-**shapez Community Edition** (abbreviated as **CE**) is a community-maintained version of [shapez](https://store.steampowered.com/app/1318690/shapez/)!
-
-CE was created as the tobspr Games team moved away from shapez to work full-time on the upcoming [Shapez 2](https://store.steampowered.com/app/2162800/shapez_2/).
-CE aims to:
-
--   Continue the development of shapez as guided by the community.
--   Allow contributors to continue submitting new features and improvements to the game.
--   Provide an experimental and forgiving environment for faster development.
+**Origamiz** is a shape-folding factory-automation game, forked from the GPL-3.0-licensed
+[shapez Community Edition](https://github.com/tobspr-games/shapez-community-edition), which is
+itself a community-maintained continuation of [shapez](https://store.steampowered.com/app/1318690/shapez/)
+by tobspr Games.
 
 > [!IMPORTANT]
-> CE is different from the official game published on Steam and other platforms.
-> CE was forked off of the official shapez, which has [its own repository](https://github.com/tobspr-games/shapez.io).
-> No plans exist to merge the two versions of shapez.
+> Origamiz is an independent project and is not affiliated with, endorsed by, or
+> associated with tobspr Games or the official shapez/Shapez 2 games.
 
-As of now, CE must be built from source and supports only a standalone build,
+As of now, Origamiz must be built from source and supports only a standalone build,
 with no plans for re-supporting a web version.
-In the future, builds of CE may provided for owners of the full version of shapez.
 
 ## Contributing
 
-We communicate on the [official shapez Discord server](https://discord.com/invite/HN7EVzV).
-For historical reasons, we have communicated in a private channel,
-but we are moving to the public `#contributing` channel.
-If you would like to contribute to CE, feel free to share your ideas, plans, etc. there.
+<!-- TODO: point this at Origamiz's own community channel once one exists. -->
 
-In our current workflow, we (the "collaborators" of the repository) create internal branches and corresponding pull requests to work on a feature, refactor, etc.
-We discuss changes in the Discord, and when 2 collaborators (including the PR creator) approve of a change, it can be merged.
-See our existing [pull requests](https://github.com/tobspr-games/shapez-community-edition/pulls?q=) for examples.
-
-If you are not a collaborator and want to submit a change,
-you can fork our repo and make a pull request.
-Note that because of plans to overhaul many parts of the game,
-unless you are improving translations, you should probably communicate with us on Discord!
+If you would like to contribute, feel free to fork the repo and open a pull request.
 
 > [!TIP]
-> Be aware that [pull requests to the official shapez repository](https://github.com/tobspr-games/shapez.io/pulls) are unlikely to get merged in the near future. Instead, submit them to CE!
-> In fact, because the game is licensed under the [GNU GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.html),
-> existing pull requests can be resubmitted to CE even if you aren't the author! **This is not legal advice.**
+> Because the game is licensed under the [GNU GPL v3.0](https://www.gnu.org/licenses/gpl-3.0.html),
+> pull requests originally made against the upstream shapez/shapez-community-edition repositories
+> can be resubmitted here even if you aren't the author! **This is not legal advice.**
 
 ### Code
 
@@ -75,21 +59,21 @@ and does not intend to provide compatibility for older clients.
 -   In the root folder, run `npm run package-$PLATFORM-$ARCH` where:
     -   `$PLATFORM` is `win32`, `linux` or `darwin` depending on your system.
     -   `$ARCH` is the target system architecture (`x64` or `arm64`)
--   The build will be found under `build_output/standalone` as `shapez-...`.
+-   The build will be found under `build_output/standalone` as `origamiz-...`.
 
 ### Building with Docker
 
 You can build without installing Node, Java, or ffmpeg on the host. From the repo root, build the image and run a package task with a volume so output appears in `build_output/` on your machine:
 
 ```bash
-docker build -t shapez-ce-builder .
-docker run --rm -v "$(pwd)/build_output:/output" shapez-ce-builder package.standalone.linux-x64
+docker build -t origamiz-builder .
+docker run --rm -v "$(pwd)/build_output:/output" origamiz-builder package.standalone.linux-x64
 ```
 
 On Apple Silicon add `--platform linux/amd64` to the build command. For other targets use e.g. `package.standalone.win32-x64`. Darwin builds are best done on macOS.
 
 ## Credits
 
-Thanks to [tobspr](https://tobspr.io) for creating this project!
-
-[<img src="https://i.imgur.com/uA2wcUy.png" alt="tobspr Games">](https://tobspr.io)
+Origamiz is a fork of [shapez Community Edition](https://github.com/tobspr-games/shapez-community-edition),
+itself built on [shapez](https://tobspr.io) by tobspr Games. Thanks to tobspr Games and the CE
+community for the original game this project is derived from.

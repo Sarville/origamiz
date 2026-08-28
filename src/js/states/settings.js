@@ -1,4 +1,8 @@
 import { THIRDPARTY_URLS } from "../core/config";
+
+// TODO: privacyPolicy currently points at tobspr's own policy, hidden until
+// Origamiz has its own. See config.ts.
+const SHOW_PRIVACY_LINK = false;
 import { TextualGameState } from "../core/textual_game_state";
 import { formatSecondsToTimeAgo } from "../core/utils";
 import { enumCategories } from "../profile/application_settings";
@@ -37,7 +41,7 @@ export class SettingsState extends TextualGameState {
 
             <div class="other">
                 <button class="styledButton about">${T.about.title}</button>
-                <button class="styledButton privacy">Privacy Policy</button>
+                ${SHOW_PRIVACY_LINK ? `<button class="styledButton privacy">Privacy Policy</button>` : ""}
                 <div class="versionbar">
                     <div class="buildVersion">${T.global.loading} ...</div>
                 </div>

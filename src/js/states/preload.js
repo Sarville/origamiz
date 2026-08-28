@@ -1,7 +1,7 @@
 import semverGt from "semver/functions/gt";
 import Semver from "semver/classes/semver";
 import { CHANGELOG } from "../changelog";
-import { globalConfig } from "../core/config";
+import { APP_NAME, globalConfig } from "../core/config";
 import { GameState } from "../core/game_state";
 import { Logger } from "../core/logging";
 import { getRandomHint } from "../game/hints";
@@ -229,7 +229,7 @@ export class PreloadState extends GameState {
 
         subElement.innerHTML = `
                 <div class="logo">
-                    <img src="res/logo.png" alt="Shapez.io Logo">
+                    <img src="res/logo.png" alt="${APP_NAME} Logo">
                 </div>
                 <div class="failureInner">
                     <div class="errorHeader">

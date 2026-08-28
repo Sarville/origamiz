@@ -602,6 +602,38 @@ logs.
   `assets_wip/color_blobs/build_blobs.py`). No session log confirms this
   was ever checked live in-browser — worth a look before assuming done.
   See `sessions/2026-08-28-2322-session.md` §0.
+- **§18 (text/code "shapez" references) done 2026-08-29**, done dynamically:
+  `APP_NAME` in `src/js/core/config.ts` (main bundle), `defaultWindowTitle` in
+  `electron/src/config.ts` (Electron shell), `BRAND_NAME` in
+  `gulp/build_variants.js` (packaging) are now the three single places to
+  rename the app — used by the console banner, logo alt text, window title,
+  and standalone package metadata (`executableName`/`appBundleId`/etc). Also:
+  `package.json`/`electron/package.json` `name` fields, `README.md`, CI/
+  `Dockerfile` docker tags, `changelog.js` (emptied — the old entries are
+  shapez's real release history, not Origamiz's), `browser_fs_job.ts`'s
+  IndexedDB name. `window.shapez`/`shapez.registerBuildingVariant(...)` mod
+  API **deliberately left as-is** (renaming breaks existing third-party mods
+  built against it — not just a brand string). Decided in the same session:
+  - **tobspr's live services/links** (`THIRDPARTY_URLS.discord/reddit/patreon/
+    shapeViewer/privacyPolicy` in `config.ts`, `api.shapez.io` in
+    `platform/api.js`, tutorial videos from `static.shapez.io` in
+    `tutorial_hints.js`) — kept working in code but **hidden from the UI**
+    (main menu social buttons, settings Privacy Policy button, tutorial video
+    array emptied) via a local `SHOW_*` flag next to each, not deleted.
+    `github` was swapped for the real `github.com/Sarville/origamiz` since
+    that one *is* ours. **Still open:** decide real replacements (or "stay
+    hidden") for Discord/Reddit/Patreon/shape-viewer/privacy-policy, and
+    whether the puzzle-mode online API (`api.shapez.io`, login/browse/submit)
+    stays pointed at tobspr's backend, gets its own backend, or gets disabled
+    — that's a bigger feature call than a text/link swap.
+  - **Translations (`translations/base-*.yaml`, all 32+ languages including
+    en/ru)** — explicitly deferred, not touched. Blocked on: a real support
+    email to replace `support@shapez.io`, and a decision on the
+    `viewer.shapez.io` shape-viewer link (own tool vs. keep vs. remove)
+    before the "shapez on GitHub"/"shapez.io" mentions in help text can be
+    reworded consistently across all languages.
+  - **`src/js/changelog.js`** — emptied rather than reworded, since the old
+    entries describe shapez's real historical releases, not Origamiz's.
 
 ## Chunks
 

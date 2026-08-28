@@ -1,5 +1,6 @@
 import gulp from "gulp";
 import path from "node:path/posix";
+import { BRAND_NAME } from "./build_variants.js";
 import { buildFolder, generatedCodeFolder } from "./config.js";
 
 import gulpAudiosprite from "gulp-audiosprite";
@@ -19,7 +20,7 @@ export function clear() {
 const filters = ["volume=0.2"];
 
 const fileCache = new gulpCache.Cache({
-    cacheDirName: "shapezio-precompiled-sounds",
+    cacheDirName: `${BRAND_NAME.toLowerCase()}-precompiled-sounds`,
 });
 
 function getFileCacheValue(file) {

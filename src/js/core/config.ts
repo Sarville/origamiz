@@ -1,8 +1,14 @@
 import debug from "./config.local";
 
+// Single place to rebrand the game's display name.
+export const APP_NAME = "Origamiz";
+
 export const THIRDPARTY_URLS = {
+    // TODO: these are tobspr's own community channels/services, not Origamiz's.
+    // Kept working but hidden from the UI (see main_menu.js/settings.js) until
+    // Origamiz has its own Discord/Reddit/Patreon/shape-viewer/privacy-policy/API.
     discord: "https://discord.gg/HN7EVzV",
-    github: "https://github.com/tobspr-games/shapez.io",
+    github: "https://github.com/Sarville/origamiz",
     reddit: "https://www.reddit.com/r/shapezio",
     shapeViewer: "https://viewer.shapez.io",
 

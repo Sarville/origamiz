@@ -10,7 +10,7 @@ interface BrowserFsJob {
     extension?: string;
 }
 
-const DB_NAME = "shapez_fs";
+const DB_NAME = "origamiz_fs";
 const STORE_NAME = "files";
 
 let dbPromise: Promise<IDBDatabase> | null = null;

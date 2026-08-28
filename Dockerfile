@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# docker build -t shapez-ce-builder .
+# docker build -t origamiz-builder .
 ARG TARGETPLATFORM=linux/amd64
 FROM --platform=$TARGETPLATFORM node:22-bookworm-slim
 

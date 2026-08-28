@@ -1,4 +1,7 @@
-import { globalConfig, THIRDPARTY_URLS } from "../core/config";
+import { APP_NAME, globalConfig, THIRDPARTY_URLS } from "../core/config";
+
+// TODO: tobspr's own community links, hidden until Origamiz has its own. See config.ts.
+const SHOW_TOBSPR_SOCIAL_LINKS = false;
 import { GameState } from "../core/game_state";
 import { DialogWithForm } from "../core/modal_dialog_elements";
 import { FormElementInput } from "../core/modal_dialog_forms";
@@ -41,7 +44,7 @@ export class MainMenuState extends GameState {
             </video>
 
             <div class="logo">
-                <img src="res/logo.png" alt="shapez.io Logo"
+                <img src="res/logo.png" alt="${APP_NAME} Logo"
                     width="${Math.round((710 / 3) * this.app.getEffectiveUiScale())}"
                     height="${Math.round((180 / 3) * this.app.getEffectiveUiScale())}"
                 >
@@ -91,16 +94,24 @@ export class MainMenuState extends GameState {
             <div class="footer">
 
                 <div class="socialLinks">
+                    ${
+                        SHOW_TOBSPR_SOCIAL_LINKS
+                            ? `
                     <a class="patreonLink boxLink" target="_blank">
                         <span class="thirdpartyLogo patreonLogo"></span>
                         <span class="label">Patreon</span>
-                    </a>
+                    </a>`
+                            : ""
+                    }
 
                     <a class="githubLink boxLink" target="_blank">
                         <span class="thirdpartyLogo githubLogo"></span>
                         <span class="label">GitHub</span>
                     </a>
 
+                    ${
+                        SHOW_TOBSPR_SOCIAL_LINKS
+                            ? `
                     <a class="discordLink boxLink" target="_blank">
                         <span class="thirdpartyLogo discordLogo"></span>
                         <span class="label">Discord</span>
@@ -109,7 +120,9 @@ export class MainMenuState extends GameState {
                     <a class="redditLink boxLink" target="_blank">
                         <span class="thirdpartyLogo redditLogo"></span>
                         <span class="label">Reddit</span>
-                    </a>
+                    </a>`
+                            : ""
+                    }
                 </div>
 
                 <div class="footerGrow">
@@ -570,9 +583,7 @@ export class MainMenuState extends GameState {
     }
 
     onTranslationHelpLinkClicked() {
-        this.app.platformWrapper.openExternalLink(
-            "https://github.com/tobspr-games/shapez.io/blob/master/translations"
-        );
+        this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.github + "/blob/master/translations");
     }
 
     onPlayButtonClicked() {

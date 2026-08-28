@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import gulp from "gulp";
 import path from "node:path/posix";
 import electronPackageJson from "../electron/package.json" with { type: "json" };
-import { BUILD_VARIANTS } from "./build_variants.js";
+import { BRAND_NAME, BUILD_VARIANTS } from "./build_variants.js";
 import { getVersion } from "./buildutils.js";
 import { buildProject } from "./typescript.js";
 
@@ -71,18 +71,18 @@ export default Object.fromEntries(
             async function packageStandalone(platform, arch) {
                 const appPaths = await packager({
                     dir: tempDestBuildDir,
-                    appCopyright: "tobspr Games",
+                    appCopyright: BRAND_NAME,
                     appVersion: getVersion(),
                     buildVersion: "1.0.0",
                     arch,
                     platform,
                     asar: true,
-                    executableName: "shapezio",
+                    executableName: BRAND_NAME.toLowerCase(),
                     icon: path.join(electronBaseDir, "favicon"),
-                    name: "shapez",
+                    name: BRAND_NAME,
                     out: tempDestDir,
                     overwrite: true,
-                    appBundleId: "tobspr.shapezio." + variant,
+                    appBundleId: "io." + BRAND_NAME.toLowerCase() + "." + variant,
                     appCategoryType: "public.app-category.games",
                 });
 

@@ -4,7 +4,8 @@ import path from "node:path";
 const disabledFeatures = ["HardwareMediaKeyHandling"];
 app.commandLine.appendSwitch("disable-features", disabledFeatures.join(","));
 
-export const defaultWindowTitle = "shapez CE";
+// Single place to rebrand the Electron shell's window title.
+export const defaultWindowTitle = "Origamiz";
 
 // This variable should be used to avoid situations where the app name
 // wasn't set yet.

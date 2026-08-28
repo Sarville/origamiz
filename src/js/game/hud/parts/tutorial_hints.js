@@ -6,7 +6,9 @@ import { KeyActionMapper, KEYMAPPINGS } from "../../key_action_mapper";
 import { BaseHUDPart } from "../base_hud_part";
 import { DynamicDomAttach } from "../dynamic_dom_attach";
 
-const tutorialVideos = [3, 4, 5, 6, 7, 9, 10, 11];
+// TODO: originally pulled from tobspr's static.shapez.io CDN — disabled until
+// Origamiz hosts its own tutorial videos. See config.ts THIRDPARTY_URLS note.
+const tutorialVideos = [];
 
 export class HUDPartTutorialHints extends BaseHUDPart {
     createElements(parent) {
