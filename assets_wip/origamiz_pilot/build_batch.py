@@ -225,6 +225,52 @@ def _corners(w, h, skip=()):
     return [pts[k] for k in pts if k not in skip]
 
 
+def _free_side_mid_posts(w, h, belt_edges):
+    """One extra post at the center of any side that has NO belt opening at
+    all (matches the miner.png/trash.png precedent: a lone opening's three
+    free sides each get a mid-post, not just the 4 corners). A side with at
+    least one opening already gets posts from _auto_flank_posts, so it's
+    skipped here to avoid a redundant/clashing post."""
+    used = {edge for edge, _ in belt_edges}
+    posts = []
+    if "top" not in used:
+        posts.append((w / 2, INSET))
+    if "bottom" not in used:
+        posts.append((w / 2, h - INSET))
+    if "left" not in used:
+        posts.append((INSET, h / 2))
+    if "right" not in used:
+        posts.append((w - INSET, h / 2))
+    return posts
+
+
+# arrow screen-direction for an opening, keyed by (edge, accept-or-eject) —
+# reverse-derived from every already-approved arrow in the pilot batch
+# (cutter/balancer/stacker/painter): an arrow always points the direction
+# material actually travels crossing that edge, in absolute screen terms,
+# NOT a fixed "in vs out" convention — e.g. painter's left(accept) and
+# right(eject) openings are BOTH deg=90 because material moves rightward
+# through both (shape enters left moving right, exits right moving right).
+_ARROW_DEG = {
+    ("bottom", "accept"): 0, ("bottom", "eject"): 180,
+    ("top", "accept"): 180, ("top", "eject"): 0,
+    ("left", "accept"): 90, ("left", "eject"): -90,
+    ("right", "accept"): -90, ("right", "eject"): 90,
+}
+
+
+def _arrow(edge, offset, kind, w, h):
+    """(cx, cy, deg) for one opening, cx/cy at the tile edge itself (same
+    convention apply_arrows already insets from), deg from _ARROW_DEG."""
+    if edge == "top":
+        return (offset + 96, 0, _ARROW_DEG[(edge, kind)])
+    if edge == "bottom":
+        return (offset + 96, h, _ARROW_DEG[(edge, kind)])
+    if edge == "left":
+        return (0, offset + 96, _ARROW_DEG[(edge, kind)])
+    return (w, offset + 96, _ARROW_DEG[(edge, kind)])
+
+
 SPECS = {
     "balancer.png": dict(
         w_tiles=2, h_tiles=1,
@@ -293,6 +339,190 @@ SPECS = {
 }
 
 
+def _mk(w_t, h_t, edges_kinds, plaque=None, content=None, mirror=False, plaque_size=None,
+        cut_polys=None, notch_ellipses=None, corner_skip=(), free_side_mid_posts=True):
+    """Build one SPECS entry from (edge, tile_offset, "accept"|"eject") triples
+    — slot data read directly from src/js/game/buildings/*.js, same
+    convention cut_openings.py already established. Post placement and
+    arrow direction/position are then fully derived, no per-building
+    hand-tuning needed (none of this second batch has bespoke shape-variety
+    cuts like cutter/stacker/painter did)."""
+    w, h = w_t * TILE, h_t * TILE
+    belt_edges = [(e, o) for e, o, k in edges_kinds]
+    posts = _corners(w, h, skip=corner_skip)
+    if free_side_mid_posts:
+        posts += _free_side_mid_posts(w, h, belt_edges)
+    d = dict(
+        w_tiles=w_t, h_tiles=h_t,
+        belt_edges=belt_edges,
+        post_centers=posts,
+        arrows=[_arrow(e, o, k, w, h) for e, o, k in edges_kinds],
+    )
+    if plaque:
+        d["plaque"] = (plaque, plaque_size or (150 if max(w_t, h_t) > 1 else 110), (w // 2, h // 2))
+    if content:
+        d["content"] = content
+    if mirror:
+        d["mirror"] = True
+    if cut_polys:
+        d["cut_polys"] = cut_polys
+    if notch_ellipses:
+        d["notch_ellipses"] = notch_ellipses
+    return d
+
+
+# ---------------------------------------------------------------------------
+# Batch 2 — the remaining ~38 buildings. Slot geometry (which edge, which
+# tile, accept-or-eject) read directly from src/js/game/buildings/*.js
+# (ItemAcceptorComponent/ItemEjectorComponent slots; WiredPinsComponent-only
+# slots are wires-layer, no belt/curb opening at all). See
+# sessions/2026-08-27-*-session.md for the reasoning behind post/arrow
+# auto-placement this reuses.
+# ---------------------------------------------------------------------------
+SPECS.update({
+    # -- pure wires-layer buildings: zero belt connections, plain platform
+    # (all 4 sides free -> _free_side_mid_posts adds a post on every side) --
+    "analyzer.png": _mk(1, 1, [], plaque="analyzer.png"),
+    "comparator.png": _mk(1, 1, [], plaque="comparator.png"),
+    "constant_signal.png": _mk(1, 1, [], plaque="constant_signal.png"),
+    "display.png": _mk(1, 1, [], plaque="display.png"),
+    "lever.png": _mk(1, 1, [], plaque="lever.png"),
+    "logic_gate.png": _mk(1, 1, [], plaque="logic_gate.png"),
+    "logic_gate-not.png": _mk(1, 1, [], plaque="logic_gate.png"),
+    "logic_gate-or.png": _mk(1, 1, [], plaque="logic_gate.png"),
+    "logic_gate-xor.png": _mk(1, 1, [], plaque="logic_gate.png"),
+    "transistor.png": _mk(1, 1, [], plaque="transistor.png"),
+    "transistor-mirrored.png": _mk(1, 1, [], plaque="transistor.png", mirror=True),
+    "virtual_processor.png": _mk(1, 1, [], plaque="virtual_processor.png"),
+    "virtual_processor-rotator.png": _mk(1, 1, [], plaque="virtual_processor.png"),
+    "virtual_processor-unstacker.png": _mk(1, 1, [], plaque="virtual_processor.png"),
+    "virtual_processor-stacker.png": _mk(1, 1, [], plaque="virtual_processor.png"),
+    "virtual_processor-painter.png": _mk(1, 1, [], plaque="virtual_processor.png"),
+    "wire_tunnel.png": _mk(1, 1, [], plaque="wire_tunnel.png"),
+    "block.png": _mk(1, 1, []),  # deliberately no plaque — plainest possible tile
+
+    # -- single-tile, one belt opening --
+    "constant_producer.png": _mk(1, 1, [("top", 0, "eject")], plaque="constant_producer.png"),
+    "item_producer.png": _mk(1, 1, [("top", 0, "eject")], plaque="item_producer.png"),
+    "goal_acceptor.png": _mk(1, 1, [("bottom", 0, "accept")], plaque="goal_acceptor.png"),
+    "miner-chainable.png": dict(
+        w_tiles=1, h_tiles=1,
+        belt_edges=[("top", 0)],
+        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, 192 - INSET)],
+        content="pre_platform_miner.png",
+        arrows=[(96, 0, 0)],
+    ),
+    "underground_belt_entry-tier2.png": dict(
+        w_tiles=1, h_tiles=1,
+        belt_edges=[("bottom", 0)],
+        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, INSET)],
+        content="pre_platform_underground_belt_entry.png",
+        arrows=[],
+    ),
+    "underground_belt_exit-tier2.png": dict(
+        w_tiles=1, h_tiles=1,
+        belt_edges=[("top", 0)],
+        post_centers=_corners(192, 192) + [(INSET, 96), (192 - INSET, 96), (96, 192 - INSET)],
+        content="pre_platform_underground_belt_exit.png",
+        arrows=[],
+    ),
+
+    # -- single-tile, two belt openings (straight pass-through) --
+    # left+right free-side mid-posts disabled: reader has real WiredPins
+    # ejectors on both those edges (see build_wire_buildings.py's bamboo
+    # tab post-process below), a decorative post there would clash with it.
+    "reader.png": _mk(1, 1, [("bottom", 0, "accept"), ("top", 0, "eject")], plaque="reader.png",
+                       free_side_mid_posts=False),
+
+    # -- single-tile balancer variants (compact merge/split, 3 openings) --
+    "balancer-merger.png": _mk(1, 1, [
+        ("bottom", 0, "accept"), ("right", 0, "accept"), ("top", 0, "eject"),
+    ], plaque="balancer.png"),
+    "balancer-merger-inverse.png": _mk(1, 1, [
+        ("bottom", 0, "accept"), ("left", 0, "accept"), ("top", 0, "eject"),
+    ], plaque="balancer.png", mirror=True),
+    "balancer-splitter.png": _mk(1, 1, [
+        ("bottom", 0, "accept"), ("top", 0, "eject"), ("right", 0, "eject"),
+    ], plaque="balancer.png"),
+    "balancer-splitter-inverse.png": _mk(1, 1, [
+        ("bottom", 0, "accept"), ("top", 0, "eject"), ("left", 0, "eject"),
+    ], plaque="balancer.png", mirror=True),
+
+    # -- 2-tile-wide buildings --
+    # filter: left edge is 100% free (no belt at all) -> wavy 2-bite scallop,
+    # kept clear of both corner posts (>=38px buffer) so the EDT curb ring
+    # stays straight and actually reaches each post instead of curving away
+    # from it right at the corner (a real bug the user caught: bites too
+    # close to the corner warp the curb path away from the fixed post).
+    # top is free only over tile1 (tile0's top is the eject) -> a small
+    # corner nick at top-right, kept shallow (reaches y=20 only) so it can't
+    # touch the right-edge eject's belt opening (starts at y=MARGIN=24).
+    "filter.png": _mk(2, 1, [
+        ("bottom", 0, "accept"), ("top", 0, "eject"), ("right", 0, "eject"),
+    ], plaque="filter.png",
+        notch_ellipses=[(0, 70, 32, 32), (0, 122, 32, 32)],
+        cut_polys=[[(384 - 40, 0), (384, 0), (384, 20)]]),
+    # mixer: left+right are 100% free (only top/bottom carry belts) -> one
+    # round bite centered on each, same "free-side scallop" language as
+    # filter's, symmetric since mixer itself is symmetric.
+    "mixer.png": _mk(2, 1, [
+        ("top", 0, "eject"), ("bottom", 0, "accept"), ("bottom", 192, "accept"),
+    ], plaque="mixer.png",
+        notch_ellipses=[(0, 96, 55, 55), (384, 96, 55, 55)]),
+    # painter-mirrored: same arch-notch language and exact spacing as the
+    # base painter, but on the TOP edge instead of bottom — mirroring moves
+    # the color-accept to tile1's bottom, so bottom is only free at tile0
+    # here, while top is 100% free across both tiles (the reverse of base
+    # painter, whose top is free only at tile1) — user caught this, arches
+    # belong wherever there's genuinely no input, which for this variant is
+    # the top.
+    "painter-mirrored.png": _mk(2, 1, [
+        ("left", 0, "accept"), ("bottom", 192, "accept"), ("right", 0, "eject"),
+    ], plaque="painter.png",
+        notch_ellipses=[(110, 0, 60, 35), (280, 0, 60, 35)]),
+
+    # -- 4-tile-wide buildings --
+    # cutter-quad: bottom is free across tiles 1-3 (only tile0 accepts) ->
+    # a small corner nick right after tile0, then one big sweeping arc
+    # carving away most of the bottom-right (large wide ellipse centered
+    # below-right of the canvas so only its shallow top arc intersects —
+    # verified it never reaches above y=100, well clear of the top-edge
+    # ejects at y=0..28).
+    "cutter-quad.png": _mk(4, 1, [
+        ("bottom", 0, "accept"),
+        ("top", 0, "eject"), ("top", 192, "eject"), ("top", 384, "eject"), ("top", 576, "eject"),
+    ], plaque="cutter.png", corner_skip=("br",),  # br corner is swept away, see below
+        notch_ellipses=[(230, 192, 40, 40), (768, 400, 450, 300)]),
+    # painter-quad: mirror image of cutter-quad's sweep — top is free across
+    # tiles 1-3 (only tile0 ejects), so the big sweep carves the top-right
+    # instead of the bottom-right, staying above y=100, safely clear of the
+    # bottom belt lanes (which start at y=164).
+    "painter-quad.png": _mk(4, 1, [
+        ("left", 0, "accept"),
+        ("bottom", 0, "accept"), ("bottom", 192, "accept"),
+        ("bottom", 384, "accept"), ("bottom", 576, "accept"),
+        ("top", 0, "eject"),
+    ], plaque="painter.png", corner_skip=("tr",),  # tr corner is swept away, see below
+        notch_ellipses=[(768, -200, 450, 300)]),
+
+    # -- 2x2 buildings --
+    # storage: left+right are 100% free (only top/bottom carry belts), same
+    # situation as mixer just taller -> same round-bite language, bigger.
+    # No free-side mid-post here (unlike mixer) — user flagged it as a
+    # redundant post floating right on the bite's own curve; the bite is
+    # decoration enough, corners are enough structure.
+    "storage.png": _mk(2, 2, [
+        ("top", 0, "eject"), ("top", 192, "eject"),
+        ("bottom", 0, "accept"), ("bottom", 192, "accept"),
+    ], plaque="storage.png", plaque_size=160, free_side_mid_posts=False,
+        notch_ellipses=[(0, 192, 70, 70), (384, 192, 70, 70)]),
+    "painter-double.png": _mk(2, 2, [
+        ("left", 0, "accept"), ("left", 192, "accept"),
+        ("top", 192, "accept"), ("right", 0, "eject"),
+    ], plaque="painter.png", plaque_size=160),
+})
+
+
 def build_all():
     ref_crops = os.path.join(bp.BASE, "ref_crops")
     for fname, spec in SPECS.items():
@@ -304,7 +534,7 @@ def build_all():
         )
         if "plaque" in spec:
             icon_name, size, center = spec["plaque"]
-            bp.apply_plaque(canvas, icon_name, *center, plaque_size=size)
+            bp.apply_plaque(canvas, icon_name, *center, plaque_size=size, mirror=spec.get("mirror", False))
         if "content" in spec:
             content = Image.open(os.path.join(ref_crops, spec["content"])).convert("RGBA")
             canvas.alpha_composite(content, (0, 0))
@@ -315,5 +545,24 @@ def build_all():
         print("wrote", out_path)
 
 
+# rotator-ccw / rotator-rotate180: same footprint and same bottom-in/top-out
+# slots as the base rotator (verified in src/js/game/buildings/rotator.js —
+# only the ItemProcessor's rotation math differs, not the building's
+# silhouette or connections), so they reuse the exact approved pinch-curve
+# builder rather than build_generic.
+ROTATOR_VARIANTS = ["rotator-ccw.png", "rotator-rotate180.png"]
+
+
+def build_rotator_variants():
+    for fname in ROTATOR_VARIANTS:
+        canvas = bp.build_platform_pinched()
+        bp.apply_plaque(canvas, "rotator.png", 96, 96)
+        bp.apply_arrows(canvas, [(96, 192, 0), (96, 0, 0)])
+        out_path = os.path.join(B, fname.replace(".png", "_v2.png"))
+        canvas.save(out_path)
+        print("wrote", out_path)
+
+
 if __name__ == "__main__":
     build_all()
+    build_rotator_variants()

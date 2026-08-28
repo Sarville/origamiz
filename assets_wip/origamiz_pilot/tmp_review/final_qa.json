@@ -1,0 +1,346 @@
+{
+  "analyzer.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 146
+  },
+  "comparator.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 200
+  },
+  "constant_signal.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": null,
+      "right": null
+    },
+    "near_white_fringe_pixels": 112
+  },
+  "display.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "near_white_fringe_pixels": 27
+  },
+  "lever.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": null,
+      "right": null
+    },
+    "near_white_fringe_pixels": 127
+  },
+  "logic_gate-not.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "near_white_fringe_pixels": 252
+  },
+  "logic_gate-or.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 280
+  },
+  "logic_gate-xor.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 186
+  },
+  "logic_gate.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 151
+  },
+  "transistor-mirrored.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 195
+  },
+  "transistor.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": null
+    },
+    "near_white_fringe_pixels": 317
+  },
+  "virtual_processor-painter.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 139
+  },
+  "virtual_processor-rotator.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "near_white_fringe_pixels": 1
+  },
+  "virtual_processor-stacker.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 47
+  },
+  "virtual_processor-unstacker.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 264
+  },
+  "virtual_processor.png": {
+    "size": [
+      192,
+      192
+    ],
+    "mode": "RGBA",
+    "tabs": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "near_white_fringe_pixels": 1
+  }
+}

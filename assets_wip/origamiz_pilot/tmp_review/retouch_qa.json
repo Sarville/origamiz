@@ -1,0 +1,459 @@
+{
+  "before": {
+    "analyzer.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "comparator.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "constant_signal.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": null,
+      "right": null
+    },
+    "display.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "lever.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": null,
+      "right": null
+    },
+    "logic_gate-not.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "logic_gate-or.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "logic_gate-xor.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "logic_gate.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "transistor-mirrored.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "transistor.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": null
+    },
+    "virtual_processor-painter.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "virtual_processor-rotator.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "virtual_processor-stacker.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "virtual_processor-unstacker.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "virtual_processor.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    }
+  },
+  "after": {
+    "analyzer.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "comparator.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "constant_signal.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": null,
+      "right": null
+    },
+    "display.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "lever.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": null,
+      "right": null
+    },
+    "logic_gate-not.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "logic_gate-or.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "logic_gate-xor.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "logic_gate.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": null,
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "transistor-mirrored.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "transistor.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": null
+    },
+    "virtual_processor-painter.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "virtual_processor-rotator.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": null
+    },
+    "virtual_processor-stacker.png": {
+      "top": [
+        78,
+        113
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": null,
+      "right": [
+        78,
+        113
+      ]
+    },
+    "virtual_processor-unstacker.png": {
+      "top": null,
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    },
+    "virtual_processor.png": {
+      "top": [
+        65,
+        126
+      ],
+      "bottom": [
+        78,
+        113
+      ],
+      "left": [
+        78,
+        113
+      ],
+      "right": [
+        78,
+        113
+      ]
+    }
+  },
+  "near_white_fringe": {
+    "analyzer.png": 151,
+    "comparator.png": 204,
+    "constant_signal.png": 114,
+    "display.png": 29,
+    "lever.png": 129,
+    "logic_gate-not.png": 253,
+    "logic_gate-or.png": 284,
+    "logic_gate-xor.png": 194,
+    "logic_gate.png": 154,
+    "transistor-mirrored.png": 198,
+    "transistor.png": 322,
+    "virtual_processor-painter.png": 141,
+    "virtual_processor-rotator.png": 68,
+    "virtual_processor-stacker.png": 202,
+    "virtual_processor-unstacker.png": 270,
+    "virtual_processor.png": 129
+  }
+}

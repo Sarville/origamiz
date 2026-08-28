@@ -160,11 +160,13 @@ def build_platform_pinched(w=TILE, h=TILE, max_pinch=30):
     return canvas.resize((w, h), Image.LANCZOS)
 
 
-def apply_plaque(canvas, icon_name, cx, cy, plaque_size=PLAQUE_SIZE):
+def apply_plaque(canvas, icon_name, cx, cy, plaque_size=PLAQUE_SIZE, mirror=False):
     plaque = Image.open(os.path.join(U, "plaque_template.png")).convert("RGBA")
     plaque = plaque.resize((plaque_size, plaque_size), Image.LANCZOS)
     icon_size = int(plaque_size * 0.6)
     icon = Image.open(os.path.join(I, icon_name)).convert("RGBA")
+    if mirror:
+        icon = icon.transpose(Image.FLIP_LEFT_RIGHT)
     icon = icon.resize((icon_size, icon_size), Image.LANCZOS)
     canvas.alpha_composite(plaque, (cx - plaque_size // 2, cy - plaque_size // 2))
     canvas.alpha_composite(icon, (cx - icon_size // 2, cy - icon_size // 2))
