@@ -77,8 +77,8 @@ export function autoDetectLanguageId() {
         }
     }
 
-    // Fallback
-    return "en";
+    // Fallback - default audience is Russian-speaking (Yandex Games)
+    return "ru";
 }
 
 /**

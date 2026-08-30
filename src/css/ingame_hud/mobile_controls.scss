@@ -4,6 +4,47 @@
 
 @use "sass:color";
 
+// Shared "cream" look for every round mobile HUD button (trash, undo/redo, and
+// the rotate/copy row) - cream fill + a slightly darker outline, matching the
+// toolbar icons' palette instead of the previous plain white/dark-gray
+// circles. No box-shadow here on purpose - each icon (below) already bakes in
+// its own drop-shadow/gradient for a "volumetric" look, so a second shadow on
+// the button itself would just double up.
+@mixin MobileHudButton {
+    @include PlainText;
+    pointer-events: all;
+    cursor: pointer;
+    transition: all 0.12s ease-in-out;
+    transition-property: opacity, transform, background-color, box-shadow;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-position: center center;
+    background-repeat: no-repeat;
+
+    background-color: rgba(#f2e8d5, 0.92);
+    border: 0.1rem solid rgba(#8a7550, 0.45);
+    color: #4a3f2e;
+
+    &.pressed {
+        transform: scale(0.9) !important;
+    }
+
+    @include DarkThemeOverride {
+        background-color: rgba(#3a362c, 0.92);
+        border-color: rgba(#000, 0.4);
+        color: #f2e8d5;
+    }
+
+    // Placeholder-only buttons (no undo/redo history to call into yet) - visibly
+    // inert rather than looking clickable.
+    &.disabled {
+        opacity: 0.45;
+        pointer-events: none;
+    }
+}
+
 #ingame_HUD_MobileControls {
     position: absolute;
     // The buildings toolbar now spans the full width (see buildings_toolbar.scss),
@@ -17,52 +58,63 @@
 
     // z-index:auto left this dynamically-populated absolute box uncomposited on real
     // mobile Chrome - it never painted even though DOM/computed-style looked correct.
-    // Needs to be high enough to beat other HUD layers (buildings toolbar sits at
-    // 330) - matches the value blueprint_placer.scss already uses for the same
-    // "must render above everything" need.
-    z-index: 9999;
+    // The real stacking value comes from main.scss's $elements registry (this
+    // element is listed there, right after ingame_HUD_BlueprintPlacer) - that
+    // rule has equal specificity and comes later in the compiled CSS, so it's
+    // the one that actually wins. Just needs to be anything but auto here.
+    //
+    // A flat z-index: 9999 used to live here instead, entirely outside that
+    // registry - it beat every other HUD layer including dialogs (confirmed on
+    // a real device: the trash/undo/redo buttons stayed visible on top of the
+    // upgrades shop dialog, which the registry puts at 410).
+    z-index: 1;
 
-    // Idle state: just the trash icon.
-    > .delete {
-        @include PlainText;
+    // Idle state: trash + undo/redo placeholders, stacked above the toolbar.
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+
+    > .delete,
+    > .undo,
+    > .redo {
+        @include MobileHudButton;
         width: $mobileCell;
         height: $mobileCell;
-        font-size: calc($mobileCell * 0.4);
         border-radius: 0.8rem;
+        box-shadow: 0 0.15rem 0.35rem rgba(0, 0, 0, 0.25);
+    }
 
-        pointer-events: all;
-        cursor: pointer;
-        transition: all 0.12s ease-in-out;
-        transition-property: opacity, transform, background-color, box-shadow;
-
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #ffffffcc;
-        color: #333438;
-
-        &.pressed {
-            transform: scale(0.9) !important;
-        }
-
-        @include DarkThemeOverride {
-            background-color: #28282ecc;
-            color: #fff;
-        }
-
-        &.active {
-            box-shadow: 0 0 0 0.15rem #fff;
-        }
-
-        background-image: uiResource("icons/delete.png");
-        background-size: 45%;
-        background-repeat: no-repeat;
-        background-position: center center;
+    // Every icon below is a small self-contained SVG (not a Unicode glyph or a
+    // flat bitmap): a dark outline pass plus a cream-gradient pass on top, both
+    // wrapped in a group with its own drop-shadow filter - gives each glyph a
+    // "volumetric" chip-like look on its own, independent of the button
+    // background. Also sidesteps a real bug found along the way: obscure
+    // glyphs like ⧉ (U+29C9) or ↺/↻ (U+21BA/21BB) render as tofu boxes on the
+    // custom game font *and* every realistic fallback (Arial included) - too
+    // rare a codepoint for actual font coverage on real devices.
+    > .delete {
+        background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M4%207h16%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%207V5a2%202%200%200%201%202-2h8a2%202%200%200%201%202%202v2%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%207l1%2013a2%202%200%200%200%202%202h6a2%202%200%200%200%202-2l1-13%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M10%2011v6%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M14%2011v6%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%207h16%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%207V5a2%202%200%200%201%202-2h8a2%202%200%200%201%202%202v2%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%207l1%2013a2%202%200%200%200%202%202h6a2%202%200%200%200%202-2l1-13%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M10%2011v6%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M14%2011v6%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+        background-size: 52%;
 
         &.active {
             background-color: #e0463f;
-            box-shadow: 0 0 0 0.15rem #fff;
+            border-color: rgba(#000, 0.3);
         }
+    }
+
+    // Flattened hook arrows (matching the reference's undo icon), not a near-
+    // full circle - visually distinct from the rotate icon below, which *is*
+    // a full loop since it represents a 90-degree spin rather than "one step
+    // back/forward".
+    > .undo {
+        background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M9%2014L4%209l5-5%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%209h10a6%206%200%200%201%200%2012h-1%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M9%2014L4%209l5-5%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%209h10a6%206%200%200%201%200%2012h-1%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+        background-size: 52%;
+    }
+
+    > .redo {
+        background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M15%2014l5-5-5-5%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M20%209H10a6%206%200%200%200%200%2012h1%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M15%2014l5-5-5-5%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M20%209H10a6%206%200%200%200%200%2012h1%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+        background-size: 52%;
     }
 
     // Active state: building preview + controls, replacing the trash icon in the
@@ -72,7 +124,9 @@
     }
 
     &.placing {
-        > .delete {
+        > .delete,
+        > .undo,
+        > .redo {
             display: none;
         }
         .buildingPreview {
@@ -81,18 +135,29 @@
     }
 
     .buildingPreview {
+        position: relative;
         flex-direction: column;
         align-items: center;
         gap: 0.6rem;
 
-        padding: 1.5vmin;
+        // ~10% bigger all round than the original 1.5vmin/2.25 cells.
+        padding: 1.65vmin;
         // Big enough to comfortably cover even a 1x1 building's small sprite -
         // pointer-events:all below means everything inside this box (padding,
         // gaps, the swipe hint text) eats taps instead of letting them fall
         // through to the canvas and place a building underneath the panel.
-        min-width: calc($mobileCell * 2.25);
+        // A bit wider/taller than the previous pass, per feedback - also gives
+        // .cancel (top-right corner) more breathing room instead of reading as
+        // clipped against the panel's own edge.
+        min-width: calc($mobileCell * 3.1);
+        // Tall enough that .cancel (top-right) and .multiplace (bottom-right)
+        // below never overlap - both are full-size buttons pinned to opposite
+        // corners with the same inset, so the panel needs room for both plus
+        // that inset, regardless of how small the sprite in between is.
+        min-height: calc(2 * (0.8rem + $mobileCell));
         border-radius: $globalBorderRadius;
-        background-color: rgba($ingameHudBg, 0.07);
+        // A touch darker than the first pass, per feedback.
+        background-color: rgba($ingameHudBg, 0.16);
         pointer-events: all;
 
         @include DarkThemeOverride {
@@ -102,6 +167,23 @@
             );
         }
 
+        // Top-right corner, like a dialog's close button - separate from the
+        // rotate/copy group below instead of sharing its row. Inset (not
+        // overhanging past the panel edge) by the same margin on both axes as
+        // rotate/copy below, so all three sit flush and evenly spaced.
+        > .cancel {
+            @include MobileHudButton;
+            position: absolute;
+            top: 0.6rem;
+            right: 0.6rem;
+            width: $mobileCell;
+            height: $mobileCell;
+            border-radius: 50%;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M6%206l12%2012%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%206L6%2018%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%206l12%2012%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%206L6%2018%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            background-size: 55%;
+            z-index: 10;
+        }
+
         .swipeHint {
             @include SuperSmallText;
             color: #fff;
@@ -109,7 +191,15 @@
             text-align: center;
             visibility: hidden;
 
-            @include DarkThemeInvert;
+            // Plain white text blended into the light panel background -
+            // a dark outline (stacked text-shadows, since -webkit-text-stroke
+            // eats into the glyphs themselves at this font size) keeps it
+            // readable regardless of what's behind it.
+            text-shadow:
+                0.05rem 0 rgba(0, 0, 0, 0.6),
+                -0.05rem 0 rgba(0, 0, 0, 0.6),
+                0 0.05rem rgba(0, 0, 0, 0.6),
+                0 -0.05rem rgba(0, 0, 0, 0.6);
         }
 
         &.hasVariants .swipeHint {
@@ -128,82 +218,70 @@
             justify-content: center;
             overflow: visible;
             touch-action: none;
+            // Every element is pointer-events:none by default (see the * rule
+            // in common.scss) - .buildingPreview opts back in, but that alone
+            // doesn't carry to this specific child. Without this, tap/swipe on
+            // the sprite never actually reached its touch listeners via real
+            // screen-coordinate hit-testing (only direct dispatchEvent() calls
+            // in testing "worked", which skip hit-testing entirely) - this was
+            // true even before today's tap-to-rotate addition.
+            pointer-events: all;
 
+            // ~10% bigger - matches HUDMobileControls.renderPreview's iconSize.
             .sprite {
                 position: relative;
                 flex-shrink: 0;
-                width: $mobileCell;
-                height: $mobileCell;
+                width: calc($mobileCell * 1.1);
+                height: calc($mobileCell * 1.1);
                 transition: transform 0.15s ease;
 
                 &[data-tile-w="2"] {
-                    width: 2 * $mobileCell;
+                    width: 2.2 * $mobileCell;
                 }
                 &[data-tile-h="2"] {
-                    height: 2 * $mobileCell;
+                    height: 2.2 * $mobileCell;
                 }
                 &[data-tile-h="3"] {
-                    height: 3 * $mobileCell;
+                    height: 3.3 * $mobileCell;
                 }
                 &[data-tile-w="3"] {
-                    width: 3 * $mobileCell;
+                    width: 3.3 * $mobileCell;
                 }
                 &[data-tile-w="4"] {
-                    width: 4 * $mobileCell;
+                    width: 4.4 * $mobileCell;
                 }
             }
         }
 
-        .controls {
-            display: flex;
-            gap: 0.5rem;
-            // Extra breathing room from the sprite above - the column gap on
-            // .buildingPreview is shared with the (much smaller) swipe hint above
-            // the sprite, so it's not enough here on its own.
-            margin-top: 1vmin;
+        // Bottom-left/right corners, inset by the same margin as .cancel above
+        // (not overhanging past the panel edge) - not a centered row any more.
+        > .rotate,
+        > .multiplace {
+            @include MobileHudButton;
+            position: absolute;
+            bottom: 0.6rem;
+            width: $mobileCell;
+            height: $mobileCell;
+            border-radius: 0.7rem;
+        }
 
-            > button {
-                @include PlainText;
-                width: $mobileCell;
-                height: $mobileCell;
-                font-size: calc($mobileCell * 0.42);
-                border-radius: 0.7rem;
+        > .rotate {
+            left: 0.6rem;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M18%204v6h-6%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M15.49%209a9%209%200%201%200%202.12%209.36L18%2014%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%204v6h-6%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M15.49%209a9%209%200%201%200%202.12%209.36L18%2014%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            background-size: 55%;
+        }
 
-                pointer-events: all;
-                cursor: pointer;
-                transition: all 0.12s ease-in-out;
-                transition-property: opacity, transform, background-color, box-shadow;
+        > .multiplace {
+            right: 0.6rem;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M3%207h13v13H3z%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M8%203h13v13%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M3%207h13v13H3z%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M8%203h13v13%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            background-size: 52%;
 
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                background-color: #ffffffcc;
-                color: #333438;
-                background-position: center center;
-                background-repeat: no-repeat;
-
-                &.pressed {
-                    transform: scale(0.9) !important;
-                }
-
-                @include DarkThemeOverride {
-                    background-color: #28282ecc;
-                    color: #fff;
-                }
-
-                &.active {
-                    box-shadow: 0 0 0 0.15rem #fff;
-                }
-
-                &.cancel {
-                    background-image: uiResource("icons/close.png");
-                    background-size: 45%;
-                }
-
-                &.info {
-                    background-image: uiResource("icons/info_button.png");
-                    background-size: 55%;
-                }
+            // Toggle state shown as a filled highlight (same warm tone the
+            // buildings toolbar uses for its selected icon) instead of a
+            // white ring around the button.
+            &.active {
+                background-color: rgba($colorOrangeBright, 0.55);
+                border-color: color.adjust($colorOrangeBright, $lightness: -15%, $space: hsl);
             }
         }
     }

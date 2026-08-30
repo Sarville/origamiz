@@ -1,4 +1,4 @@
-import { APP_NAME, globalConfig, THIRDPARTY_URLS } from "../core/config";
+import { APP_NAME, BRAND_AUTHOR, globalConfig, THIRDPARTY_URLS } from "../core/config";
 
 // TODO: tobspr's own community links, hidden until Origamiz has its own. See config.ts.
 const SHOW_TOBSPR_SOCIAL_LINKS = false;
@@ -36,7 +36,11 @@ export class MainMenuState extends GameState {
                 <button aria-label="Choose Language" class="languageChoose" data-languageicon="${this.app.settings.getLanguage()}"></button>
 
                 <button class="settingsButton" aria-label="Settings"></button>
-                <button class="exitAppButton" aria-label="Exit App"></button>
+                ${
+                    this.app.platformWrapper.getSupportsAppExit()
+                        ? `<button class="exitAppButton" aria-label="Exit App"></button>`
+                        : ""
+                }
             </div>
 
             <video autoplay muted loop class="fullscreenBackgroundVideo">
@@ -128,6 +132,11 @@ export class MainMenuState extends GameState {
                 <div class="footerGrow">
                     <a class="changelog">${T.changelog.title}</a>
                     <a class="helpTranslate">${T.mainMenu.helpTranslate}</a>
+                </div>
+
+                <div class="brandMark">
+                    <span class="name">${BRAND_AUTHOR}</span>
+                    <span class="sub">Games</span>
                 </div>
             </div>
         `;

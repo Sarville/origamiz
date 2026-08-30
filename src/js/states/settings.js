@@ -116,9 +116,11 @@ export class SettingsState extends TextualGameState {
         this.trackClicks(this.htmlElement.querySelector(".about"), this.onAboutClicked, {
             preventDefault: false,
         });
-        this.trackClicks(this.htmlElement.querySelector(".privacy"), this.onPrivacyClicked, {
-            preventDefault: false,
-        });
+
+        const privacyButton = this.htmlElement.querySelector(".privacy");
+        if (privacyButton) {
+            this.trackClicks(privacyButton, this.onPrivacyClicked, { preventDefault: false });
+        }
 
         const keybindingsButton = this.htmlElement.querySelector(".editKeybindings");
 

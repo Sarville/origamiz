@@ -28,9 +28,10 @@
 
             @include StyleBelowWidth($layoutBreak) {
                 display: grid;
-                grid-template-columns: 1fr 1fr 1fr;
+                grid-template-columns: 1fr 1fr;
                 grid-gap: 0.5rem;
                 max-width: unset !important;
+                min-width: unset !important;
             }
 
             button {
@@ -44,8 +45,24 @@
 
                 @include StyleBelowWidth($layoutBreak) {
                     text-align: center;
-                    height: 3rem !important;
+                    height: 3.2rem !important;
                     padding: 0.5rem !important;
+                    // Grid items don't shrink below their content's width by default -
+                    // without this, a long single-word translation (e.g. Russian
+                    // "Производительность") pushes the whole sidebar wider than the
+                    // screen instead of wrapping.
+                    min-width: 0;
+                    font-size: 0.85rem;
+                    line-height: 1.15;
+                    overflow-wrap: break-word;
+                    white-space: normal;
+                }
+            }
+
+            // Mods aren't offered on mobile.
+            .manageMods {
+                @include StyleBelowWidth($layoutBreak) {
+                    display: none;
                 }
             }
 
@@ -94,10 +111,6 @@
             .versionbar {
                 margin-top: 1rem;
 
-                @include StyleBelowWidth($layoutBreak) {
-                    display: none;
-                }
-
                 @include SuperSmallText;
                 display: grid;
                 align-items: center;
@@ -106,6 +119,14 @@
                     display: flex;
                     flex-direction: column;
                     color: #aaadaf;
+                }
+
+                // Must come last: an @media block sandwiched between plain declarations
+                // of the same selector gets emitted as its own rule, and any plain
+                // declaration written *after* it (like the ones above) would otherwise
+                // override it regardless of viewport width.
+                @include StyleBelowWidth($layoutBreak) {
+                    display: none;
                 }
             }
         }

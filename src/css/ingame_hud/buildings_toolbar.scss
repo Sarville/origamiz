@@ -2,8 +2,6 @@
 @use "../ui_resource" as *;
 @use "../variables" as *;
 
-@use "sass:color";
-
 .ingame_buildingsToolbar {
     position: absolute;
     bottom: 1rem;
@@ -33,7 +31,13 @@
 
         padding: 0.35rem 0.5rem;
 
-        border-image: uiResource("toolbar_panel.png") 0 140 fill / 0 1.4rem;
+        // Slice top/bottom at the actual opaque wood band (rows 80-230 of the
+        // 320px-tall source) instead of 0 - with a 0 slice, the *whole* image
+        // (including ~28% transparent margin above and below the wood) gets
+        // used as the stretched "fill" source, so at any height taller than
+        // the source's native size the visible wood band ends up noticeably
+        // shorter than the box, and icons overflow past its edges.
+        border-image: uiResource("toolbar_panel.png") 80 140 90 140 fill / 0 1.4rem;
         border-style: solid;
         border-width: 0 1.4rem;
         transition: filter 0.12s ease-in-out;
@@ -154,10 +158,10 @@
                 }
                 &.selected {
                     .icon {
-                        background-color: rgba(
-                            color.adjust($colorBlueBright, $lightness: 9%, $space: hsl),
-                            0.4
-                        );
+                        // Blue read as a muddy gray blended over the warm wood
+                        // panel (blue/orange are complementary) - use a warm
+                        // accent instead so it fits the wood/logo color scheme.
+                        background-color: rgba($colorOrangeBright, 0.45);
                     }
                     // transform: scale(1.05);
                     // border-radius: $globalBorderRadius;
@@ -202,14 +206,30 @@ html.is-mobile .ingame_buildingsToolbar {
     left: 0;
     right: 0;
     bottom: 1rem;
-    padding: 0 0.6rem;
+    // Vertical padding and row gap scale with the .building size below (both
+    // halved back down alongside it) so the panel keeps the same proportions
+    // around the icons instead of leaving disproportionate empty space.
+    padding: 0.4rem 0.6rem;
     transform: none;
 
     display: flex;
     flex-direction: column-reverse;
     align-items: stretch;
     grid-gap: unset;
-    gap: 0.6rem;
+    gap: 0.25rem;
+
+    // One shared wood panel around every row - moved here (off the per-row
+    // .buildings rule below) so the panel is a single piece that just grows
+    // taller as more rows/pages get added inside it, instead of each row
+    // rendering its own separate plank with a gap between them.
+    //
+    // Slice top/bottom at the actual opaque wood band (see the desktop rule's
+    // comment above for why) - otherwise the wood band would render
+    // proportionally even thinner here, since this panel gets stretched much
+    // taller than the source image's native size.
+    border-image: uiResource("toolbar_panel.png") 80 140 90 140 fill / 0 1.4rem;
+    border-style: solid;
+    border-width: 0 1.4rem;
 
     &:not(.visible) {
         transform: translateY(10rem);
@@ -217,7 +237,8 @@ html.is-mobile .ingame_buildingsToolbar {
 
     // Full width, 10 even columns (matches MOBILE_PAGE_SIZE in base_toolbar.js) -
     // cells size themselves instead of a hand-picked width that has to be
-    // re-checked against every screen size.
+    // re-checked against every screen size. Column width (100vw / 10) is
+    // matched by the .building height below, i.e. square cells.
     .buildings {
         display: grid;
         grid-template-columns: repeat(10, 1fr);
@@ -236,6 +257,14 @@ html.is-mobile .ingame_buildingsToolbar {
         // browser: this row measured 45px wide instead of the full screen, which
         // is what was actually making the toolbar disappear.
         align-self: stretch;
+
+        // The shared panel above now owns the wood border/background - reset the
+        // desktop rule's per-row border-image and padding so pages don't each
+        // draw their own plank.
+        padding: 0;
+        border-image: none;
+        border-style: none;
+        border-width: 0;
 
         &.page:not(.visible) {
             display: none;
@@ -258,7 +287,8 @@ html.is-mobile .ingame_buildingsToolbar {
         }
 
         .icon {
-            background-size: 75%;
+            background-size: 82%;
+            filter: drop-shadow(0 0.2vw 0.4vw rgba(0, 0, 0, 0.4));
         }
     }
 }

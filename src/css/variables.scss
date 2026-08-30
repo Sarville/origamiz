@@ -46,14 +46,20 @@ $colorBlueBright: rgb(74, 151, 223);
 $colorRedBright: #ef5072;
 $colorOrangeBright: #ef9d50;
 $themeColor: #393747;
-$ingameHudBg: rgba(#33343b, 0.9);
+// Warm dark brown (was a cool blue-gray, #33343b) - shared by every dark
+// in-game HUD overlay (building info tooltip, tutorial hints, waypoints,
+// sandbox controller, etc.), so recoloring it here shifts all of them to the
+// same warm palette as everything else at once.
+$ingameHudBg: rgba(#3c3122, 0.9);
 $modsColor: rgb(214, 60, 228);
 
 $darkModeGameBackground: #535866;
 $darkModeControlsBackground: color.adjust($darkModeGameBackground, $lightness: -5%, $space: hsl);
 
 // Dialog properties
-$modalDialogBg: rgba(160, 165, 180, 0.8);
+// Warm tan-gray dimming overlay (was a cool blue-gray, rgba(160,165,180,0.8)) -
+// shared backdrop behind every dialog (shop, stats, pause menu, etc.).
+$modalDialogBg: rgba(180, 165, 132, 0.82);
 $dialogBgColor: color.adjust($mainBgColor, $lightness: 10%, $space: hsl);
 
 // Poppins 500

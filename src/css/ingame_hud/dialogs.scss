@@ -12,6 +12,12 @@
     bottom: 0;
     pointer-events: all;
     background: $modalDialogBg;
+    // Not the actual stacking mechanism - every real dialog (#ingame_HUD_Shop
+    // etc.) has its own ID rule from main.scss's $elements registry, and an ID
+    // selector always beats this class regardless of a z-index set here. If a
+    // dialog ever renders under another HUD element, the fix is adding it to
+    // that registry (in the right order relative to everything else), not
+    // raising a number on this class.
 
     display: flex;
     align-items: center;

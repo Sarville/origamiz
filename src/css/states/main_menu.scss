@@ -133,6 +133,10 @@
         img {
             width: 710px / 3;
             height: 180px / 3;
+            // Logo colors sit close in lightness to the light-gray background -
+            // a stacked outline/glow keeps it readable instead of blending in.
+            filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.35))
+                drop-shadow(0 0.15rem 0.3rem rgba(0, 0, 0, 0.35));
         }
         position: relative;
         left: -0.8rem;
@@ -693,6 +697,128 @@
         }
     }
 
+    .brandMark {
+        display: none;
+        margin-left: auto;
+        flex-direction: column;
+        align-items: flex-end;
+        line-height: 1.15;
+        pointer-events: none;
+        opacity: 0.7;
+
+        .name {
+            @include Heading;
+            font-weight: bold;
+        }
+
+        .sub {
+            @include SuperSmallText;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+    }
+
+    @include StyleBelowWidth(700px) {
+        grid-template-rows: auto 1fr auto;
+
+        .topButtons {
+            top: 1rem;
+            right: 1rem;
+
+            .settingsButton {
+                width: 3rem;
+                height: 3rem;
+            }
+
+            // Language is chosen automatically (Russian by default); no picker on mobile.
+            .languageChoose {
+                display: none;
+            }
+        }
+
+        .logo {
+            // Clears the settings icon in the top-right corner.
+            padding-top: 3.5rem;
+            padding-bottom: 0.5rem;
+            left: 0;
+
+            img {
+                width: 80%;
+                max-width: 26rem;
+                height: auto;
+            }
+        }
+
+        .mainWrapper {
+            margin-top: 0;
+            width: 100%;
+            padding: 0 1rem;
+            box-sizing: border-box;
+
+            &[data-columns="1"],
+            &[data-columns="2"] {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        // Puzzle DLC / mods box doesn't fit the single-column mobile layout.
+        .sideContainer {
+            display: none;
+        }
+
+        .mainContainer {
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .footer {
+            flex-wrap: wrap;
+            row-gap: 0.5rem;
+            padding: 1rem 1.5rem;
+
+            .footerGrow .changelog,
+            .footerGrow .helpTranslate {
+                display: none;
+            }
+        }
+
+        // Mods and file import/export aren't offered on mobile - let the remaining
+        // buttons (currently just New Game, if any) fill the space.
+        .buttons .outer {
+            display: flex;
+            flex-direction: column;
+
+            > button {
+                width: 100%;
+            }
+
+            .modsButton,
+            .importButton {
+                display: none;
+            }
+        }
+
+        // Nothing left to show in .outer with no savegames (import+mods both hidden) -
+        // collapse it so Play takes the full width instead of leaving an empty column.
+        .mainContainer[data-savegames="0"] .buttons {
+            grid-template-columns: 1fr;
+
+            .outer {
+                display: none;
+            }
+        }
+
+        // Downloading a save file to export it isn't offered on mobile.
+        .savegames .savegame button.downloadGame {
+            display: none;
+        }
+
+        .brandMark {
+            display: flex;
+        }
+    }
+
     @include DarkThemeOverride {
         background: rgba($darkModeGameBackground, 0.5) center center / cover !important;
 
@@ -720,6 +846,10 @@
             .dlcHint {
                 color: $accentColorBright;
             }
+        }
+
+        .brandMark {
+            color: #fff;
         }
     }
 }

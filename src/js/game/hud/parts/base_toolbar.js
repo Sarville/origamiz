@@ -16,7 +16,10 @@ import { DynamicDomAttach } from "../dynamic_dom_attach";
 const logger = new Logger("hud/base_toolbar");
 
 // Buildings per mobile toolbar page - matches the 10-column grid in
-// buildings_toolbar.scss's html.is-mobile rule.
+// buildings_toolbar.scss's html.is-mobile rule. Must stay in sync with the
+// .building height there too: cell width is ~100vw/MOBILE_PAGE_SIZE, so
+// changing this without halving/doubling that height back the other way
+// makes cells (and the selection highlight, which fills the cell) non-square.
 const MOBILE_PAGE_SIZE = 10;
 
 export class HUDBaseToolbar extends BaseHUDPart {

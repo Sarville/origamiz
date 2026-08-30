@@ -262,6 +262,7 @@ function initializeSettings() {
         new BoolSetting("enableTunnelSmartplace", enumCategories.advanced, (app, value) => {}),
         new BoolSetting("vignette", enumCategories.userInterface, (app, value) => {}),
         new BoolSetting("compactBuildingInfo", enumCategories.userInterface, (app, value) => {}),
+        new BoolSetting("alwaysShowBuildingInfo", enumCategories.userInterface, (app, value) => {}),
         new BoolSetting("disableCutDeleteWarnings", enumCategories.advanced, (app, value) => {}),
         new BoolSetting("rotationByBuilding", enumCategories.advanced, (app, value) => {}),
         new BoolSetting("displayChunkBorders", enumCategories.advanced, (app, value) => {}),
@@ -297,7 +298,9 @@ class SettingsStorage {
         this.refreshRate = "60";
         this.scrollWheelSensitivity = "regular";
         this.movementSpeed = "regular";
-        this.language = "auto-detect";
+        // Default audience is Russian-speaking (Yandex Games); users can still
+        // switch to auto-detect or any other language in the settings.
+        this.language = "ru";
         this.autosaveInterval = "two_minutes";
 
         this.alwaysMultiplace = false;
@@ -306,6 +309,9 @@ class SettingsStorage {
         this.enableTunnelSmartplace = true;
         this.vignette = true;
         this.compactBuildingInfo = false;
+        // Mobile has no manual toggle for the building-info panel (no room for one
+        // more button) - it just always shows unless turned off here.
+        this.alwaysShowBuildingInfo = true;
         this.disableCutDeleteWarnings = false;
         this.rotationByBuilding = true;
         this.clearCursorOnDeleteWhilePlacing = true;
@@ -545,7 +551,7 @@ export class ApplicationSettings extends ReadWriteProxy {
     }
 
     getCurrentVersion() {
-        return 32;
+        return 33;
     }
 
     /** @param {{settings: SettingsStorage, version: number}} data */
@@ -699,6 +705,11 @@ export class ApplicationSettings extends ReadWriteProxy {
 
         if (data.version < 32) {
             data.version = 32;
+        }
+
+        if (data.version < 33) {
+            data.settings.alwaysShowBuildingInfo = true;
+            data.version = 33;
         }
 
         // MODS

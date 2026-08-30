@@ -1,4 +1,4 @@
-import { MAX_MOVE_DISTANCE_PX } from "../../../core/click_detector";
+import { MAX_MOVE_DISTANCE_PX, clickDetectorGlobals } from "../../../core/click_detector";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
@@ -6,13 +6,6 @@ import { SOUNDS } from "../../../platform/sound";
 import { T } from "../../../translations";
 import { enumMouseButton } from "../../camera";
 import { BaseHUDPart } from "../base_hud_part";
-
-const ROTATION_ARROWS = {
-    0: "↑",
-    90: "→",
-    180: "↓",
-    270: "←",
-};
 
 // How long a finger has to stay down before it counts as "hold" (start laying a
 // belt path) instead of "move" (pan the map) or "tap" (place a single tile).
@@ -37,8 +30,10 @@ const SWIPE_SLIDE_PX = 120;
  * different from desktop is the dragging: only belts support laying a path by
  * holding and dragging (previewed live as a semi-transparent copy of the real
  * sprite before it's committed on release); every other building is placed one
- * tile at a time by a plain tap, using whatever direction the rotate button is
- * currently showing. A plain move without holding first still pans the map.
+ * tile at a time by a plain tap, using whatever direction the preview sprite is
+ * currently showing (the rotate button itself is just a generic action icon,
+ * not a live direction indicator). A plain move without holding first still
+ * pans the map.
  */
 export class HUDMobileControls extends BaseHUDPart {
     createElements(parent) {
@@ -52,9 +47,27 @@ export class HUDMobileControls extends BaseHUDPart {
         this.element.appendChild(this.deleteButton);
         this.trackClicks(this.deleteButton, this.onDeleteClicked);
 
+        // Not wired up yet - there's no undo/redo history anywhere in the game
+        // logic to call into. Placeholder buttons only, disabled, so the mobile
+        // HUD has a home for them ready once that history exists.
+        this.undoButton = document.createElement("button");
+        this.undoButton.classList.add("undo", "disabled");
+        this.element.appendChild(this.undoButton);
+
+        this.redoButton = document.createElement("button");
+        this.redoButton.classList.add("redo", "disabled");
+        this.element.appendChild(this.redoButton);
+
         // Active state: preview of the selected building plus its controls,
         // styled like the buildings toolbar.
         this.previewPanel = makeDiv(this.element, null, ["buildingPreview"]);
+
+        // Top-right corner of the panel, like a dialog's close button - not
+        // grouped with rotate/copy below.
+        this.cancelButton = document.createElement("button");
+        this.cancelButton.classList.add("cancel");
+        this.previewPanel.appendChild(this.cancelButton);
+        this.trackClicks(this.cancelButton, this.onCancelClicked);
 
         this.swipeHint = makeDiv(
             this.previewPanel,
@@ -69,29 +82,17 @@ export class HUDMobileControls extends BaseHUDPart {
         this.spriteWrap = makeDiv(this.previewPanel, null, ["spriteWrap"]);
         this.previewSprite = makeDiv(this.spriteWrap, null, ["sprite"]);
 
-        const controls = makeDiv(this.previewPanel, null, ["controls"]);
-
+        // Bottom-left/right corners of the panel, same overhang treatment as
+        // .cancel above - not a centered row any more.
         this.rotateButton = document.createElement("button");
         this.rotateButton.classList.add("rotate");
-        this.rotateButton.innerText = "↑";
-        controls.appendChild(this.rotateButton);
+        this.previewPanel.appendChild(this.rotateButton);
         this.trackClicks(this.rotateButton, this.onRotateClicked);
 
         this.multiplaceButton = document.createElement("button");
         this.multiplaceButton.classList.add("multiplace");
-        this.multiplaceButton.innerText = "⧉";
-        controls.appendChild(this.multiplaceButton);
+        this.previewPanel.appendChild(this.multiplaceButton);
         this.trackClicks(this.multiplaceButton, this.onMultiplaceClicked);
-
-        this.cancelButton = document.createElement("button");
-        this.cancelButton.classList.add("cancel");
-        controls.appendChild(this.cancelButton);
-        this.trackClicks(this.cancelButton, this.onCancelClicked);
-
-        this.infoButton = document.createElement("button");
-        this.infoButton.classList.add("info");
-        controls.appendChild(this.infoButton);
-        this.trackClicks(this.infoButton, this.onInfoClicked);
     }
 
     initialize() {
@@ -158,12 +159,35 @@ export class HUDMobileControls extends BaseHUDPart {
         });
         this.spriteWrap.addEventListener("touchend", this.onSpriteTouchEnd.bind(this));
         this.spriteWrap.addEventListener("touchcancel", this.onSpriteTouchEnd.bind(this));
+
+        // Tap-to-rotate for a plain mouse click (desktop browser testing, or a
+        // mouse-driven "mobile" session) - the touch handlers above cover real
+        // touch input for this already, but never fire for a mouse click at
+        // all, which otherwise did nothing when clicking the preview sprite.
+        // Guarded by the same lastTouchTime de-dupe ClickDetector itself uses,
+        // so a real touch tap doesn't also fire this and rotate twice.
+        this.spriteWrap.addEventListener("click", () => {
+            if (performance.now() - clickDetectorGlobals.lastTouchTime < 1000) {
+                return;
+            }
+            this.onRotateClicked();
+        });
     }
 
     onPlacementBuildingChanged(metaBuilding) {
         if (metaBuilding) {
             this.deleteModeActive = false;
             this.deleteButton.classList.remove("active");
+            // No manual toggle for this on mobile (no room for one more button) -
+            // it just always shows unless the player turned it off in settings.
+            // Still a CSS class toggle rather than a Dialog: HUDBuildingPlacerLogic
+            // .update() aborts the current placement the instant HUDModalDialogs
+            // reports a blocking overlay open, so a real modal here would silently
+            // deselect the building the moment it appeared.
+            this.placementHintsElement.classList.toggle(
+                "mobileVisible",
+                this.root.app.settings.getAllSettings().alwaysShowBuildingInfo
+            );
         } else {
             // Nothing left to show info about.
             this.placementHintsElement.classList.remove("mobileVisible");
@@ -214,16 +238,6 @@ export class HUDMobileControls extends BaseHUDPart {
         this.placerLogic.currentMetaBuilding.set(null);
     }
 
-    onInfoClicked() {
-        // Toggles the same #ingame_HUD_PlacementHints panel desktop shows at the
-        // top-right (kept hidden by default on mobile, see building_placer.scss) -
-        // not a Dialog: HUDBuildingPlacerLogic.update() aborts the current
-        // placement the instant HUDModalDialogs reports a blocking overlay open,
-        // so a real modal here would silently deselect the building the moment
-        // it's opened.
-        this.placementHintsElement.classList.toggle("mobileVisible");
-    }
-
     /**
      * Renders the selected building's actual sprite (not the flat toolbar icon)
      * into the preview panel, sized to its real tile footprint, and updates the
@@ -240,7 +254,8 @@ export class HUDMobileControls extends BaseHUDPart {
         // Matches HUDBuildingPlacer.rerenderVariants' convention for its (desktop)
         // variant icons - the actual pixel size just has to be proportional to the
         // real w:h footprint, the sprite markup positions itself with percentages.
-        const iconSize = 64;
+        // 64 * 1.1 rounded - preview bumped ~10% bigger alongside the panel below.
+        const iconSize = 70;
         const sprite = metaBuilding.getPreviewSprite(0, variant);
         this.previewSprite.setAttribute("data-tile-w", String(dimensions.x));
         this.previewSprite.setAttribute("data-tile-h", String(dimensions.y));
@@ -270,10 +285,17 @@ export class HUDMobileControls extends BaseHUDPart {
         if (this.swipeAnimating) {
             return;
         }
-        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
-        if (!metaBuilding || metaBuilding.getAvailableVariants(this.root).length <= 1) {
+        if (!this.placerLogic.currentMetaBuilding.get()) {
             return;
         }
+        // Marks this as touch input so the plain "click" listener (registered
+        // alongside these touch listeners, for mouse-only input) knows to
+        // ignore the synthetic click a real touch tap generates afterwards -
+        // same de-dupe ClickDetector itself uses.
+        clickDetectorGlobals.lastTouchTime = performance.now();
+        // Always tracked now, even with a single variant (nothing to swipe-cycle
+        // to) - onSpriteTouchEnd below still needs the start position to tell a
+        // tap-to-rotate apart from a drag.
         this.swipeStartX = event.touches[0].clientX;
         this.swipeOffset = 0;
         this.previewSprite.style.transition = "none";
@@ -295,13 +317,22 @@ export class HUDMobileControls extends BaseHUDPart {
         const offset = this.swipeOffset;
         this.swipeStartX = null;
 
-        if (Math.abs(offset) > SWIPE_THRESHOLD_PX) {
+        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
+        const hasVariants = !!metaBuilding && metaBuilding.getAvailableVariants(this.root).length > 1;
+
+        if (hasVariants && Math.abs(offset) > SWIPE_THRESHOLD_PX) {
             this.playSwipeAnimation(offset < 0 ? 1 : -1);
-        } else {
-            this.previewSprite.style.transition = "transform 0.15s ease";
-            this.swipeOffset = 0;
-            this.applySpriteTransform();
+            return;
         }
+
+        this.previewSprite.style.transition = "transform 0.15s ease";
+        this.swipeOffset = 0;
+        this.applySpriteTransform();
+
+        // Not a swipe (either below the threshold, or nothing to swipe to in the
+        // first place) - treat it as a tap on the building itself, same as the
+        // rotate button.
+        this.onRotateClicked();
     }
 
     /**
@@ -716,7 +747,6 @@ export class HUDMobileControls extends BaseHUDPart {
             return;
         }
 
-        this.rotateButton.innerText = ROTATION_ARROWS[this.placerLogic.currentBaseRotation] || "↑";
         if (!this.swipeAnimating && this.swipeStartX === null) {
             this.applySpriteTransform();
         }

@@ -54,6 +54,10 @@ $elements:
 ingame_Canvas,
 ingame_VignetteOverlay,
 ingame_HUD_PuzzleDLCLogo,
+// Below the building-info tooltip on purpose (see ingame_HUD_PlacementHints
+// below) - on mobile they can occupy the same corner of the screen, and the
+// tooltip should win when they overlap.
+ingame_HUD_PinnedShapes,
 
 // Ingame overlays
 ingame_HUD_Waypoints,
@@ -61,7 +65,6 @@ ingame_HUD_PlacementHints,
 ingame_HUD_PlacerVariants,
 
 // Regular hud
-ingame_HUD_PinnedShapes,
 ingame_HUD_GameMenu,
 ingame_HUD_KeybindingOverlay,
 ingame_HUD_PuzzleBackToMenu,
@@ -81,6 +84,7 @@ ingame_HUD_InteractiveTutorial,
 ingame_HUD_BuildingsToolbar,
 ingame_HUD_wires_toolbar,
 ingame_HUD_BlueprintPlacer,
+ingame_HUD_MobileControls,
 ingame_HUD_Waypoints_Hint,
 ingame_HUD_WatermarkClicker,
 ingame_HUD_ColorBlindBelowTileHelper,

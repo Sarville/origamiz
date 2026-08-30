@@ -660,8 +660,14 @@ logs.
         (Hypothesis worth checking first: `camera.js` `onTouchEnd` reads
         `event.changedTouches[0]` without checking length, could throw and skip
         `upPostHandler.dispatch()` — meaning drag state never resets — but unconfirmed.)
-      - No way to rotate or delete a building via touch — only keyboard R/Delete,
-        no on-screen buttons at all.
+      - [x] ~~No way to rotate or delete a building via touch — only keyboard R/Delete,
+        no on-screen buttons at all.~~ **Done 2026-08-30** (`sessions/2026-08-30-2156-session.md`):
+        on-screen mobile control panel added (`mobile_controls.js`/`.scss`) with
+        rotate/copy/cancel/delete buttons plus tap-on-the-sprite-itself to rotate;
+        also fixed a real pre-existing `pointer-events` bug that had silently
+        blocked any tap/click on the building preview sprite. Placeholder
+        (non-functional) undo/redo buttons added next to delete — no undo/redo
+        history exists yet, wiring that up is separate future work.
       - Keybindings settings screen is desktop-only, ~3 screens of key bindings —
         meaningless on mobile as-is, needs a mobile-specific simplified UI.
       - **Interactive tutorial (11 hints, level 1-21) is desktop-only, not just

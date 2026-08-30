@@ -156,3 +156,98 @@
         }
     }
 }
+
+html.is-mobile #ingame_HUD_PinnedShapes {
+    // Level with the building info tooltip's own top edge
+    // (#ingame_HUD_PlacementHints, top:6rem) - they can still overlap on a
+    // narrow/tall screen, but the z-index registry in main.scss now puts the
+    // tooltip above this panel when that happens, instead of trying to dodge
+    // it with a lower position.
+    top: 6rem;
+
+    // Extra left padding houses .unpinButton, which sits at a negative left
+    // offset from its .shape row (floating in the open margin in the no-
+    // background desktop layout) - without it it'd poke out past the new
+    // panel's edge instead of sitting inside it.
+    // (~20% smaller all round than the first pass, per feedback.)
+    padding: 0.65rem 0.8rem 0.65rem 1.6rem;
+    border-radius: $globalBorderRadius;
+    border: 0.1rem solid rgba(#7a6a45, 0.35);
+    box-shadow: 0 0.25rem 0.6rem rgba(0, 0, 0, 0.25);
+
+    // Papyrus paper: a warm cream base plus a faint two-direction fiber
+    // crosshatch (no bitmap asset needed) instead of a flat panel color.
+    background-color: rgba(#ecdfc0, 0.88);
+    background-image:
+        repeating-linear-gradient(
+            115deg,
+            rgba(255, 255, 255, 0.05) 0,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 1px,
+            transparent 3px
+        ),
+        repeating-linear-gradient(
+            25deg,
+            rgba(120, 95, 55, 0.06) 0,
+            rgba(120, 95, 55, 0.06) 1px,
+            transparent 1px,
+            transparent 4px
+        );
+
+    @include DarkThemeOverride {
+        background-color: rgba(#33343b, 0.9);
+        background-image: none;
+        border-color: rgba(#000, 0.4);
+    }
+
+    // This panel is a single element wrapping every pinned shape (unlike the
+    // toolbar's multi-page case) - it already grows taller as rows are added
+    // just by being a plain flex column, no extra structure needed.
+    > .shape {
+        margin-bottom: 0.7rem;
+
+        &:last-child {
+            margin-bottom: 0;
+        }
+
+        // Tapping the shape itself opens its info (see pinned_shapes.js) - no
+        // separate .infoButton on mobile, there isn't room for one more tiny
+        // button and it was easy to miss anyway.
+        > canvas {
+            width: 3.2rem;
+            height: 3.2rem;
+            pointer-events: all;
+            cursor: pointer;
+        }
+
+        > .amountLabel,
+        > .goalLabel {
+            margin-left: 0.7rem;
+            height: auto;
+        }
+
+        > .amountLabel {
+            font-size: 1.1rem;
+        }
+
+        > .goalLabel {
+            font-size: 0.9rem;
+        }
+
+        > .unpinButton {
+            width: 1.05rem;
+            height: 1.05rem;
+            left: -1.05rem;
+            top: 0.4rem;
+        }
+
+        // Purely decorative (no click handler) - on the compact mobile row it
+        // sat right where a button would, which read as a second, broken
+        // button rather than a status marker. The "/<goal>" label already
+        // says the same thing in text.
+        &.goal .amountLabel::after,
+        &.blueprint .amountLabel::after {
+            display: none;
+        }
+    }
+}

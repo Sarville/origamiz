@@ -3,6 +3,9 @@ import debug from "./config.local";
 // Single place to rebrand the game's display name.
 export const APP_NAME = "Origamiz";
 
+// Single place to rebrand the publisher name shown in the UI (e.g. mobile footer).
+export const BRAND_AUTHOR = "Sarville";
+
 export const THIRDPARTY_URLS = {
     // TODO: these are tobspr's own community channels/services, not Origamiz's.
     // Kept working but hidden from the UI (see main_menu.js/settings.js) until

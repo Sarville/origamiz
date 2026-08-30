@@ -120,9 +120,13 @@ body {
 }
 
 #ll_logo > img {
-    width: 40vw;
-    max-width: 700px;
+    width: 55vw;
+    max-width: 900px;
     min-width: 150px;
+    /* Logo colors sit close in lightness to the light-gray background -
+       a stacked outline/glow keeps it readable instead of blending in. */
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.35))
+        drop-shadow(0 3px 6px rgba(0, 0, 0, 0.35));
 }
 
 #ll_preload_status {

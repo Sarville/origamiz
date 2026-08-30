@@ -241,3 +241,45 @@
         }
     }
 }
+
+html.is-mobile #ingame_HUD_Statistics {
+    // Same bug as the shop dialog: .content was a hard-coded 50rem (800px) -
+    // never fit a phone screen at all (confirmed on a real device: the filter
+    // tabs and every row's graph got cut off at the right edge).
+    .content {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    // The three data-source tabs plus the four display-mode icon buttons no
+    // longer fit in one "auto | 1fr" row at phone width - let them wrap
+    // instead of pushing the row wider than the screen.
+    .filterHeader {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        justify-content: space-between;
+    }
+
+    .dialogInner {
+        // Icon mode: 6 columns of small icons is cramped on a phone - 3 is
+        // still compact but each cell stays big enough to read/tap.
+        &[data-displaymode="icons"] .content.hasEntries {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        // Detailed mode: the fixed 27rem (432px) graph was the actual
+        // overflow culprit - percentage width lets the grid's own 1fr column
+        // size it instead.
+        &[data-displaymode="detailed"] .content.hasEntries > div {
+            grid-template-columns: auto 1fr auto;
+            grid-column-gap: 0.6rem;
+
+            canvas.graph {
+                width: 100%;
+                min-width: 0;
+            }
+        }
+    }
+}

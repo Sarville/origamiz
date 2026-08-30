@@ -6,10 +6,11 @@
 #ingame_HUD_PlacementHints {
     // Hidden by default on mobile - the mobile viewport is often wider than the
     // StyleBelowWidth(700px) cutoff below, so hide it explicitly here too.
-    // HUDMobileControls' info button in the preview panel toggles it back on
-    // (adds .mobileVisible below) instead of using a Dialog - a real modal would
-    // trip HUDBuildingPlacerLogic.update()'s hasBlockingOverlayOpen() check and
-    // silently deselect the building the instant it opened.
+    // HUDMobileControls.onPlacementBuildingChanged adds .mobileVisible back
+    // automatically (per the alwaysShowBuildingInfo setting) instead of using a
+    // Dialog - a real modal would trip HUDBuildingPlacerLogic.update()'s
+    // hasBlockingOverlayOpen() check and silently deselect the building the
+    // instant it opened.
     html.is-mobile & {
         display: none !important;
     }

@@ -328,3 +328,50 @@
         }
     }
 }
+
+html.is-mobile #ingame_HUD_Shop {
+    // The desktop layout is a fixed 50rem (800px) wide grid - hard-coded wide
+    // enough that it never fit a phone screen at all (confirmed on a real
+    // device: title/description text and the buy button were cut off at the
+    // right edge). Rather than re-deriving the same 2D grid at 1/2 the width,
+    // .upgrade below is linearized into a simple top-to-bottom flex stack for
+    // mobile - grid-column/grid-row placement further down doesn't apply once
+    // its parent is display:flex instead of display:grid.
+    .content {
+        width: 100%;
+        max-width: 100%;
+        padding-right: 0;
+        box-sizing: border-box;
+
+        .upgrade {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            height: auto;
+            gap: 0.5rem;
+
+            .title {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+
+            .description {
+                justify-self: unset;
+                align-self: unset;
+                text-align: left;
+            }
+
+            .requirements {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.6rem;
+            }
+
+            button.buy {
+                justify-self: unset;
+                align-self: stretch;
+                margin-top: 0.2rem;
+            }
+        }
+    }
+}

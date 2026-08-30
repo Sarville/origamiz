@@ -1,5 +1,5 @@
 import { ClickDetector } from "../../../core/click_detector";
-import { globalConfig } from "../../../core/config";
+import { globalConfig, IS_MOBILE } from "../../../core/config";
 import { arrayDeleteValue, formatBigNumber, makeDiv } from "../../../core/utils";
 import { T } from "../../../translations";
 import { enumAnalyticsDataSource } from "../../production_analytics";
@@ -231,16 +231,26 @@ export class HUDPinnedShapes extends BaseHUDPart {
             element.classList.add("marked");
         }
 
-        // Show small info icon
+        // Show small info icon - on mobile there's no room for a separate tiny
+        // button, so the shape's own canvas doubles as the tap target instead
+        // (see the pointer-events override in pinned_shapes.scss).
         let infoDetector;
-        const infoButton = document.createElement("button");
-        infoButton.classList.add("infoButton");
-        element.appendChild(infoButton);
-        infoDetector = new ClickDetector(infoButton, {
-            consumeEvents: true,
-            preventDefault: true,
-            targetOnly: true,
-        });
+        if (IS_MOBILE) {
+            infoDetector = new ClickDetector(canvas, {
+                consumeEvents: true,
+                preventDefault: true,
+                targetOnly: true,
+            });
+        } else {
+            const infoButton = document.createElement("button");
+            infoButton.classList.add("infoButton");
+            element.appendChild(infoButton);
+            infoDetector = new ClickDetector(infoButton, {
+                consumeEvents: true,
+                preventDefault: true,
+                targetOnly: true,
+            });
+        }
         infoDetector.click.add(() => this.root.hud.signals.viewShapeDetailsRequested.dispatch(definition));
 
         const amountLabel = makeDiv(element, null, ["amountLabel"], "");
