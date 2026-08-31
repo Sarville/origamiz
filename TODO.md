@@ -1194,6 +1194,55 @@ logs.
         a receiver, confirmed via entity state (`isTunnel: true`) and a
         screenshot; no duplicate tile placements anywhere on the map, no
         console errors.
+
+        **Fourteenth follow-up, done 2026-08-31.** Still reported live after
+        the thirteenth: "tapped the cell to the right of the bend, the
+        tunnel exit is wrong again." Two distinct bugs, found by directly
+        calling `findBeltPath` over CDP and diffing entries rather than
+        guessing from screenshots alone:
+        1. The thirteenth follow-up's fix only guarded the *goal* tile being
+           a receiver. The same double-push happens for *any* receiver in
+           the middle of the chain: the reconstruction loop pushes it once
+           as a receiver, then the very next iteration - treating it as an
+           ordinary `node.tile` for the *following* edge - pushed a second,
+           conflicting plain `curvedEntry` for the same tile, which
+           `placePath` then placed right over it. Triggered whenever the
+           path bends *after* a tunnel but before reaching the tapped tile.
+           Fixed by skipping the plain push whenever `node.viaTunnel` is
+           true (the receiver case), generalizing the same guard instead of
+           special-casing the goal.
+        2. The deeper issue: a tunnel receiver's `ItemEjector` is a single
+           fixed slot facing its own rotation (`enumDirection.top`,
+           `underground_belt.js`) - it has no curve variant and can
+           physically never eject any other way. The search still let the
+           very next step off a receiver turn like an ordinary belt tile;
+           `curvedEntry` computed a locally self-consistent rotation for
+           that turn, but the receiver a tile away kept ejecting straight
+           past it - an orphaned tile that would never actually receive
+           anything, confirmed live via `UndergroundBelt.pendingItems`
+           piling up at the receiver while the "next" belt held 0 items
+           indefinitely. Fixed by adding a `mustContinueStraight` guard
+           (true for a receiver just landed via a tunnel jump, and for an
+           existing tunnel receiver continued from at `from`): the search
+           may only continue in that same fixed direction immediately after
+           either, same restriction it already had for *starting* a new
+           tunnel jump. A bend has to land on a real belt tile at least one
+           step past the receiver - when there's no room for that, the
+           search now correctly falls back to routing around instead of
+           building a structurally-broken shortcut.
+
+           Verified live via CDP on both a synthetic case and a real
+           extractor-on-resource setup: confirmed the old code produced the
+           exact broken pattern (duplicate entry at the receiver tile,
+           reproduced then reverted to confirm before fixing); confirmed the
+           fixed code either detours around when the bend would have to
+           land on the receiver itself, or correctly forces one straight
+           real-belt tile past the receiver before curving when there's
+           room to. Watched real items flow end to end (extractor on an
+           actual resource patch through the tunnel through the forced
+           straight tile around the bend) via `Belt.assignedPath.items`
+           and `UndergroundBelt.pendingItems` - no stalls, no orphaned
+           tiles, no duplicate placements, no console errors.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

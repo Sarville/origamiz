@@ -799,7 +799,29 @@ export class HUDMobileControls extends BaseHUDPart {
                 continue;
             }
 
+            // A tunnel receiver's ItemEjector is a single fixed slot facing
+            // its own rotation (the tunnel's own travel direction, see
+            // MetaUndergroundBeltBuilding's receiver setup) - unlike a plain
+            // belt tile, it has no curve variant and can never eject any
+            // other way. The very next step off a receiver - whether one
+            // already standing at `from`, or one this same search just
+            // landed via a tunnel jump - therefore has to keep going
+            // straight; curvedEntry's placement further down still computes
+            // a locally self-consistent rotation for a bend planned right
+            // there, but the receiver would silently never actually deliver
+            // to it (found live: a tap landing one tile past a tunnel exit,
+            // off at an angle, planned a belt that "accepted from the right
+            // side" on paper while the receiver a tile away kept ejecting
+            // straight past it into empty space - an orphaned tile that
+            // never received anything). A bend has to wait for a real belt
+            // tile further along, not the receiver's own landing spot.
+            const mustContinueStraight =
+                current.viaTunnel || (current.parentKey === null && forcedStartDirection !== undefined);
+
             for (const dir of DIRECTIONS) {
+                if (mustContinueStraight && dir !== current.dir) {
+                    continue;
+                }
                 const bendCost = dir === current.dir ? 0 : 1;
                 if (current.bends + bendCost > MAX_BENDS) {
                     continue;
@@ -972,10 +994,21 @@ export class HUDMobileControls extends BaseHUDPart {
                     isTunnel: true,
                     tunnelVariant: next.tunnelTier,
                 });
-            } else {
+            } else if (!node.viaTunnel) {
                 const incoming = idx === 0 ? startIncomingDirection : node.dir;
                 entries.push(this.curvedEntry(node.tile, next.dir, incoming));
             }
+            // node.viaTunnel && !next.viaTunnel: node.tile is itself a
+            // receiver the previous iteration already pushed above - a
+            // receiver's rotation is fixed by its own placement (no curve
+            // variant exists for one), so re-deriving a plain curvedEntry
+            // for the same tile here would silently overwrite it once
+            // placePath applies entries in order (found live: tapping a
+            // tile one bend past a tunnel exit built the receiver, then
+            // immediately replaced it with a plain belt turned to face the
+            // bend). The next loop iteration's own incoming already reads
+            // node.dir - the receiver's fixed exit direction - so nothing
+            // is lost by skipping node.tile here.
         }
 
         // The goal tile itself - curve into whatever it's connecting to
