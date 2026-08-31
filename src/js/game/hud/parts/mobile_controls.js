@@ -3,7 +3,7 @@ import { globalConfig } from "../../../core/config";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
-import { enumAngleToDirection, enumDirectionToVector, Vector } from "../../../core/vector";
+import { enumAngleToDirection, enumDirectionToAngle, enumDirectionToVector, Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
 import { getCodeFromBuildingData } from "../../building_codes";
 import { MetaUndergroundBeltBuilding, enumUndergroundBeltVariants } from "../../buildings/underground_belt";
@@ -586,6 +586,73 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
+     * Item 9 (building endpoints): world-space feed info for every
+     * ItemAcceptor slot of the real building at `tile` - the tile a belt
+     * would need to occupy to feed each slot, and the compass direction it'd
+     * need to eject in to do it. Mirrors GameLogic.getEjectorsAndAcceptorsAtTile's
+     * own acceptor math exactly (the authoritative version - a real belt's
+     * own auto-orientation reads its neighbours through that same function):
+     * a slot's `direction` is the direction *from the acceptor's own tile
+     * toward the tile that has to feed it* (`worldTile.add(direction)`, not
+     * `.sub()` - got this backwards on the first pass and it silently
+     * planned the feed tile on the wrong side of the building entirely,
+     * found live: dragging into a stacker curved in from below even though
+     * the building's marked input/output made that side wrong), so the
+     * feeding belt itself has to eject the *opposite* way
+     * ((direction + 180) % 360) to actually push into it, not the slot's
+     * own direction. Empty if there's no building there, or it doesn't
+     * accept items at all (e.g. a pure source like an extractor). A
+     * multi-tile building (a stacker's two input slots) yields one entry
+     * per slot regardless of which of its tiles was tapped, since slot
+     * positions are read off the entity's own origin, not `tile`.
+     * @param {Vector} tile
+     * @returns {Array<{ feedTile: Vector, direction: number }>}
+     */
+    buildingAcceptorFeeds(tile) {
+        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        const acceptor = contents && contents.components.ItemAcceptor;
+        if (!acceptor) {
+            return [];
+        }
+        const staticComp = contents.components.StaticMapEntity;
+        return acceptor.slots.map(slot => {
+            const worldTile = staticComp.localTileToWorld(slot.pos);
+            const towardFeedTile = enumDirectionToAngle[staticComp.localDirectionToWorld(slot.direction)];
+            return {
+                feedTile: worldTile.add(enumDirectionToVector[enumAngleToDirection[towardFeedTile]]),
+                direction: (towardFeedTile + 180) % 360,
+            };
+        });
+    }
+
+    /**
+     * Item 9 (building endpoints): world-space launch info for the real
+     * building at `tile`'s ItemEjector, only when it has exactly one slot -
+     * the tile a belt would need to start from to receive from it, and the
+     * direction it arrives in. A building with more than one output (or
+     * none) isn't handled here: which output the user means isn't
+     * decidable from the tile alone, so those fall through to the ordinary
+     * "real building in the way" obstacle handling instead of guessing.
+     * @param {Vector} tile
+     * @returns {{ launchTile: Vector, direction: number }|null}
+     */
+    buildingEjectorLaunch(tile) {
+        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        const ejector = contents && contents.components.ItemEjector;
+        if (!ejector || ejector.slots.length !== 1) {
+            return null;
+        }
+        const staticComp = contents.components.StaticMapEntity;
+        const slot = ejector.slots[0];
+        const worldTile = staticComp.localTileToWorld(slot.pos);
+        const direction = enumDirectionToAngle[staticComp.localDirectionToWorld(slot.direction)];
+        return {
+            launchTile: worldTile.add(enumDirectionToVector[enumAngleToDirection[direction]]),
+            direction,
+        };
+    }
+
+    /**
      * Item 9: whether a plain belt can't go on this tile without either
      * failing outright or silently severing something unrelated.
      *
@@ -702,11 +769,33 @@ export class HUDMobileControls extends BaseHUDPart {
      * map) may reshape/merge whichever belts the path starts and ends on.
      * Tap-continuation (placeBeltTapAt, item 8) never may: each tap only
      * ever *extends* the belt from wherever it last ended.
+     * @param {number=} forcedStartIncoming Overrides the usual "read
+     * lastBeltIncomingDirection/rotation off an existing belt at `from`"
+     * derivation - set by findBeltPath when `from` is actually a building's
+     * ItemEjector launch tile (see buildingEjectorLaunch), which has no
+     * belt of its own to read a direction off.
+     * @param {number=} forcedEndOutgoing Overrides the usual "read rotation
+     * off an existing belt at `to`" derivation - set by findBeltPath when
+     * `to` is actually a building's ItemAcceptor feed tile (see
+     * buildingAcceptorFeeds), which likewise has no belt of its own yet.
      * @returns {Array<PathEntry>|null}
      */
-    findBeltPath(from, to, allowReshape) {
+    findBeltPathSearch(from, to, allowReshape, forcedStartIncoming, forcedEndOutgoing) {
         if (from.equals(to)) {
-            return this.beltTilesToEntries([from]);
+            if (forcedStartIncoming === undefined && forcedEndOutgoing === undefined) {
+                return this.beltTilesToEntries([from]);
+            }
+            // Degenerate case: a building's ejector launch tile and another
+            // (or the same) building's acceptor feed tile are literally the
+            // same single tile - one curved piece routes straight from one
+            // into the other.
+            return [
+                this.curvedEntry(
+                    from,
+                    forcedEndOutgoing !== undefined ? forcedEndOutgoing : forcedStartIncoming,
+                    forcedStartIncoming
+                ),
+            ];
         }
 
         const MAX_BENDS = 6;
@@ -740,15 +829,20 @@ export class HUDMobileControls extends BaseHUDPart {
                 ? this.root.map.getLayerContentXY(from.x, from.y, "regular").components.StaticMapEntity.rotation
                 : undefined;
         const startIncomingDirection =
-            forcedStartDirection === undefined && startBelt
+            forcedStartIncoming !== undefined
+                ? forcedStartIncoming
+                : forcedStartDirection === undefined && startBelt
                 ? !!this.lastBeltTile && from.equals(this.lastBeltTile)
                     ? this.lastBeltIncomingDirection
                     : this.root.map.getLayerContentXY(from.x, from.y, "regular").components.StaticMapEntity
                           .rotation
                 : undefined;
-        const endOutgoingDirection = endBelt
-            ? this.root.map.getLayerContentXY(to.x, to.y, "regular").components.StaticMapEntity.rotation
-            : undefined;
+        const endOutgoingDirection =
+            forcedEndOutgoing !== undefined
+                ? forcedEndOutgoing
+                : endBelt
+                ? this.root.map.getLayerContentXY(to.x, to.y, "regular").components.StaticMapEntity.rotation
+                : undefined;
 
         const padding = 24;
         const minX = Math.min(from.x, to.x) - padding;
@@ -919,10 +1013,28 @@ export class HUDMobileControls extends BaseHUDPart {
                         break;
                     }
                     if (!isBlocked(scanTile, dir)) {
+                        // A tunnel receiver's own rotation is fixed to the
+                        // direction it's travelling (see the
+                        // mustContinueStraight comment above) - so a
+                        // receiver landing exactly on `to` has to be
+                        // travelling the direction `to` actually needs
+                        // (endOutgoingDirection - forced when `to` is a
+                        // building's acceptor feed tile, buildingAcceptorFeeds)
+                        // or it'd silently eject the wrong way, same as any
+                        // other wrongly-facing goal approach. This can only
+                        // ever matter for a forced building feed tile: an
+                        // existing belt to merge into already makes `to`
+                        // non-empty, which isStrictlyClear rules out as a
+                        // landing spot regardless.
+                        const wrongForcedExit =
+                            scanTile.equals(to) &&
+                            endOutgoingDirection !== undefined &&
+                            dir !== endOutgoingDirection;
                         if (
                             isStrictlyClear(scanTile) &&
                             inBounds(scanTile) &&
-                            !current.usedTiles.has(tileKey(scanTile))
+                            !current.usedTiles.has(tileKey(scanTile)) &&
+                            !wrongForcedExit
                         ) {
                             const tier = this.pickTunnelTier(distance);
                             if (tier !== null) {
@@ -1049,6 +1161,63 @@ export class HUDMobileControls extends BaseHUDPart {
         }
 
         return entries;
+    }
+
+    /**
+     * Item 9: findBeltPathSearch's public entry point - handles `from`/`to`
+     * landing on a real building's own ItemEjector/ItemAcceptor before
+     * running the search proper, so a drag or tap can start right out of a
+     * building's output or end right into one of its inputs, not just merge
+     * with an existing belt or bridge a plain obstacle. A building tile
+     * itself is never buildable on (isTileBlockedForBelt always blocks it),
+     * so `from`/`to` get substituted for the actual tile the belt would
+     * occupy - the ejector's launch tile, or (one of) the acceptor's feed
+     * tiles - with the corresponding fixed direction threaded through as
+     * forcedStartIncoming/forcedEndOutgoing.
+     *
+     * `to` landing on a multi-input building (a stacker's two feed slots)
+     * tries each slot's feed tile in turn and returns the first that finds
+     * a route - which one the belt should feed is decided by whichever
+     * side is actually reachable, not by guessing from the tap position.
+     * `from` starting on a multi-output building is deliberately left
+     * unhandled (buildingEjectorLaunch only ever returns one for a single
+     * unambiguous slot) - falls through to the ordinary "real building in
+     * the way" obstacle handling, same as before this existed.
+     * @param {Vector} from
+     * @param {Vector} to
+     * @param {boolean} allowReshape See findBeltPathSearch.
+     * @returns {Array<PathEntry>|null}
+     */
+    findBeltPath(from, to, allowReshape) {
+        if (from.equals(to)) {
+            return this.beltTilesToEntries([from]);
+        }
+
+        const launch =
+            !this.beltAt(from) && !this.tunnelAt(from) ? this.buildingEjectorLaunch(from) : null;
+        const effectiveFrom = launch ? launch.launchTile : from;
+        const forcedStartIncoming = launch ? launch.direction : undefined;
+
+        if (!this.beltAt(to) && !this.tunnelAt(to)) {
+            const feeds = this.buildingAcceptorFeeds(to);
+            if (feeds.length > 0) {
+                for (const feed of feeds) {
+                    const result = this.findBeltPathSearch(
+                        effectiveFrom,
+                        feed.feedTile,
+                        allowReshape,
+                        forcedStartIncoming,
+                        feed.direction
+                    );
+                    if (result) {
+                        return result;
+                    }
+                }
+                return null;
+            }
+        }
+
+        return this.findBeltPathSearch(effectiveFrom, to, allowReshape, forcedStartIncoming, undefined);
     }
 
     /**

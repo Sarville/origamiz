@@ -1283,6 +1283,64 @@ logs.
         screenshot-3 "build a bend to make room" solution is a manual
         workaround, not something this round's fix set out to make the
         search discover on its own.
+
+        **Sixteenth follow-up, done 2026-08-31.** New request: dragging or
+        tap-continuing to end a belt *into* a building's own input (e.g. a
+        stacker), or start one *out of* a building's own output, was
+        rejected outright - findBeltPath's isTileBlockedForBelt treats any
+        real building tile as unconditionally blocked with no notion of
+        "ending here is actually fine, this side accepts." Added
+        buildingAcceptorFeeds/buildingEjectorLaunch (mobile_controls.js) -
+        world-space feed/launch tiles and directions read straight off the
+        building's own ItemAcceptor/ItemEjector slots - and a thin
+        findBeltPath wrapper (the old body renamed findBeltPathSearch, now
+        taking forcedStartIncoming/forcedEndOutgoing) that substitutes
+        `from`/`to` for the real launch/feed tile when either lands on a
+        non-belt, non-tunnel building, trying every acceptor slot in turn
+        for a multi-input building like a stacker. Also had to add a tunnel-
+        landing guard (a receiver can only ever land on the exact
+        feed tile if its own forced travel direction matches - previously
+        unreachable since isStrictlyClear already ruled out landing a
+        tunnel on an existing belt, but a plain empty feed tile can be
+        landed on, so this gap only opens up for this new building case).
+
+        Got the acceptor math backwards on the first pass - subtracted the
+        slot's own direction vector from its world tile instead of adding
+        it, and used the direction as-is instead of inverting it for the
+        feeding belt's own outgoing - which silently planned the feed tile
+        on the *wrong side* of the building. Caught by cross-referencing
+        GameLogic.getEjectorsAndAcceptorsAtTile (the authoritative source
+        the real belt auto-orientation itself reads through) rather than
+        re-deriving it a second time from intuition, and independently
+        confirmed by feeding the computed feed tile straight into
+        MetaBeltBuilding.computeOptimalDirectionAndRotationVariantAtTile
+        and checking it agreed. Matches the live report exactly: a drag
+        ending on a stacker curved in from the wrong side even though the
+        correct input/output was clearly marked.
+
+        Verified live via CDP: a miner (real ItemEjector launch, not a
+        belt) piped all the way to a trash can's real ItemAcceptor feed
+        tile, watched the trash can actually consume arriving items (belt
+        queue length dropping, not piling up) - confirms both the ejector-
+        start and acceptor-end math end-to-end in one chain. A parallel
+        stacker test (2 acceptor slots, multi-candidate handling) placed a
+        structurally correct curve into one of its two feed tiles but the
+        stacker itself never visibly consumed anything - traced to the
+        stacker's own `inputsPerCharge: 2` needing both inputs filled
+        before it processes at all, an unrelated existing game mechanic,
+        not a routing bug (the trash test isolates and confirms the actual
+        routing math independent of that).
+
+        **Not done this round, flagged live by the user as a broader
+        follow-up:** having *any* ordinary belt build (not just one whose
+        drag/tap endpoint explicitly targets the building) opportunistically
+        curve toward a building's input/output if one happens to be right
+        next to where it ends, even when the user never aimed for it - e.g.
+        a plain horizontal belt segment built elsewhere that happens to
+        land next to a stacker's input should bend into it on its own. This
+        is a materially different, more speculative feature (implicit
+        proximity detection during any placement, not endpoint resolution)
+        from what this follow-up added and wasn't attempted here.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
