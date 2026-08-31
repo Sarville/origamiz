@@ -365,6 +365,16 @@ html.is-mobile #ingame_HUD_Shop {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 0.6rem;
+
+                // No .pin/.showInfo buttons on mobile (see shop.js) - pinning
+                // already lives in the shape info dialog, and there's no room
+                // for two tiny overlaid buttons per shape on a small screen.
+                // The shape's own canvas is the tap target for info instead,
+                // same convention as the pinned-shapes strip.
+                .requirement canvas.clickable {
+                    pointer-events: all;
+                    cursor: pointer;
+                }
             }
 
             button.buy {

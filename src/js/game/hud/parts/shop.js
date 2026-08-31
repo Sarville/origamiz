@@ -1,4 +1,5 @@
 import { ClickDetector } from "../../../core/click_detector";
+import { IS_MOBILE } from "../../../core/config";
 import { InputReceiver } from "../../../core/input_receiver";
 import { formatBigNumber, getRomanNumber, makeDiv } from "../../../core/utils";
 import { SOUNDS } from "../../../platform/sound";
@@ -77,7 +78,9 @@ export class HUDShop extends BaseHUDPart {
             for (let i = 0; i < handle.requireIndexToElement.length; ++i) {
                 const requiredHandle = handle.requireIndexToElement[i];
                 requiredHandle.container.remove();
-                requiredHandle.pinDetector.cleanup();
+                if (requiredHandle.pinDetector) {
+                    requiredHandle.pinDetector.cleanup();
+                }
                 if (requiredHandle.infoDetector) {
                     requiredHandle.infoDetector.cleanup();
                 }
@@ -118,44 +121,64 @@ export class HUDShop extends BaseHUDPart {
                 const progressLabel = document.createElement("label");
                 progressContainer.appendChild(progressLabel);
 
-                const pinButton = document.createElement("button");
-                pinButton.classList.add("pin");
-                container.appendChild(pinButton);
-
+                // On mobile, pinning already has a home in the shape info
+                // dialog (see shape_viewer.js) - no separate pin button here,
+                // and the shape's own canvas doubles as the info tap target
+                // instead of a dedicated button (same convention
+                // pinned_shapes.js uses), since there's no room for two tiny
+                // overlaid buttons per shape on a small screen.
+                let pinButton = null;
+                let pinDetector = null;
                 let infoDetector;
-                const viewInfoButton = document.createElement("button");
-                viewInfoButton.classList.add("showInfo");
-                container.appendChild(viewInfoButton);
-                infoDetector = new ClickDetector(viewInfoButton, {
-                    consumeEvents: true,
-                    preventDefault: true,
-                });
-                infoDetector.click.add(() =>
-                    this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
-                );
+                if (IS_MOBILE) {
+                    shapeCanvas.classList.add("clickable");
+                    infoDetector = new ClickDetector(shapeCanvas, {
+                        consumeEvents: true,
+                        preventDefault: true,
+                        targetOnly: true,
+                    });
+                    infoDetector.click.add(() =>
+                        this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
+                    );
+                } else {
+                    pinButton = document.createElement("button");
+                    pinButton.classList.add("pin");
+                    container.appendChild(pinButton);
 
-                const currentGoalShape = this.root.hubGoals.currentGoal.definition.getHash();
-                if (shape === currentGoalShape) {
-                    pinButton.classList.add("isGoal");
-                } else if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
-                    pinButton.classList.add("pinned");
-                }
+                    const viewInfoButton = document.createElement("button");
+                    viewInfoButton.classList.add("showInfo");
+                    container.appendChild(viewInfoButton);
+                    infoDetector = new ClickDetector(viewInfoButton, {
+                        consumeEvents: true,
+                        preventDefault: true,
+                    });
+                    infoDetector.click.add(() =>
+                        this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
+                    );
 
-                const pinDetector = new ClickDetector(pinButton, {
-                    consumeEvents: true,
-                    preventDefault: true,
-                });
-                pinDetector.click.add(() => {
-                    if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
-                        this.root.hud.signals.shapeUnpinRequested.dispatch(shape);
-                        pinButton.classList.add("unpinned");
-                        pinButton.classList.remove("pinned");
-                    } else {
-                        this.root.hud.signals.shapePinRequested.dispatch(shapeDef);
+                    const currentGoalShape = this.root.hubGoals.currentGoal.definition.getHash();
+                    if (shape === currentGoalShape) {
+                        pinButton.classList.add("isGoal");
+                    } else if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
                         pinButton.classList.add("pinned");
-                        pinButton.classList.remove("unpinned");
                     }
-                });
+
+                    pinDetector = new ClickDetector(pinButton, {
+                        consumeEvents: true,
+                        preventDefault: true,
+                    });
+                    pinDetector.click.add(() => {
+                        if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
+                            this.root.hud.signals.shapeUnpinRequested.dispatch(shape);
+                            pinButton.classList.add("unpinned");
+                            pinButton.classList.remove("pinned");
+                        } else {
+                            this.root.hud.signals.shapePinRequested.dispatch(shapeDef);
+                            pinButton.classList.add("pinned");
+                            pinButton.classList.remove("unpinned");
+                        }
+                    });
+                }
 
                 handle.requireIndexToElement.push({
                     container,
@@ -213,7 +236,9 @@ export class HUDShop extends BaseHUDPart {
             for (let i = 0; i < handle.requireIndexToElement.length; ++i) {
                 const requiredHandle = handle.requireIndexToElement[i];
                 requiredHandle.container.remove();
-                requiredHandle.pinDetector.cleanup();
+                if (requiredHandle.pinDetector) {
+                    requiredHandle.pinDetector.cleanup();
+                }
                 if (requiredHandle.infoDetector) {
                     requiredHandle.infoDetector.cleanup();
                 }

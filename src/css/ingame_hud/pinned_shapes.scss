@@ -165,12 +165,11 @@ html.is-mobile #ingame_HUD_PinnedShapes {
     // it with a lower position.
     top: 6rem;
 
-    // Extra left padding houses .unpinButton, which sits at a negative left
-    // offset from its .shape row (floating in the open margin in the no-
-    // background desktop layout) - without it it'd poke out past the new
-    // panel's edge instead of sitting inside it.
+    // Symmetric now - no .unpinButton on mobile any more (pin/unpin moved
+    // into the shape info dialog, see pinned_shapes.js/shape_viewer.js), so
+    // there's nothing left needing the old lopsided extra-wide left gutter.
     // (~20% smaller all round than the first pass, per feedback.)
-    padding: 0.65rem 0.8rem 0.65rem 1.6rem;
+    padding: 0.65rem 0.8rem;
     border-radius: $globalBorderRadius;
     border: 0.1rem solid rgba(#7a6a45, 0.35);
     box-shadow: 0 0.25rem 0.6rem rgba(0, 0, 0, 0.25);
@@ -232,13 +231,6 @@ html.is-mobile #ingame_HUD_PinnedShapes {
 
         > .goalLabel {
             font-size: 0.9rem;
-        }
-
-        > .unpinButton {
-            width: 1.05rem;
-            height: 1.05rem;
-            left: -1.05rem;
-            top: 0.4rem;
         }
 
         // Purely decorative (no click handler) - on the compact mobile row it
