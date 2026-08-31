@@ -479,19 +479,21 @@ export class HUDMobileControls extends BaseHUDPart {
      * "dominant") worked fine as the same request.
      * @param {Vector} from
      * @param {Vector} to
+     * @param {boolean} allowReshape See resolveBeltPath - true for a drag,
+     * false for tap-continuation.
      * @returns {{ path: Array<Vector>, resolved: Array<PathEntry>|null }} `path` is
      * always the primary corner's tiles (used for the red-flash preview on
      * total failure), `resolved` is whichever corner actually worked, if any.
      */
-    resolveBeltPathToward(from, to) {
+    resolveBeltPathToward(from, to, allowReshape) {
         const primaryPath = this.computeCornerPath(from, to);
-        const primaryResolved = this.resolveBeltPath(primaryPath);
+        const primaryResolved = this.resolveBeltPath(primaryPath, allowReshape);
         if (primaryResolved) {
             return { path: primaryPath, resolved: primaryResolved };
         }
         const horizontalFirst = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
         const altPath = this.computeCornerPath(from, to, !horizontalFirst);
-        const altResolved = this.resolveBeltPath(altPath);
+        const altResolved = this.resolveBeltPath(altPath, allowReshape);
         if (altResolved) {
             return { path: altPath, resolved: altResolved };
         }
@@ -690,9 +692,20 @@ export class HUDMobileControls extends BaseHUDPart {
      * rotation/curves are computed independently and the two are
      * concatenated back together in order.
      * @param {Array<Vector>} path
+     * @param {boolean} allowReshape Drag (a held finger moving across the
+     * map) may reshape/merge whichever belts the path starts and ends on -
+     * see the anchorTiles/exemptPaths doc just below. Tap-continuation
+     * (placeBeltTapAt, item 8) never may: each tap only ever *extends* the
+     * belt from wherever it last ended, so anything already built beyond
+     * that single tile is treated as a genuine obstacle like any other -
+     * bridged with a tunnel if geometrically possible, otherwise rejected -
+     * rather than silently rewritten. Found live: tapping 2 tiles past the
+     * *start* of an already-built belt, continuing from its far end,
+     * reshaped/reversed the whole thing in one tap instead of leaving it
+     * alone.
      * @returns {Array<PathEntry>|null}
      */
-    resolveBeltPath(path) {
+    resolveBeltPath(path, allowReshape) {
         if (path.length < 2) {
             // Nothing to bridge - if the lone tile is itself blocked,
             // placement just fails normally, same as before this feature.
@@ -716,14 +729,18 @@ export class HUDMobileControls extends BaseHUDPart {
         // connected chain (BeltPath, tracked as Belt.assignedPath): pressing
         // on one belt and dragging to another should merge/reshape them,
         // not tunnel between them. A *different*, unrelated belt crossed
-        // strictly in between still counts as a foreign crossing.
+        // strictly in between still counts as a foreign crossing. Only for
+        // a drag, though (allowReshape) - a tap-continuation exempts tile 0
+        // alone (still needed so the very tile it continues from isn't a
+        // "crossing" of itself), never its wider chain or the end tile, so
+        // it only ever extends, never reshapes.
         const endTile = path[path.length - 1];
         const startBelt = this.beltAt(path[0]);
         const endBelt = this.beltAt(endTile);
-        const anchorTiles = [path[0], endTile];
-        const exemptPaths = [startBelt && startBelt.assignedPath, endBelt && endBelt.assignedPath].filter(
-            Boolean
-        );
+        const anchorTiles = allowReshape ? [path[0], endTile] : [path[0]];
+        const exemptPaths = allowReshape
+            ? [startBelt && startBelt.assignedPath, endBelt && endBelt.assignedPath].filter(Boolean)
+            : [];
 
         // Both anchors need the direction flow already had there *before*
         // this call overwrites them, so the junction curves to continue it
@@ -921,7 +938,7 @@ export class HUDMobileControls extends BaseHUDPart {
      */
     placeBeltTapAt(tile) {
         if (this.lastBeltTile) {
-            const { path, resolved } = this.resolveBeltPathToward(this.lastBeltTile, tile);
+            const { path, resolved } = this.resolveBeltPathToward(this.lastBeltTile, tile, false);
             if (!resolved) {
                 // Item 9: crosses an obstacle no unlocked tunnel can bridge -
                 // flash it red instead of placing a gapped/broken belt.
@@ -1135,7 +1152,7 @@ export class HUDMobileControls extends BaseHUDPart {
                 // nothing here (draw() reads dragPreviewInvalid and tints
                 // dragPath red instead) so release-time feedback
                 // (flashInvalidBelt) isn't the only hint something's wrong.
-                const { path, resolved } = this.resolveBeltPathToward(this.dragStartTile, tile);
+                const { path, resolved } = this.resolveBeltPathToward(this.dragStartTile, tile, true);
                 this.dragPath = path;
                 this.dragPreviewEntries = resolved || [];
                 this.dragPreviewInvalid = !resolved;

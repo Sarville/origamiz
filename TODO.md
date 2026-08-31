@@ -976,6 +976,37 @@ logs.
         flat joint; a third, unrelated belt crossing the connecting path
         still gets bridged with a tunnel; the multi-tap zigzag case still
         curves correctly at all four corners.
+
+        **Seventh follow-up, done 2026-08-31:** the fifth/sixth follow-ups'
+        anchor-chain exemption was only ever meant for a *drag* - tap-
+        continuation (placeBeltTapAt, item 8) shares the same
+        resolveBeltPath/resolveBeltPathToward machinery but has a different
+        contract per explicit spec: each tap only ever *extends* the belt
+        from wherever it last ended, never reshapes/rewrites anything
+        already built. Reported live: continuing from the *far* end of an
+        already-built belt with a tap 2 tiles past its *near* end (straight
+        back over the whole thing) reversed the entire belt in one tap
+        instead of leaving it alone. `resolveBeltPath`/`resolveBeltPathToward`
+        gained an `allowReshape` parameter - `true` for the drag call site
+        (onMouseMove), `false` for the tap call site (placeBeltTapAt); when
+        false, only the path's own tile 0 is exempt from the crossing check
+        (still needed so the tile a continuation starts from isn't a
+        "crossing" of itself), never its wider chain or the far end tile -
+        everything else already built, including the rest of the *same*
+        belt being continued, is a genuine obstacle again, bridged with a
+        tunnel if geometrically possible or rejected (red flash) if not,
+        exactly like any other crossing. Verified live via CDP: tapping 2
+        tiles past a belt's near end, continuing from its far end (the exact
+        reported repro), now leaves the original completely untouched - the
+        gap being too long for the default tunnel tier here, the tap
+        correctly rejects (flashes red) rather than silently rewriting it;
+        confirmed via entity state, not just a screenshot, that not a single
+        tile of the original changed. Ordinary tap-continuation in open
+        territory and every drag-specific behavior from the fifth/sixth
+        follow-ups (reshaping, reversing, connecting two belts, tunnelling
+        under a genuine third-party crossing) still work unchanged -
+        allowReshape only ever *removes* exemptions for a tap, never adds
+        restrictions to a drag.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
