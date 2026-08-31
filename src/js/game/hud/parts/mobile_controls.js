@@ -1,9 +1,14 @@
 import { MAX_MOVE_DISTANCE_PX } from "../../../core/click_detector";
+import { globalConfig } from "../../../core/config";
+import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
+import { MetaUndergroundBeltBuilding, enumUndergroundBeltVariants } from "../../buildings/underground_belt";
 import { enumMouseButton } from "../../camera";
+import { defaultBuildingVariant } from "../../meta_building";
+import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
 
 // How long a finger has to stay down before it counts as "hold" (start laying a
@@ -11,7 +16,7 @@ import { BaseHUDPart } from "../base_hud_part";
 const LONG_PRESS_MS = 350;
 
 /**
- * @typedef {{ tile: Vector, rotation: number, rotationVariant: number }} PathEntry
+ * @typedef {{ tile: Vector, rotation: number, rotationVariant: number, isTunnel?: boolean, tunnelVariant?: string }} PathEntry
  */
 
 /**
@@ -36,6 +41,19 @@ const LONG_PRESS_MS = 350;
  * below and drawBlueprintGhost. Touching the map (tap or drag) moves the
  * blueprint to/with the finger; nothing is actually built until the confirm
  * button is tapped.
+ *
+ * Auto-tunnel planning: any belt path (a drag or a tap-continuation) that
+ * crosses an existing, non-belt-replaceable building is auto-bridged with a
+ * tunnel pair instead of just leaving a gap there, if an unlocked tunnel
+ * tier's range covers it - see resolveBeltPath. If it can't be bridged (too
+ * long a gap, tunnels not unlocked yet, or the blocked run isn't a single
+ * straight line), nothing is placed and the attempted path flashes red
+ * instead (flashInvalidBelt) - this is mobile's default belt behavior,
+ * always on, unlike desktop's equivalent (planned as a Shift-drag modifier,
+ * not implemented yet - desktop's belt-drag is a real-time immediate-Bresenham
+ * placement loop in building_placer_logic.js, architecturally different
+ * enough from this preview-then-commit-on-release model that it needs its
+ * own integration pass rather than sharing this one directly).
  */
 export class HUDMobileControls extends BaseHUDPart {
     createElements(parent) {
@@ -120,6 +138,18 @@ export class HUDMobileControls extends BaseHUDPart {
         this.dragPath = [];
         /** @type {Array<PathEntry>} */
         this.dragPreviewEntries = [];
+        // Set alongside dragPreviewEntries whenever resolveBeltPath (item 9's
+        // auto-tunnel planning) can't make the currently-dragged path
+        // contiguous - dragPreviewEntries is left empty and draw() shows a
+        // red tint over dragPath instead of ghost belts.
+        this.dragPreviewInvalid = false;
+
+        // Item 9: a brief red flash over a just-rejected belt path (a tap or
+        // a completed drag that resolveBeltPath couldn't make contiguous),
+        // shown instead of placing anything. Cleared automatically in
+        // update() once its duration elapses - see flashInvalidBelt.
+        /** @type {{ path: Array<Vector>, startedAt: number }} */
+        this.invalidBeltFlash = null;
 
         // Belt continuation: the tile the belt last ended at (from any
         // placement - a drag, a plain tap, or a previous continuation tap).
@@ -172,6 +202,7 @@ export class HUDMobileControls extends BaseHUDPart {
                 this.dragging = false;
                 this.dragPath = [];
                 this.dragPreviewEntries = [];
+                this.dragPreviewInvalid = false;
                 this.panning = false;
                 this.draggingBlueprint = false;
             }
@@ -211,6 +242,8 @@ export class HUDMobileControls extends BaseHUDPart {
             this.blueprintTile = null;
         }
         this.dragPreviewEntries = [];
+        this.dragPreviewInvalid = false;
+        this.invalidBeltFlash = null;
         this.dragPath = [];
         this.dragging = false;
         this.draggingBlueprint = false;
@@ -221,6 +254,10 @@ export class HUDMobileControls extends BaseHUDPart {
 
     get placerLogic() {
         return this.root.hud.parts.buildingPlacer;
+    }
+
+    get tunnelMetaBuilding() {
+        return gMetaBuildingRegistry.findByClass(MetaUndergroundBeltBuilding);
     }
 
     // Not cached via document.getElementById at initialize() time - by then
@@ -420,6 +457,169 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
+     * Item 9: whether a plain belt can't go on this tile - anything that
+     * isn't itself belt-replaceable (see MetaBuilding.getIsReplaceable; only
+     * belts/wires override it) sitting on the regular layer there.
+     * @param {Vector} tile
+     */
+    isTileBlockedForBelt(tile) {
+        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        if (!contents) {
+            return false;
+        }
+        const staticComp = contents.components.StaticMapEntity;
+        return !staticComp
+            .getMetaBuilding()
+            .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant());
+    }
+
+    /**
+     * Item 9: the smallest unlocked tunnel tier whose range covers the given
+     * tile distance, or null if none does (including tunnels not being
+     * unlocked at all yet) - mirrors
+     * MetaUndergroundBeltBuilding.computeOptimalDirectionAndRotationVariantAtTile's
+     * own range/tier rules rather than duplicating them loosely.
+     * @param {number} distance
+     * @returns {string|null}
+     */
+    pickTunnelTier(distance) {
+        if (!this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_tunnel)) {
+            return null;
+        }
+        if (distance <= globalConfig.undergroundBeltMaxTilesByTier[0]) {
+            return defaultBuildingVariant;
+        }
+        if (
+            this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_underground_belt_tier_2) &&
+            distance <= globalConfig.undergroundBeltMaxTilesByTier[1]
+        ) {
+            return enumUndergroundBeltVariants.tier2;
+        }
+        return null;
+    }
+
+    /**
+     * Item 9 - auto-tunnel planning: given a raw belt tile path, checks
+     * whether it's blocked by any existing (non-belt-replaceable) buildings
+     * and, if every blocked run can be bridged with a tunnel pair, returns
+     * the full placement plan with tunnel entries substituted in; otherwise
+     * returns null, meaning this path can't become a contiguous belt at all
+     * (too long a gap for any unlocked tier, tunnels not unlocked, or the
+     * blocked run doesn't lie on a single straight line - a tunnel can't
+     * turn a corner underground).
+     *
+     * Splits the path into alternating plain-belt runs and tunnel bridges
+     * rather than patching beltTilesToEntries' output in place - a tunnel
+     * breaks curve continuity anyway (the belt travels straight underground,
+     * so there's nothing to curve-detect across it), so each plain run's
+     * rotation/curves are computed independently and the two are
+     * concatenated back together in order.
+     * @param {Array<Vector>} path
+     * @returns {Array<PathEntry>|null}
+     */
+    resolveBeltPath(path) {
+        if (path.length < 2) {
+            // Nothing to bridge - if the lone tile is itself blocked,
+            // placement just fails normally, same as before this feature.
+            return this.beltTilesToEntries(path);
+        }
+
+        const resolvedEntries = [];
+        let runStart = 0;
+        const flushRun = endExclusive => {
+            if (endExclusive > runStart) {
+                resolvedEntries.push(...this.beltTilesToEntries(path.slice(runStart, endExclusive)));
+            }
+        };
+
+        let i = 0;
+        while (i < path.length) {
+            if (!this.isTileBlockedForBelt(path[i])) {
+                i++;
+                continue;
+            }
+
+            // Found the start of a blocked run - find where it ends.
+            let j = i;
+            while (j + 1 < path.length && this.isTileBlockedForBelt(path[j + 1])) {
+                j++;
+            }
+
+            // Needs a clear tile on both sides to flank with a tunnel pair.
+            if (i === 0 || j === path.length - 1) {
+                return null;
+            }
+
+            // Must lie on a single straight line - a tunnel can't turn a
+            // corner, so a blocked run straddling the path's own corner (or
+            // one that isn't axis-aligned throughout for any other reason)
+            // can't be bridged.
+            const direction = this.directionBetween(path[i - 1], path[i]);
+            for (let k = i - 1; k <= j; ++k) {
+                if (this.directionBetween(path[k], path[k + 1]) !== direction) {
+                    return null;
+                }
+            }
+
+            const entrance = path[i - 1];
+            const exit = path[j + 1];
+
+            // The tile right before this obstacle may already be claimed as
+            // the *previous* tunnel's exit (two separate obstacles with only
+            // one clear tile between them) - no room for it to also be this
+            // one's entrance.
+            const previous = resolvedEntries[resolvedEntries.length - 1];
+            if (previous && previous.isTunnel && previous.tile.equals(entrance)) {
+                return null;
+            }
+
+            const distance = Math.round(exit.sub(entrance).length());
+            const tier = this.pickTunnelTier(distance);
+            if (tier === null) {
+                return null;
+            }
+
+            // Flush the plain run up to (not including) the entrance tile -
+            // it's about to be pushed as a tunnel entry instead.
+            flushRun(i - 1);
+            resolvedEntries.push({
+                tile: entrance,
+                rotation: direction,
+                rotationVariant: 0, // sender
+                isTunnel: true,
+                tunnelVariant: tier,
+            });
+            resolvedEntries.push({
+                tile: exit,
+                rotation: direction,
+                rotationVariant: 1, // receiver
+                isTunnel: true,
+                tunnelVariant: tier,
+            });
+
+            runStart = j + 2; // next plain run starts right after the exit tile
+            i = runStart;
+        }
+        flushRun(path.length);
+        return resolvedEntries;
+    }
+
+    /**
+     * Item 9: momentarily tints the given (unplaceable) path red instead of
+     * placing anything - feedback for "a continuous belt isn't possible
+     * here" (the gap is too long for any unlocked tunnel tier, tunnels
+     * aren't unlocked, or the blocked run isn't a straight enough line for a
+     * tunnel to bridge at all). Cleared automatically in update().
+     * @param {Array<Vector>} path
+     */
+    flashInvalidBelt(path) {
+        this.invalidBeltFlash = {
+            path,
+            startedAt: this.root.time.realtimeNow(),
+        };
+    }
+
+    /**
      * Places a single building at the given tile/rotation immediately.
      * @param {Vector} tile
      * @param {number} rotation
@@ -470,7 +670,14 @@ export class HUDMobileControls extends BaseHUDPart {
     placeBeltTapAt(tile) {
         if (this.lastBeltTile) {
             const path = this.computeCornerPath(this.lastBeltTile, tile);
-            this.placePath(this.beltTilesToEntries(path));
+            const resolved = this.resolveBeltPath(path);
+            if (!resolved) {
+                // Item 9: crosses an obstacle no unlocked tunnel can bridge -
+                // flash it red instead of placing a gapped/broken belt.
+                this.flashInvalidBelt(path);
+                return;
+            }
+            this.placePath(resolved);
         } else {
             this.placeSingle(tile, this.placerLogic.currentBaseRotation);
         }
@@ -508,10 +715,32 @@ export class HUDMobileControls extends BaseHUDPart {
                 if (!this.placerLogic.currentMetaBuilding.get()) {
                     this.placerLogic.currentMetaBuilding.set(metaBuilding);
                 }
-                const { tile, rotation } = entries[i];
-                this.placerLogic.currentBaseRotation = rotation;
-                if (this.placerLogic.tryPlaceCurrentBuildingAt(tile)) {
-                    anythingPlaced = true;
+                const entry = entries[i];
+                if (entry.isTunnel) {
+                    // Item 9 (resolveBeltPath): bypasses
+                    // tryPlaceCurrentBuildingAt's auto rotation-variant search
+                    // entirely - we already know exactly which piece
+                    // (sender/receiver) and tier this needs to be, and the
+                    // search (looking for an *existing* matching tunnel
+                    // nearby) isn't the right tool for placing a brand new
+                    // pair in one go.
+                    if (
+                        this.root.logic.tryPlaceBuilding({
+                            origin: entry.tile,
+                            rotation: entry.rotation,
+                            originalRotation: entry.rotation,
+                            rotationVariant: entry.rotationVariant,
+                            variant: entry.tunnelVariant,
+                            building: this.tunnelMetaBuilding,
+                        })
+                    ) {
+                        anythingPlaced = true;
+                    }
+                } else {
+                    this.placerLogic.currentBaseRotation = entry.rotation;
+                    if (this.placerLogic.tryPlaceCurrentBuildingAt(entry.tile)) {
+                        anythingPlaced = true;
+                    }
                 }
             }
         });
@@ -552,6 +781,7 @@ export class HUDMobileControls extends BaseHUDPart {
         this.dragStartTile = this.pendingTile;
         this.dragPath = [this.pendingTile];
         this.dragPreviewEntries = this.beltTilesToEntries(this.dragPath);
+        this.dragPreviewInvalid = false;
         this.pendingPos = null;
         this.pendingTile = null;
     }
@@ -625,7 +855,14 @@ export class HUDMobileControls extends BaseHUDPart {
                 // not accumulated along wherever the finger physically travelled, which
                 // just traces every wobble of a real finger instead of a clean path.
                 this.dragPath = this.computeCornerPath(this.dragStartTile, tile);
-                this.dragPreviewEntries = this.beltTilesToEntries(this.dragPath);
+                // Item 9: live auto-tunnel planning while dragging - if the
+                // path can't be made contiguous, show nothing here (draw()
+                // reads dragPreviewInvalid and tints dragPath red instead) so
+                // release-time feedback (flashInvalidBelt) isn't the only
+                // hint something's wrong.
+                const resolved = this.resolveBeltPath(this.dragPath);
+                this.dragPreviewEntries = resolved || [];
+                this.dragPreviewInvalid = !resolved;
             }
             return STOP_PROPAGATION;
         }
@@ -665,11 +902,16 @@ export class HUDMobileControls extends BaseHUDPart {
             if (this.dragPath.length <= 1) {
                 // Held without ever moving - treat like a plain tap.
                 this.placeBeltTapAt(this.dragPath[0] || this.dragStartTile);
+            } else if (this.dragPreviewInvalid) {
+                // Item 9: crosses an obstacle no unlocked tunnel can bridge -
+                // flash it red instead of placing a gapped/broken belt.
+                this.flashInvalidBelt(this.dragPath);
             } else {
                 this.placePath(this.dragPreviewEntries);
             }
             this.dragPath = [];
             this.dragPreviewEntries = [];
+            this.dragPreviewInvalid = false;
             return;
         }
 
@@ -754,6 +996,21 @@ export class HUDMobileControls extends BaseHUDPart {
             this.drawBlueprintGhost(parameters);
         }
 
+        // Item 9: a completed-but-rejected belt (a tap or a released drag
+        // resolveBeltPath couldn't make contiguous) blinks red for a moment
+        // instead of anything being placed.
+        if (this.invalidBeltFlash) {
+            this.drawInvalidBeltFlash(parameters);
+        }
+
+        if (this.dragging && this.dragPreviewInvalid) {
+            // Item 9: live feedback while still dragging through an
+            // unbridgeable obstacle - steady, not blinking (the blink is
+            // reserved for the release-time flash above).
+            this.drawRedTiles(parameters, this.dragPath, 0.4);
+            return;
+        }
+
         if (this.dragPreviewEntries.length === 0) {
             return;
         }
@@ -767,6 +1024,41 @@ export class HUDMobileControls extends BaseHUDPart {
             this.drawPreviewEntry(parameters, metaBuilding, this.dragPreviewEntries[i]);
         }
         parameters.context.globalAlpha = 1;
+    }
+
+    /**
+     * Item 9 helper: flat red tint over a list of tiles - shared by the live
+     * invalid-drag preview and the post-release blink flash below.
+     * @param {import("../../../core/draw_parameters").DrawParameters} parameters
+     * @param {Array<Vector>} tiles
+     * @param {number} alpha
+     */
+    drawRedTiles(parameters, tiles, alpha) {
+        parameters.context.fillStyle = `rgba(230, 50, 50, ${alpha})`;
+        for (let i = 0; i < tiles.length; ++i) {
+            const tile = tiles[i];
+            parameters.context.fillRect(
+                tile.x * globalConfig.tileSize,
+                tile.y * globalConfig.tileSize,
+                globalConfig.tileSize,
+                globalConfig.tileSize
+            );
+        }
+    }
+
+    /**
+     * Item 9: a couple of quick alpha pulses over invalidBeltFlash.path,
+     * closer to an actual "blink" than one flat flash - see flashInvalidBelt.
+     * @param {import("../../../core/draw_parameters").DrawParameters} parameters
+     */
+    drawInvalidBeltFlash(parameters) {
+        const duration = 0.6;
+        const elapsed = this.root.time.realtimeNow() - this.invalidBeltFlash.startedAt;
+        if (elapsed > duration) {
+            return;
+        }
+        const alpha = 0.3 + 0.35 * Math.abs(Math.sin((elapsed / duration) * Math.PI * 3));
+        this.drawRedTiles(parameters, this.invalidBeltFlash.path, alpha);
     }
 
     /**
@@ -798,6 +1090,10 @@ export class HUDMobileControls extends BaseHUDPart {
         this.undoButton.classList.toggle("disabled", undoDisabled);
         this.beltUndoButton.classList.toggle("disabled", undoDisabled);
         this.redoButton.classList.toggle("disabled", !this.root.actionHistory.canRedo);
+
+        if (this.invalidBeltFlash && this.root.time.realtimeNow() - this.invalidBeltFlash.startedAt > 0.6) {
+            this.invalidBeltFlash = null;
+        }
 
         this.element.classList.toggle("placing", !!this.placerLogic.currentMetaBuilding.get());
     }

@@ -780,10 +780,37 @@ logs.
         drag to rubber-band-select an area. New center icon row while active:
         eraser (delete selected, via 2c-2's history), broom (clear belt contents
         for any belt with a selected segment), cancel.
-      - [ ] **2c-6 — Auto-tunnel placement (item 9).** While laying a belt (desktop:
-        Ctrl-drag; mobile: default), detect crossings with existing belts/buildings
-        and auto-insert tunnel pairs to keep the belt contiguous if geometrically
-        possible; flash the belt red if it isn't. Depends on 2c-3.
+      - [x] **2c-6 — Auto-tunnel placement (item 9), mobile part done
+        2026-08-31.** New `resolveBeltPath()` in `mobile_controls.js`: given a
+        raw belt tile path (a drag or a tap-continuation), scans for runs of
+        tiles blocked by an existing non-belt-replaceable building
+        (`isTileBlockedForBelt`) and, for each one, checks whether it's a
+        single straight run flanked by clear tiles within an unlocked
+        tunnel tier's range (`pickTunnelTier`, mirrors
+        `MetaUndergroundBeltBuilding`'s own range/tier rules) - if so,
+        substitutes an explicit sender/receiver pair for the blocked run
+        (placed via `GameLogic.tryPlaceBuilding` directly with an explicit
+        `rotationVariant`, bypassing `tryPlaceCurrentBuildingAt`'s
+        auto-detection search, which is built for finding an *existing*
+        tunnel piece nearby, not placing a brand new pair in one go). If any
+        blocked run can't be bridged, nothing is placed and the attempted
+        path flashes red instead (`flashInvalidBelt`) rather than leaving a
+        silent gap. Wired into both the live drag preview (steady red while
+        dragging through an unbridgeable spot) and tap-continuation. Verified
+        live via CDP: rejected + flashed red with tunnels locked; unlocked
+        the reward and the exact same crossing correctly inserted a
+        entrance/exit pair around the obstacle (screenshot-confirmed
+        correct orientation); undo/redo removes/restores both tunnel pieces
+        together as one transaction (entity-count-verified, not just
+        visually).
+        **Desktop (Ctrl/Shift-drag) not implemented yet** - desktop's belt
+        drag in `building_placer_logic.js` is a real-time
+        immediate-Bresenham-placement loop (places tile-by-tile as the mouse
+        moves, no natural "resolve the whole path, commit on release" point
+        to hook this into), architecturally different enough from mobile's
+        preview-then-commit model that it needs its own integration pass -
+        deferred as a separate follow-up rather than risking a rushed retrofit
+        of desktop's placement loop in the same chunk.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
