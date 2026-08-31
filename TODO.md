@@ -1007,6 +1007,32 @@ logs.
         under a genuine third-party crossing) still work unchanged -
         allowReshape only ever *removes* exemptions for a tap, never adds
         restrictions to a drag.
+
+        **Eighth follow-up, done 2026-08-31:** the seventh follow-up's fix
+        had a gap when the gap in question actually *was* short enough for
+        the default tunnel tier - reported live with a screenshot: a tap
+        retracing back through the belt it was extending from built a
+        tunnel pair, but a bizarre one - sender at lastBeltTile (eating what
+        was a perfectly good tile of the belt itself), a stretch of the
+        *original* belt's own interior left completely alone (correctly
+        untouched, but now a disconnected dead stub going nowhere), then a
+        receiver past its far end. Tunnelling under your *own* belt's
+        interior was never actually useful - unlike a real foreign
+        obstacle, there's nothing there to skip past, so "bridging" it just
+        orphans that stretch while a redundant tunnel duplicates the same
+        span underground right next to it. resolveBeltPath now explicitly
+        rejects a tap whose blocked run belongs to the *same* BeltPath chain
+        as the tile it's extending from (`startBelt.assignedPath`),
+        regardless of whether a tunnel could technically reach - same as an
+        out-of-range gap, just for a different reason. A drag still may
+        tunnel under (or, per the fifth/sixth follow-ups, simply reshape)
+        its own belt - this only tightens the tap path. Verified live via
+        CDP with a *short* belt (within default tunnel range, the case that
+        slipped through the seventh follow-up's testing): the tap now
+        rejects cleanly instead of building the sender/orphan/receiver
+        mess, confirmed via entity state that the belt is still exactly
+        4 plain tiles, no tunnel pieces anywhere; drag-based reversal
+        (which legitimately needs to retrace its own belt) still works.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

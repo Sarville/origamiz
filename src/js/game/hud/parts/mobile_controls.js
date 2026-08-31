@@ -812,6 +812,29 @@ export class HUDMobileControls extends BaseHUDPart {
                 return null;
             }
 
+            // A tap-continuation can't tunnel *under its own belt's
+            // interior* either - unlike a genuinely foreign obstacle,
+            // "bridging" it wouldn't skip past anything real, it would just
+            // orphan that stretch as a disconnected dead stub while a brand
+            // new tunnel duplicates the same span underground right next to
+            // it (found live: a tap retracing back through the belt it was
+            // extending from left the old middle section sitting there
+            // doing nothing, bracketed by a tunnel pair that didn't need to
+            // exist). Reject outright, same as an out-of-range gap - only a
+            // drag may retrace/reshape its own belt (see allowReshape),
+            // never a tap.
+            if (
+                !allowReshape &&
+                startBelt &&
+                startBelt.assignedPath &&
+                path.slice(i, j + 1).some(tile => {
+                    const belt = this.beltAt(tile);
+                    return belt && belt.assignedPath === startBelt.assignedPath;
+                })
+            ) {
+                return null;
+            }
+
             // Must lie on a single straight line - a tunnel can't turn a
             // corner, so a blocked run straddling the path's own corner (or
             // one that isn't axis-aligned throughout for any other reason)
