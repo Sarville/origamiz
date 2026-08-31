@@ -894,6 +894,25 @@ export class HUDMobileControls extends BaseHUDPart {
             const entrance = path[i - 1];
             const exit = path[j + 1];
 
+            // A tunnel sender is always straight-through - its acceptor is
+            // fixed opposite its own rotation, with no curve variant at all
+            // (unlike a plain belt tile, which can bend to meet whichever
+            // direction its real predecessor actually feeds it from). If the
+            // entrance tile would need to curve to correctly receive its
+            // real incoming flow - either startIncomingDirection, when the
+            // entrance is path[0] itself (lastBeltTile, or an existing belt
+            // being grabbed fresh), or simply the direction our own path
+            // arrived at it from otherwise - placing a sender here can't
+            // actually work: found live, a tunnel built with its own
+            // forward direction as rotation while the real belt it was
+            // continuing from approached at a right angle - visually
+            // touching, but the sender's fixed acceptor faced a completely
+            // different way and would never receive anything.
+            const entranceIncoming = i - 1 === 0 ? startIncomingDirection : directions[i - 2];
+            if (entranceIncoming !== undefined && entranceIncoming !== direction) {
+                return null;
+            }
+
             // The tile right before this obstacle may already be claimed as
             // the *previous* tunnel's exit (two separate obstacles with only
             // one clear tile between them) - no room for it to also be this

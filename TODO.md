@@ -1059,6 +1059,34 @@ logs.
         an L-shaped retrace the alt-corner can already route around) are
         unaffected, since the sidestep branch only runs after both existing
         attempts have already failed.
+
+        **Tenth follow-up, done 2026-08-31:** reported live with a
+        screenshot - a tunnel got auto-inserted (item 9), formally
+        connected on both sides, but non-functional: the belt fed into it
+        from one side while its actual (fixed) acceptor faced a completely
+        different way. Root cause: a tunnel sender is always straight-through
+        - unlike a plain belt tile, it has no curve rotationVariant at all,
+        its acceptor is hard-fixed opposite its own rotation - but
+        resolveBeltPath's auto-tunnel-insertion picked that rotation purely
+        from *our new path's own* forward direction through the obstacle,
+        with no regard for whether the entrance tile's *real* required
+        incoming direction (startIncomingDirection, when the entrance is
+        path[0] itself - lastBeltTile or an existing belt just grabbed - or
+        otherwise whatever direction our own path actually arrived at that
+        tile from) matched it. When it didn't - the entrance would have
+        needed to curve, impossible for a sender - the tunnel got built
+        anyway, silently broken. resolveBeltPath now checks this
+        (`entranceIncoming`) right where entrance/exit are computed and
+        rejects the placement outright (same as any other unbridgeable
+        case) rather than building a sender no real flow could ever reach.
+        Verified live via CDP: a drag continuing from an existing belt's end
+        perpendicular to its own established direction, immediately into an
+        obstacle one tile away (the exact geometry that used to produce a
+        misoriented sender) now flashes red instead of building anything;
+        the ordinary same-direction case (the one item 9 was built and
+        tested against originally) still tunnels cleanly, unaffected, since
+        the new check is a no-op whenever the entrance's required and actual
+        directions already agree.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
