@@ -285,5 +285,125 @@
                 border-color: color.adjust($colorOrangeBright, $lightness: -15%, $space: hsl);
             }
         }
+
+        // Blueprint-mode-only buttons (confirm, variant) - hidden entirely in
+        // belt mode (display:none here, deliberately last within each of
+        // their own rules below so it beats MobileHudButton's inline-flex),
+        // positioned/sized properly below under &.blueprintMode.
+        > .confirm {
+            @include MobileHudButton;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M4%2012l5%206L20%206%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%2012l5%206L20%206%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            background-size: 55%;
+
+            // The one button that actually does something "final" here - a
+            // faint green tint (same hue the toolbar uses for its own
+            // just-placed flash) distinguishes it from the neutral cream of
+            // the other 4 at a glance.
+            background-color: rgba($colorGreenBright, 0.3);
+            display: none;
+        }
+
+        // Bidirectional swap arrows - distinct from .rotate's single loop,
+        // reads as "switch to a different one" rather than "spin this one".
+        > .variant {
+            @include MobileHudButton;
+            position: relative;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M4%208h13M13%204l4%204-4%204M20%2016H7M11%2012l-4%204%204%204%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%208h13M13%204l4%204-4%204M20%2016H7M11%2012l-4%204%204%204%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            background-size: 52%;
+            display: none;
+
+            .badge {
+                @include SuperDuperSmallText;
+                position: absolute;
+                top: -0.3rem;
+                right: -0.3rem;
+                min-width: 1.3rem;
+                height: 1.3rem;
+                padding: 0 0.15rem;
+                border-radius: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: $colorOrangeBright;
+                color: #fff;
+                font-weight: bold;
+                border: 0.1rem solid rgba(#8a7550, 0.45);
+            }
+        }
+
+        // Only shown for non-belt buildings (see
+        // HUDMobileControls.onPlacementBuildingChanged) - a flat row of 5
+        // square icons instead of the belt panel's box-with-corner-buttons,
+        // since the sprite itself is drawn on the map as a blueprint that
+        // follows the finger (see drawBlueprintGhost) rather than sitting
+        // static in a side panel.
+        &.blueprintMode {
+            position: static;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
+            min-height: 0;
+            padding: 0;
+            background: none;
+
+            @include DarkThemeOverride {
+                background: none;
+            }
+
+            > .spriteWrap,
+            > .swipeHint {
+                display: none;
+            }
+
+            > .cancel,
+            > .confirm,
+            > .rotate,
+            > .variant,
+            > .multiplace {
+                position: static;
+                width: $mobileCell;
+                height: $mobileCell;
+                border-radius: 0.8rem;
+                box-shadow: 0 0.15rem 0.35rem rgba(0, 0, 0, 0.25);
+            }
+
+            // DOM order (see mobile_controls.js) is cancel/confirm/rotate/
+            // variant/multiplace, cancel first for the belt-mode panel's
+            // top-right-corner convention - reordered here to the requested
+            // confirm/rotate/variant/copy/cancel reading order instead of
+            // touching the DOM itself.
+            > .confirm {
+                order: 1;
+            }
+            > .rotate {
+                order: 2;
+            }
+            > .variant {
+                order: 3;
+            }
+            > .multiplace {
+                order: 4;
+            }
+            > .cancel {
+                order: 5;
+            }
+
+            // Both default to display:none outside blueprintMode (see their
+            // own rules above) - re-enabled here. .confirm always shows,
+            // .variant only when there's actually more than one variant to
+            // switch between (same &.hasVariants this panel already tracked
+            // for the old swipe hint).
+            > .confirm {
+                display: inline-flex;
+            }
+
+            > .variant {
+                display: none;
+            }
+            &.hasVariants > .variant {
+                display: inline-flex;
+            }
+        }
     }
 }

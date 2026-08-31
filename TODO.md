@@ -733,13 +733,24 @@ logs.
         Known gap (documented as a `ponytail:` comment in the file): placing a
         building on top of a replaceable one only records the new placement,
         not the one it silently replaced.
-      - [ ] **2c-3 — Building placement mode rewrite (item 1).** Replace mobile's
-        tap-immediately-places flow with a blueprint that follows the finger
-        (desktop-style); new icon row (confirm / rotate / variant-swap w/ count
-        badge / multiplace / cancel) in the project's visual style. Belt keeps its
-        current drag-immediately-places behavior unchanged, icon row shrinks to
-        redo + cancel only. Biggest single sub-chunk — rewrites
-        `mobile_controls.js`'s `onMouseDown`/`onMouseMove`/`onMouseUp`.
+      - [x] **2c-3 — Building placement mode rewrite (item 1), non-belt part
+        done 2026-08-31.** Non-belt buildings now use a blueprint that
+        follows the finger (mirrors desktop's mouse-hover ghost preview,
+        including the same `computeOptimalDirectionAndRotationVariantAtTile`
+        call so the preview's rotation matches what confirming will actually
+        place, and a green/red-ish alpha tint for can/can't-place). New icon
+        row (confirm / rotate / variant-swap w/ count badge / copy / cancel,
+        all newly hand-drawn in the project's style except rotate/copy which
+        already existed) replaces the old static side-panel entirely for
+        these buildings - see the `blueprintMode` class toggle in
+        `mobile_controls.js`/`.scss`. **Belt is deliberately untouched** -
+        still today's drag-immediately-places flow, old panel and all - the
+        user asked to defer belt's icon-row question (which 2 of the 5
+        icons apply to it) until after 2c-4 clarifies the belt behavior
+        further. Verified live via CDP mobile emulation: drag-to-reposition,
+        confirm at the dragged tile, rotate, cancel, undo of a
+        blueprint-mode placement, and belt's drag-to-lay + panel confirmed
+        pixel-identical to before.
       - [ ] **2c-4 — Continuous belt placement across taps + across zoom (item 8).**
         Builds on 2c-3: each tap after the first extends the belt from the last
         built tile, surviving a zoom change mid-build.

@@ -24,16 +24,20 @@ const SWIPE_SLIDE_PX = 120;
  */
 
 /**
- * Touch controls for building placement. Buildings here are free (the point is
- * efficient layout, not cost), so there's no reason to stage a plan for later
- * confirmation - everything builds immediately, same as desktop. What's
- * different from desktop is the dragging: only belts support laying a path by
- * holding and dragging (previewed live as a semi-transparent copy of the real
- * sprite before it's committed on release); every other building is placed one
- * tile at a time by a plain tap, using whatever direction the preview sprite is
- * currently showing (the rotate button itself is just a generic action icon,
- * not a live direction indicator). A plain move without holding first still
- * pans the map.
+ * Touch controls for building placement.
+ *
+ * Belts are unchanged from the original mobile design: holding and dragging
+ * lays a path, previewed live as a semi-transparent copy of the real sprite,
+ * committed all at once on release (see beginDrag/placePath). A plain tap
+ * places a single tile immediately.
+ *
+ * Every other building instead uses a "blueprint" that follows the finger,
+ * mirroring desktop's mouse-hover ghost preview - see onMouseDown/onMouseMove
+ * below and drawBlueprintGhost. Touching the map (tap or drag) moves the
+ * blueprint to/with the finger; nothing is actually built until the confirm
+ * button is tapped ("blueprint mode" - the buildingPreview panel's layout
+ * switches entirely between the two, see the "blueprintMode" class toggled in
+ * onPlacementBuildingChanged).
  */
 export class HUDMobileControls extends BaseHUDPart {
     createElements(parent) {
@@ -58,15 +62,28 @@ export class HUDMobileControls extends BaseHUDPart {
         this.trackClicks(this.redoButton, this.onRedoClicked);
 
         // Active state: preview of the selected building plus its controls,
-        // styled like the buildings toolbar.
+        // styled like the buildings toolbar. Two very different layouts share
+        // this same element/button set, toggled by the "blueprintMode" class
+        // (see onPlacementBuildingChanged): belts keep the original panel (a
+        // static sprite preview box, buttons pinned to its corners), while
+        // every other building gets a flat row of square icons instead - the
+        // sprite itself is drawn on the map (see drawBlueprintGhost) as a
+        // blueprint that follows the finger, not in a side panel.
         this.previewPanel = makeDiv(this.element, null, ["buildingPreview"]);
 
-        // Top-right corner of the panel, like a dialog's close button - not
-        // grouped with rotate/copy below.
+        // Top-right corner of the panel (belt mode) / first-ish in the row
+        // (blueprint mode), like a dialog's close button - not grouped with
+        // rotate/copy below.
         this.cancelButton = document.createElement("button");
         this.cancelButton.classList.add("cancel");
         this.previewPanel.appendChild(this.cancelButton);
         this.trackClicks(this.cancelButton, this.onCancelClicked);
+
+        // Blueprint mode only: places the blueprint at its current tile.
+        this.confirmButton = document.createElement("button");
+        this.confirmButton.classList.add("confirm");
+        this.previewPanel.appendChild(this.confirmButton);
+        this.trackClicks(this.confirmButton, this.onConfirmClicked);
 
         this.swipeHint = makeDiv(
             this.previewPanel,
@@ -78,15 +95,27 @@ export class HUDMobileControls extends BaseHUDPart {
         // The actual building sprite (not the flat toolbar icon) - sized per its
         // real tile footprint via data-tile-w/h, same convention
         // HUDBuildingPlacer.rerenderVariants uses for its (desktop) variant icons.
+        // Belt mode only - blueprint mode draws the sprite on the map instead.
         this.spriteWrap = makeDiv(this.previewPanel, null, ["spriteWrap"]);
         this.previewSprite = makeDiv(this.spriteWrap, null, ["sprite"]);
 
-        // Bottom-left/right corners of the panel, same overhang treatment as
-        // .cancel above - not a centered row any more.
+        // Bottom-left/right corners of the panel (belt mode) / row items
+        // (blueprint mode), same overhang treatment as .cancel above.
         this.rotateButton = document.createElement("button");
         this.rotateButton.classList.add("rotate");
         this.previewPanel.appendChild(this.rotateButton);
         this.trackClicks(this.rotateButton, this.onRotateClicked);
+
+        // Blueprint mode only: cycles variants (replaces belt mode's swipe
+        // gesture on the sprite, which doesn't exist any more here since the
+        // sprite itself isn't in this panel) - the badge shows how many
+        // variants there are, same count that used to just enable the swipe
+        // hint text.
+        this.variantButton = document.createElement("button");
+        this.variantButton.classList.add("variant");
+        this.variantBadge = makeDiv(this.variantButton, null, ["badge"]);
+        this.previewPanel.appendChild(this.variantButton);
+        this.trackClicks(this.variantButton, this.onVariantClicked);
 
         this.multiplaceButton = document.createElement("button");
         this.multiplaceButton.classList.add("multiplace");
@@ -109,6 +138,13 @@ export class HUDMobileControls extends BaseHUDPart {
         this.dragPath = [];
         /** @type {Array<PathEntry>} */
         this.dragPreviewEntries = [];
+
+        // Blueprint mode (non-belt buildings): the tile the ghost preview is
+        // currently resting at, moved by touch on the map, placed only via
+        // the explicit confirm button - see onMouseDown/onMouseMove below.
+        /** @type {Vector} */
+        this.blueprintTile = null;
+        this.draggingBlueprint = false;
 
         // "pending" state: finger is down but we haven't decided yet whether this is
         // a tap, a pan, or the start of a held drag.
@@ -142,6 +178,7 @@ export class HUDMobileControls extends BaseHUDPart {
                 this.dragPath = [];
                 this.dragPreviewEntries = [];
                 this.panning = false;
+                this.draggingBlueprint = false;
             }
         };
         this.root.canvas.addEventListener("touchstart", this.cancelGestureOnSecondTouch);
@@ -187,13 +224,27 @@ export class HUDMobileControls extends BaseHUDPart {
                 "mobileVisible",
                 this.root.app.settings.getAllSettings().alwaysShowBuildingInfo
             );
+
+            const isBlueprintMode = !this.isBeltSelected;
+            this.previewPanel.classList.toggle("blueprintMode", isBlueprintMode);
+            if (isBlueprintMode) {
+                // Appears in the middle of the current view, not under a
+                // finger - there's no touch on screen yet at selection time
+                // (the building was just tapped in the toolbar, off-map).
+                this.blueprintTile = this.root.camera.center.toTileSpace();
+            } else {
+                this.blueprintTile = null;
+            }
         } else {
             // Nothing left to show info about.
             this.placementHintsElement.classList.remove("mobileVisible");
+            this.previewPanel.classList.remove("blueprintMode");
+            this.blueprintTile = null;
         }
         this.dragPreviewEntries = [];
         this.dragPath = [];
         this.dragging = false;
+        this.draggingBlueprint = false;
         this.clearPendingHold();
         this.panning = false;
     }
@@ -237,6 +288,22 @@ export class HUDMobileControls extends BaseHUDPart {
         this.placerLogic.currentMetaBuilding.set(null);
     }
 
+    /**
+     * Blueprint mode only: places the blueprint at its current tile - same
+     * placeSingle() the old tap-to-place flow used, so multiplace-mode
+     * reselection and the placement sound work identically.
+     */
+    onConfirmClicked() {
+        if (!this.blueprintTile) {
+            return;
+        }
+        this.placeSingle(this.blueprintTile, this.placerLogic.currentBaseRotation);
+    }
+
+    onVariantClicked() {
+        this.placerLogic.cycleVariants(1);
+    }
+
     onUndoClicked() {
         if (this.root.actionHistory.canUndo) {
             this.root.actionHistory.undo();
@@ -272,7 +339,9 @@ export class HUDMobileControls extends BaseHUDPart {
         this.previewSprite.setAttribute("data-tile-h", String(dimensions.y));
         this.previewSprite.innerHTML = sprite.getAsHTML(iconSize * dimensions.x, iconSize * dimensions.y);
 
-        this.previewPanel.classList.toggle("hasVariants", metaBuilding.getAvailableVariants(this.root).length > 1);
+        const variantCount = metaBuilding.getAvailableVariants(this.root).length;
+        this.previewPanel.classList.toggle("hasVariants", variantCount > 1);
+        this.variantBadge.innerText = String(variantCount);
 
         this.swipeStartX = null;
         this.swipeOffset = 0;
@@ -607,19 +676,24 @@ export class HUDMobileControls extends BaseHUDPart {
             return;
         }
 
-        // Always intercept from here on - HUDBuildingPlacerLogic must never place
-        // immediately on its own, we decide in onMouseUp whether this was a tap or a
-        // completed drag instead.
+        if (!this.isBeltSelected) {
+            // Blueprint mode: every touch on the map - tap or drag - moves the
+            // blueprint to/with the finger. Placement itself only happens via
+            // the explicit confirm button, never on release.
+            this.draggingBlueprint = true;
+            this.blueprintTile = this.root.camera.screenToWorld(pos).toTileSpace();
+            return STOP_PROPAGATION;
+        }
+
+        // Belt: unchanged from before - always intercept from here on,
+        // HUDBuildingPlacerLogic must never place immediately on its own, we
+        // decide in onMouseUp whether this was a tap or a completed drag.
         this.clearPendingHold();
         this.pendingPos = pos;
         this.pendingTile = this.root.camera.screenToWorld(pos).toTileSpace();
         this.lastPanPos = pos;
         this.panning = false;
-        if (this.isBeltSelected) {
-            // Only belts support laying a path by holding+dragging - other buildings
-            // are always placed one tile at a time by a plain tap.
-            this.holdTimer = setTimeout(() => this.beginDrag(), LONG_PRESS_MS);
-        }
+        this.holdTimer = setTimeout(() => this.beginDrag(), LONG_PRESS_MS);
         return STOP_PROPAGATION;
     }
 
@@ -627,6 +701,11 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {Vector} pos
      */
     onMouseMove(pos) {
+        if (this.draggingBlueprint) {
+            this.blueprintTile = this.root.camera.screenToWorld(pos).toTileSpace();
+            return STOP_PROPAGATION;
+        }
+
         if (this.dragging) {
             const tile = this.root.camera.screenToWorld(pos).toTileSpace();
             const lastTile = this.dragPath[this.dragPath.length - 1];
@@ -664,6 +743,11 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     onMouseUp() {
+        if (this.draggingBlueprint) {
+            this.draggingBlueprint = false;
+            return;
+        }
+
         if (this.dragging) {
             this.dragging = false;
             if (this.dragPath.length <= 1) {
@@ -715,10 +799,52 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
+     * Draws the blueprint-mode ghost preview at its current tile, tinted by
+     * whether it could actually be placed there right now - mirrors
+     * HUDBuildingPlacer.drawRegularPlacement's desktop ghost (same
+     * computeOptimalDirectionAndRotationVariantAtTile call, so the preview's
+     * rotation matches what confirming will actually place) without the
+     * bounding-box outline/ejector-arrow polish, which isn't needed at this
+     * icon-sized scale.
+     * @param {import("../../../core/draw_parameters").DrawParameters} parameters
+     */
+    drawBlueprintGhost(parameters) {
+        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
+        if (!metaBuilding) {
+            return;
+        }
+        const variant = this.placerLogic.currentVariant.get();
+        const { rotation, rotationVariant } = metaBuilding.computeOptimalDirectionAndRotationVariantAtTile({
+            root: this.root,
+            tile: this.blueprintTile,
+            rotation: this.placerLogic.currentBaseRotation,
+            variant,
+            layer: metaBuilding.getLayer(),
+        });
+
+        const staticComp = this.placerLogic.fakeEntity.components.StaticMapEntity;
+        staticComp.origin = this.blueprintTile;
+        staticComp.rotation = rotation;
+        metaBuilding.updateVariants(this.placerLogic.fakeEntity, rotationVariant, variant);
+
+        const canBuild = this.root.logic.checkCanPlaceEntity(this.placerLogic.fakeEntity, {});
+        parameters.context.globalAlpha = canBuild ? 0.85 : 0.35;
+        staticComp.drawSpriteOnBoundsClipped(
+            parameters,
+            metaBuilding.getBlueprintSprite(rotationVariant, variant)
+        );
+        parameters.context.globalAlpha = 1;
+    }
+
+    /**
      * @see BaseHUDPart.draw
      * @param {import("../../../core/draw_parameters").DrawParameters} parameters
      */
     draw(parameters) {
+        if (this.blueprintTile && !this.isBeltSelected) {
+            this.drawBlueprintGhost(parameters);
+        }
+
         if (this.dragPreviewEntries.length === 0) {
             return;
         }
