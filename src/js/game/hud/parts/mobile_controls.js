@@ -578,8 +578,11 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {Vector} tile
      * @param {number} incomingDirection Compass degrees (0/90/180/270) our
      * own path travels through this tile.
+     * @param {import("../../belt_path").BeltPath=} exemptPath A belt
+     * already assigned to this connected chain is the one being
+     * grabbed/redirected, not a foreign crossing - see resolveBeltPath.
      */
-    isTileBlockedForBelt(tile, incomingDirection) {
+    isTileBlockedForBelt(tile, incomingDirection, exemptPath) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         if (!contents) {
             return false;
@@ -596,6 +599,9 @@ export class HUDMobileControls extends BaseHUDPart {
         // thing exists) - nothing belt-specific to worry about, same as
         // before this feature.
         if (!contents.components.Belt) {
+            return false;
+        }
+        if (exemptPath && contents.components.Belt.assignedPath === exemptPath) {
             return false;
         }
         return staticComp.rotation !== incomingDirection;
@@ -663,15 +669,25 @@ export class HUDMobileControls extends BaseHUDPart {
                 : this.directionBetween(path[idx - 1], path[idx])
         );
 
-        // path[0] is often lastBeltTile - the belt's own current endpoint
-        // from a previous placement, being continued/re-oriented by this
-        // very path (see placeBeltTapAt). That's always fine even if it
-        // doesn't yet face the same way this path needs - it's not a
-        // foreign belt being crossed, it's this belt being extended. Only
-        // check it for crossing-blocking when it's some *other* tile (a drag
-        // starting fresh on an existing, unrelated belt should still tunnel
-        // under it like any other crossing).
-        const skipFirstTileCrossingCheck = !!this.lastBeltTile && path[0].equals(this.lastBeltTile);
+        // path[0] is the tile the finger actually pressed down on - if
+        // there's already a belt there (lastBeltTile's own endpoint, or any
+        // other belt the drag happened to start on), that's never a foreign
+        // crossing to tunnel under, it's the belt being grabbed and
+        // continued/redirected from that exact spot, even facing a
+        // completely different way than it did before (belts are always
+        // replaceable - this is what lets a long drag off an existing belt
+        // double as "change its direction"). Its whole connected chain
+        // (BeltPath, tracked by the belt system's own assignedPath) gets the
+        // same exemption for every tile the path happens to travel over
+        // later on too - not just tile 0 - so dragging back over the entire
+        // stretch of belt just grabbed (e.g. reversing it outright) doesn't
+        // treat its own later tiles as a foreign crossing needing a tunnel.
+        // A belt entity genuinely unrelated to this one (a different,
+        // possibly parallel or crossing chain) still isn't exempt.
+        const startTileContent = this.root.map.getLayerContentXY(path[0].x, path[0].y, "regular");
+        const startBelt = startTileContent && startTileContent.components.Belt;
+        const skipFirstTileCrossingCheck = !!startBelt;
+        const exemptPath = startBelt ? startBelt.assignedPath : null;
 
         const resolvedEntries = [];
         let runStart = 0;
@@ -691,14 +707,17 @@ export class HUDMobileControls extends BaseHUDPart {
 
         let i = skipFirstTileCrossingCheck ? 1 : 0;
         while (i < path.length) {
-            if (!this.isTileBlockedForBelt(path[i], directions[i])) {
+            if (!this.isTileBlockedForBelt(path[i], directions[i], exemptPath)) {
                 i++;
                 continue;
             }
 
             // Found the start of a blocked run - find where it ends.
             let j = i;
-            while (j + 1 < path.length && this.isTileBlockedForBelt(path[j + 1], directions[j + 1])) {
+            while (
+                j + 1 < path.length &&
+                this.isTileBlockedForBelt(path[j + 1], directions[j + 1], exemptPath)
+            ) {
                 j++;
             }
 
@@ -853,7 +872,6 @@ export class HUDMobileControls extends BaseHUDPart {
             return;
         }
 
-        const savedRotation = this.placerLogic.currentBaseRotation;
         const beltTileBefore = this.lastBeltTile;
         let anythingPlaced = false;
 
@@ -865,47 +883,55 @@ export class HUDMobileControls extends BaseHUDPart {
         // needed here.
         this.root.actionHistory.beginTransaction();
         this.root.logic.performBulkOperation(() => {
-            for (let i = 0; i < entries.length; ++i) {
-                // Belts always "stay in placement mode" so this shouldn't normally be
-                // needed, but keep it as a safety net against a null-deref.
-                if (!this.placerLogic.currentMetaBuilding.get()) {
-                    this.placerLogic.currentMetaBuilding.set(metaBuilding);
-                }
-                const entry = entries[i];
-                if (entry.isTunnel) {
-                    // Item 9 (resolveBeltPath): bypasses
-                    // tryPlaceCurrentBuildingAt's auto rotation-variant search
-                    // entirely - we already know exactly which piece
-                    // (sender/receiver) and tier this needs to be, and the
-                    // search (looking for an *existing* matching tunnel
-                    // nearby) isn't the right tool for placing a brand new
-                    // pair in one go.
+            // systems/belt.js's updateSurroundingBeltPlacement listens for
+            // entityAdded and re-derives each *neighbour's* rotation from
+            // real map state (computeOptimalDirectionAndRotationVariantAtTile
+            // again) right after every single placement - normally exactly
+            // what makes an existing belt curve to meet a new one, but fatal
+            // here: placing this path's *second* tile immediately re-examines
+            // and silently reverts the first tile's rotation back to match
+            // its still-unchanged old neighbours, since at that point in the
+            // loop the rest of the new path doesn't exist yet either. It
+            // already no-ops entirely under performImmutableOperation (see
+            // its own root.immutableOperationRunning check) - every tile of
+            // this path already has its final, whole-path-aware rotation
+            // from curvedEntry, so there's nothing for it to correct here.
+            this.root.logic.performImmutableOperation(() => {
+                for (let i = 0; i < entries.length; ++i) {
+                    // Belts always "stay in placement mode" so this shouldn't normally be
+                    // needed, but keep it as a safety net against a null-deref.
+                    if (!this.placerLogic.currentMetaBuilding.get()) {
+                        this.placerLogic.currentMetaBuilding.set(metaBuilding);
+                    }
+                    const entry = entries[i];
+                    // Bypasses tryPlaceCurrentBuildingAt's own
+                    // rotation/rotationVariant auto-detection
+                    // (computeOptimalDirectionAndRotationVariantAtTile) and calls
+                    // GameLogic.tryPlaceBuilding directly - same reasoning as
+                    // the immutable-operation wrapper above, one level down:
+                    // we've already worked out this entry's rotation/curve from
+                    // the *whole* path (curvedEntry, or explicitly for a
+                    // tunnel), and the single-tile auto-detection re-deriving
+                    // one from real map neighbours instead can override it.
                     if (
                         this.root.logic.tryPlaceBuilding({
                             origin: entry.tile,
                             rotation: entry.rotation,
                             originalRotation: entry.rotation,
                             rotationVariant: entry.rotationVariant,
-                            variant: entry.tunnelVariant,
-                            building: this.tunnelMetaBuilding,
+                            variant: entry.isTunnel ? entry.tunnelVariant : this.placerLogic.currentVariant.get(),
+                            building: entry.isTunnel ? this.tunnelMetaBuilding : metaBuilding,
                         })
                     ) {
                         anythingPlaced = true;
                     }
-                } else {
-                    this.placerLogic.currentBaseRotation = entry.rotation;
-                    if (this.placerLogic.tryPlaceCurrentBuildingAt(entry.tile)) {
-                        anythingPlaced = true;
-                    }
                 }
-            }
+            });
         });
         this.root.actionHistory.endTransaction({
             beltTileBefore,
             beltTileAfter: entries[entries.length - 1].tile,
         });
-
-        this.placerLogic.currentBaseRotation = savedRotation;
 
         if (anythingPlaced) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());

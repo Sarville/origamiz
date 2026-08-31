@@ -879,6 +879,41 @@ logs.
         horizontal one, tapping 2 tiles past the vertical leg's start) now
         routes cleanly around and connects with a plain belt, no tunnels, no
         red flash - previously flashed red every time.
+
+        **Fourth follow-up, done 2026-08-31:** starting a tap/drag *on* an
+        already-built belt tile and heading a different way than that belt
+        already flowed always flashed red - `isTileBlockedForBelt` treated
+        the tile the finger pressed down on exactly like any other foreign
+        crossing. Two layers turned out to need fixing together:
+        (1) `resolveBeltPath` now computes `exemptPath` from whatever
+        `BeltPath` (the belt system's own connected-chain tracking,
+        `Belt.assignedPath`) the pressed tile's existing belt is part of, and
+        `isTileBlockedForBelt` never blocks on a tile whose belt shares that
+        `assignedPath` - not just the first tile any more, so grabbing a
+        straight run and dragging back over its own length (reversing it
+        outright) works too, not only branching off perpendicular to it.
+        (2) Even with the path resolving correctly, the actual placement
+        loop in `placePath` was calling `tryPlaceCurrentBuildingAt`, whose
+        own `computeOptimalDirectionAndRotationVariantAtTile` re-derives a
+        rotation from *real* map neighbours - for the path's first tile this
+        silently overrode our intended redirect back to match its old,
+        still-unchanged neighbours, and worse: `systems/belt.js`'s
+        `updateSurroundingBeltPlacement` (fired off `entityAdded` for every
+        subsequent tile placed) did the *same* re-derivation to the tiles
+        already placed earlier in the same path, undoing an initially-correct
+        redirect moments later. Fixed by having `placePath` call
+        `GameLogic.tryPlaceBuilding` directly for every entry (plain or
+        tunnel - previously only tunnels bypassed the auto-detection this
+        way) with the rotation/curve already resolved from the whole path,
+        wrapped in `performImmutableOperation` (which `updateSurroundingBeltPlacement`
+        already no-ops under) so no entity placed earlier in the same path
+        gets "corrected" by a later one. Verified live via CDP: dragging off
+        the middle of a straight belt to branch a T-junction downward keeps
+        the rest of that belt intact and connects the branch; dragging back
+        over an entire straight run reverses it end to end; a genuinely
+        foreign, unrelated belt crossing the path still gets bridged with a
+        tunnel exactly as before (assignedPath-based exemption doesn't touch
+        that case) - all three checked by entity state, not just screenshots.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
