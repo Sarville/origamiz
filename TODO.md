@@ -1243,6 +1243,46 @@ logs.
            straight tile around the bend) via `Belt.assignedPath.items`
            and `UndergroundBelt.pendingItems` - no stalls, no orphaned
            tiles, no duplicate placements, no console errors.
+
+        **Fifteenth follow-up, done 2026-08-31.** New edge case reported
+        with three screenshots: parallel belt runs close together (a loop
+        crossing near itself). Tapping into a cell enclosed by the loop was
+        rejected outright; dragging to the same cell instead just crossed
+        the loop's own far wall with no tunnel at all, silently overwriting
+        it. Root cause, found by directly probing `isTileBlockedForBelt`
+        over CDP: `exemptPaths` exempted a belt tile from blocking purely by
+        `assignedPath` membership, with no distance check at all - so once a
+        drag's start or end merely happened to sit *anywhere* on a large
+        loop, the *entire* loop became fair game to walk straight across,
+        no matter how far that crossing was from either anchor. Confirmed
+        live: a tile on the far side of a loop, nowhere near either anchor,
+        reported `blocked: false` purely by chain membership.
+
+        Replaced `exemptPaths` with a `touchesAnchor` check (tile equal to
+        or orthogonally adjacent to `from`/`to`) - this keeps the smooth
+        curve-in/curve-out merge behavior right at the anchor (still
+        verified: an anchor-adjacent tile with a mismatched direction stays
+        unblocked) while a same-chain tile anywhere else is now treated
+        exactly like any other foreign belt - blocked, tunnelled under if
+        geometrically possible. Verified live: the same far-loop-tile probe
+        now reports blocked with a mismatched direction; a drag crossing a
+        loop's own far wall now plans and places a proper sender/receiver
+        pair around it, leaving the loop's original tiles completely
+        untouched (checked the whole loop's tiles post-placement, no
+        duplicates, no console errors).
+
+        Tap-continuation's rejection (screenshot 1, tapping directly into a
+        tightly-enclosed pocket) is unrelated to this bug and left as-is:
+        `isOwnChain` already refuses to tunnel *under* the path's own chain
+        at all (by design, to avoid self-referential tunnel geometry), so a
+        pocket only reachable by crossing itself with no valid bent detour
+        within bounds correctly reports "no route" rather than building
+        something broken - the same class of known limitation already
+        flagged in the twelfth follow-up (reshaping into an existing chain
+        doesn't cascade through an arbitrary remainder of it). The
+        screenshot-3 "build a bend to make room" solution is a manual
+        workaround, not something this round's fix set out to make the
+        search discover on its own.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

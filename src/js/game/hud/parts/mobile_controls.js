@@ -48,8 +48,8 @@ const LONG_PRESS_MS = 350;
  *
  * Auto-tunnel planning: any belt path (a drag or a tap-continuation) that
  * crosses an existing, non-belt-replaceable building - or a belt that isn't
- * part of the chain the path itself starts or ends on, see findBeltPath's
- * exemptPaths - is auto-bridged with a tunnel pair instead of just leaving a
+ * touching the tile the path itself starts or ends on, see findBeltPath's
+ * anchorTiles - is auto-bridged with a tunnel pair instead of just leaving a
  * gap there, if an unlocked tunnel tier's range covers it - see
  * findBeltPath. A belt the path starts *or* ends on (dragging/tapping
  * from one belt to another) is never tunnelled, just reshaped to connect the
@@ -595,23 +595,29 @@ export class HUDMobileControls extends BaseHUDPart {
      * rebuilt facing the new path's own direction, the same way a single
      * tap already overwrites whatever belt was underneath it - when it's
      * either of the path's own two ends (the tile the finger pressed down
-     * on, or the tile it's currently released/tapped at) or part of that
-     * same connected chain (`anchorTiles`/`exemptPaths`, computed once in
-     * findBeltPath from path[0]/path[last] - this is what lets a drag
-     * starting *or* ending on an existing belt reshape/merge/reverse it, and
-     * what lets tapping one belt's tile to another's connect the two). A
-     * *different* belt encountered strictly in between - not the one being
-     * dragged from, not the one being dragged to - still counts as a
-     * foreign crossing needing a tunnel, unless it already happens to face
-     * the exact direction this path needs there anyway (redundant,
-     * harmless to overwrite).
+     * on, or the tile it's currently released/tapped at) or *directly
+     * touching* one of those (`anchorTiles`, computed once in findBeltPath
+     * from path[0]/path[last]) - this is what lets a drag starting *or*
+     * ending on an existing belt reshape/merge/reverse it right there, and
+     * what lets tapping one belt's tile to another's connect the two).
+     * Belonging to that same chain further away doesn't extend the
+     * exemption - used to exempt a belt's *whole* chain by path membership
+     * regardless of distance, which let a drag whose start or end merely
+     * happened to sit somewhere on a loop walk straight across a completely
+     * different part of that same loop with no tunnel at all (found live:
+     * dragging into a point enclosed by a belt's own nested loop crossed
+     * the loop's far side in a single step, silently overwriting it, rather
+     * than tunnelling under it like it would any other foreign belt). A
+     * belt encountered strictly in between - not touching either end -
+     * still counts as a foreign crossing needing a tunnel, unless it
+     * already happens to face the exact direction this path needs there
+     * anyway (redundant, harmless to overwrite).
      * @param {Vector} tile
      * @param {number} incomingDirection Compass degrees (0/90/180/270) our
      * own path travels through this tile.
-     * @param {Array<import("../../belt_path").BeltPath>} exemptPaths
      * @param {Array<Vector>} anchorTiles
      */
-    isTileBlockedForBelt(tile, incomingDirection, exemptPaths, anchorTiles) {
+    isTileBlockedForBelt(tile, incomingDirection, anchorTiles) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         if (!contents) {
             return false;
@@ -627,11 +633,10 @@ export class HUDMobileControls extends BaseHUDPart {
         if (!contents.components.Belt) {
             return false;
         }
-        if (anchorTiles.some(anchor => anchor && anchor.equals(tile))) {
-            return false;
-        }
-        const assignedPath = contents.components.Belt.assignedPath;
-        if (assignedPath && exemptPaths.includes(assignedPath)) {
+        const touchesAnchor = anchorTiles.some(
+            anchor => anchor && Math.abs(anchor.x - tile.x) + Math.abs(anchor.y - tile.y) <= 1
+        );
+        if (touchesAnchor) {
             return false;
         }
         return staticComp.rotation !== incomingDirection;
@@ -713,9 +718,6 @@ export class HUDMobileControls extends BaseHUDPart {
         const startTunnel = this.tunnelAt(from);
         const endBelt = this.beltAt(to);
         const anchorTiles = allowReshape ? [from, to] : [from];
-        const exemptPaths = allowReshape
-            ? [startBelt && startBelt.assignedPath, endBelt && endBelt.assignedPath].filter(Boolean)
-            : [];
         const isOwnChain = tile => {
             if (allowReshape || !startBelt || !startBelt.assignedPath) {
                 return false;
@@ -731,7 +733,7 @@ export class HUDMobileControls extends BaseHUDPart {
         // auto-planned exit landing on top of an unrelated, already-built
         // belt, silently replacing it).
         const isStrictlyClear = tile => !this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
-        const isBlocked = (tile, dir) => this.isTileBlockedForBelt(tile, dir, exemptPaths, anchorTiles);
+        const isBlocked = (tile, dir) => this.isTileBlockedForBelt(tile, dir, anchorTiles);
 
         const forcedStartDirection =
             startTunnel && startTunnel.mode === enumUndergroundBeltMode.receiver
