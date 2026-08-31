@@ -7,7 +7,7 @@ import { GameRoot } from "./root";
 const MAX_HISTORY_LENGTH = 30;
 
 /**
- * @typedef {{ undo: function, redo: function }} HistoryCommand
+ * @typedef {{ undo: function, redo: function, meta?: any }} HistoryCommand
  */
 
 /**
@@ -96,8 +96,17 @@ export class ActionHistory {
     /**
      * Closes the current transaction and pushes it as a single undo step, if
      * anything actually happened during it.
+     *
+     * @param {any=} meta Opaque, caller-defined data stashed on the resulting
+     * command and handed back by undo()/redo() - lets a caller recover
+     * transient UI state a command affects beyond the map itself. E.g.
+     * mobile_controls.js's belt-continuation ("lay the next tap's path from
+     * wherever the belt last ended") needs to roll its own lastBeltTile back
+     * to wherever it was *before* this placement on undo, and forward to
+     * this placement's own end tile on redo - ActionHistory doesn't know or
+     * care what a "belt" is, it just carries whatever the caller attaches.
      */
-    endTransaction() {
+    endTransaction(meta) {
         const tx = this.transaction;
         this.transaction = null;
         if (!tx || tx.operations.length === 0) {
@@ -125,6 +134,7 @@ export class ActionHistory {
                     }
                 }
             },
+            meta,
         });
     }
 
@@ -140,22 +150,32 @@ export class ActionHistory {
         this.redoStack = [];
     }
 
+    /**
+     * @returns {any} The undone command's meta (see endTransaction), or null
+     * if there was nothing to undo.
+     */
     undo() {
         if (!this.canUndo) {
-            return;
+            return null;
         }
         const command = this.undoStack.pop();
         command.undo();
         this.redoStack.push(command);
+        return command.meta;
     }
 
+    /**
+     * @returns {any} The redone command's meta (see endTransaction), or null
+     * if there was nothing to redo.
+     */
     redo() {
         if (!this.canRedo) {
-            return;
+            return null;
         }
         const command = this.redoStack.pop();
         command.redo();
         this.undoStack.push(command);
+        return command.meta;
     }
 
     /**

@@ -276,23 +276,26 @@ export class HUDMobileControls extends BaseHUDPart {
 
     onUndoClicked() {
         if (this.root.actionHistory.canUndo) {
-            this.root.actionHistory.undo();
-            // The tile lastBeltTile points at may have just been removed (or
-            // changed identity - it's a fresh clone with a new uid) by the
-            // undo itself. Rather than trying to figure out where the belt
-            // now actually ends, just forget it - the next tap places a
-            // single tile instead of wrongly continuing from a piece that
-            // may no longer exist.
-            this.lastBeltTile = null;
+            // If the undone command was a belt placement, its meta carries
+            // where the belt ended *before* that placement - roll
+            // lastBeltTile back to there so the next tap resumes from that
+            // earlier point instead of either the (now undone) tile or
+            // forgetting the belt entirely. Anything else (a non-belt
+            // placement, a deletion) means lastBeltTile was already null
+            // going in - see the class doc's reasoning in
+            // onPlacementBuildingChanged - so null is the correct fallback.
+            const meta = this.root.actionHistory.undo();
+            this.lastBeltTile = meta ? meta.beltTileBefore : null;
         }
     }
 
     onRedoClicked() {
         if (this.root.actionHistory.canRedo) {
-            this.root.actionHistory.redo();
-            // Same reasoning as onUndoClicked - don't continue from a tile
-            // whose state redo may have just changed out from under us.
-            this.lastBeltTile = null;
+            // Mirror image of onUndoClicked - a redone belt placement's meta
+            // carries the tile it ended at, so continuation resumes exactly
+            // where undo had rolled it back from.
+            const meta = this.root.actionHistory.redo();
+            this.lastBeltTile = meta ? meta.beltTileAfter : null;
         }
     }
 
@@ -430,10 +433,15 @@ export class HUDMobileControls extends BaseHUDPart {
         // One transaction for this whole placement, including any side
         // effects other systems trigger off it (e.g. underground_belt.js
         // silently removing obsolete belts on a tunnel pair) - see
-        // ActionHistory's class doc.
+        // ActionHistory's class doc. Belt continuity (lastBeltTile) rides
+        // along as transaction meta so undo/redo can roll it back/forward
+        // in step with the map itself, see onUndoClicked/onRedoClicked.
+        const beltTileBefore = this.lastBeltTile;
         this.root.actionHistory.beginTransaction();
         const placed = this.placerLogic.tryPlaceCurrentBuildingAt(tile);
-        this.root.actionHistory.endTransaction();
+        this.root.actionHistory.endTransaction(
+            this.isBeltSelected ? { beltTileBefore, beltTileAfter: tile } : null
+        );
         if (placed) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
             // Most buildings deselect themselves after one placement (unless they
@@ -483,11 +491,15 @@ export class HUDMobileControls extends BaseHUDPart {
         }
 
         const savedRotation = this.placerLogic.currentBaseRotation;
+        const beltTileBefore = this.lastBeltTile;
         let anythingPlaced = false;
 
         // One transaction for the whole path (and any side effects it
         // triggers), not one per tile - so a whole dragged/tapped-out belt
-        // undoes in a single step. See ActionHistory's class doc.
+        // undoes in a single step. See ActionHistory's class doc. Belt
+        // continuity (lastBeltTile) rides along as transaction meta, same as
+        // placeSingle - placePath is belt-only, so no isBeltSelected guard
+        // needed here.
         this.root.actionHistory.beginTransaction();
         this.root.logic.performBulkOperation(() => {
             for (let i = 0; i < entries.length; ++i) {
@@ -503,7 +515,10 @@ export class HUDMobileControls extends BaseHUDPart {
                 }
             }
         });
-        this.root.actionHistory.endTransaction();
+        this.root.actionHistory.endTransaction({
+            beltTileBefore,
+            beltTileAfter: entries[entries.length - 1].tile,
+        });
 
         this.placerLogic.currentBaseRotation = savedRotation;
 
