@@ -803,14 +803,17 @@ logs.
         correct orientation); undo/redo removes/restores both tunnel pieces
         together as one transaction (entity-count-verified, not just
         visually).
-        **Desktop (Ctrl/Shift-drag) not implemented yet** - desktop's belt
-        drag in `building_placer_logic.js` is a real-time
+        **Desktop not implemented yet at the time** - desktop's belt drag in
+        `building_placer_logic.js` was a real-time
         immediate-Bresenham-placement loop (places tile-by-tile as the mouse
         moves, no natural "resolve the whole path, commit on release" point
         to hook this into), architecturally different enough from mobile's
-        preview-then-commit model that it needs its own integration pass -
+        preview-then-commit model that it needed its own integration pass -
         deferred as a separate follow-up rather than risking a rushed retrofit
-        of desktop's placement loop in the same chunk.
+        of desktop's placement loop in the same chunk. **Done 2026-09-01,
+        see the seventeenth follow-up further down** - desktop's ordinary
+        (no modifier key) belt drag now gets the same auto-tunnel routing,
+        via a `BeltPathPlanner` shared with this file.
 
         **Follow-up polish, done 2026-08-31 (real-phone feedback):** three
         fixes reported after the user tried 2c-6 live on an Android phone.
@@ -1342,6 +1345,94 @@ logs.
         proximity detection during any placement, not endpoint resolution)
         from what this follow-up added and wasn't attempted here.
 
+        **Seventeenth follow-up, done 2026-09-01 - desktop belt drag gets
+        the same auto-tunnel/routing support.** Closed the oldest-standing
+        debt from 2c-6's original implementation: desktop's Ctrl-less belt
+        drag (`building_placer_logic.js`'s `onMouseMove`) was still the
+        original real-time immediate-Bresenham-placement loop shared by
+        every building, with no "resolve the whole path, commit on release"
+        point to hook `findBeltPath` into at all - dragging a belt across an
+        obstacle on desktop just left a gap, never a tunnel.
+
+        Extracted the entire auto-tunnel/routing engine out of
+        `mobile_controls.js` into a new standalone `BeltPathPlanner` class
+        (`hud/parts/belt_path_planner.js`) - `findBeltPath`/
+        `findBeltPathSearch`/`findBeltPathToward`/`placePath` and every
+        helper they use (`isTileBlockedForBelt`, `pickTunnelTier`,
+        `buildingAcceptorFeeds`/`buildingEjectorLaunch`, `curvedEntry`,
+        `beltTilesToEntries`, etc.), unchanged line-for-line except two
+        deliberate seams: (1) the search no longer reads mobile's own
+        `lastBeltTile`/`lastBeltIncomingDirection` (item 8's tap-continuation
+        state) directly off `this` - both are now optional
+        `continuationTile`/`continuationIncoming` parameters the caller
+        threads through, so the planner itself carries no assumption about
+        which HUD part is driving it (mobile passes its own continuation
+        state on every call via a thin `findBeltPathToward` wrapper it kept;
+        desktop, which has no continuation concept, always omits them).
+        (2) `placePath` no longer mutates a `lastBeltTile` field itself -
+        it's stateless, returns `{ placed, lastTile, lastIncoming }`, and
+        takes an optional `continuationBefore` purely to fill the undo/redo
+        transaction meta a caller with a continuation feature reads back
+        out; mobile's own `placePath` became a thin wrapper that forwards
+        its state in and writes the result back, desktop just calls the
+        planner directly and ignores the return value's continuation half.
+        `mobile_controls.js` shrank by about 800 lines with this extraction
+        and now only owns touch-gesture handling, the tap-continuation
+        feature, and rendering - re-verified live afterwards (see below)
+        that the refactor didn't change mobile's behavior at all.
+
+        `building_placer_logic.js` gained the desktop half: `beltDragStartTile`/
+        `beltDragPath`/`beltDragPreviewEntries`/`beltDragPreviewInvalid`
+        (mirrors mobile's drag state, minus anything tap-continuation-related)
+        and an `isBeltSelected` getter. `onMouseDown`'s existing immediate
+        placement of the anchor tile is unchanged (every building, belt
+        included, still places its first tile exactly as before) - only
+        `onMouseMove` branches: for a belt drag specifically, instead of the
+        Bresenham loop it now calls `beltPathPlanner.findBeltPathToward` from
+        the anchor tile to the current mouse tile every time the tile
+        changes (same live-preview approach as mobile's `onMouseMove`),
+        storing the result for the renderer instead of placing anything.
+        `onMouseUp` commits the previewed path via `beltPathPlanner.placePath`
+        (or flashes red via a new `flashInvalidBelt`, mirroring mobile's) -
+        exactly one transaction for the whole dragged belt, same as mobile,
+        a change from every other building's one-transaction-per-tile
+        default. Every other building's placement (including a belt's own
+        anchor tile, and a plain click with no drag) is completely
+        untouched. `building_placer.js` (desktop's rendering subclass)
+        gained the matching draw-side pieces ported from mobile:
+        `drawBeltDragPreview`/`drawRedTiles`/`drawInvalidBeltFlash`/
+        `drawPreviewEntry`/a `tunnelFakeEntity` getter, wired into `draw()`
+        ahead of the ordinary single-tile ghost (which still runs unchanged
+        whenever a belt drag isn't in progress, e.g. just hovering with belt
+        selected).
+
+        Verified live via CDP (real `Input.dispatchMouseEvent`s at actual
+        canvas coordinates, not synthetic in-page `dispatchEvent` calls, per
+        this project's own established standard): a desktop drag straight
+        across a real building (a trash can) correctly placed a plain
+        belt run up to it, a tunnel sender immediately before it, the trash
+        can itself completely untouched, a tunnel receiver immediately
+        after it, and a plain belt run continuing to the drag's end -
+        checked via `map.getLayerContentXY` component/rotation inspection
+        at every tile, not just a screenshot; zero console errors across the
+        whole run. Confirmed non-belt buildings (a dragged miner) still go
+        through the original untouched Bresenham path (deselects itself
+        after one placement exactly like before, since miners don't "stay in
+        placement mode" - unrelated to this change, just confirms the new
+        belt-only branch didn't leak into other buildings). Confirmed a
+        plain belt click with no drag still places a single tile immediately,
+        same as before. Confirmed the search's existing bounded-bend
+        behavior still applies unchanged on desktop too: dragging straight
+        across a wide single-row wall of obstacles (wider than any unlocked
+        tunnel tier's range) correctly bent *around* it instead of failing,
+        the same real-pathfinder behavior the eleventh follow-up shipped for
+        mobile - confirming this wasn't reimplemented, only rewired.
+        Re-verified mobile's own drag-across-an-obstacle case afterwards on
+        the refactored `BeltPathPlanner` (Android UA + real
+        `Input.dispatchTouchEvent`s, long-press-then-drag) and got the
+        identical sender/obstacle-untouched/receiver pattern as desktop,
+        confirming the extraction didn't change mobile's behavior either.
+
         **Item 9 (auto-tunnel/routing) outstanding debts as of 2026-08-31,
         consolidated from the follow-ups above so a future session can scan
         this in one place instead of re-reading all of them:**
@@ -1367,12 +1458,8 @@ logs.
           happens to end up adjacent to one won't bend into it on its own.
           Explicitly flagged live by the user as a separate, broader ask
           from endpoint-targeted routing. Not started. (16th follow-up.)
-        - Desktop's belt drag (`building_placer_logic.js`) still has no
-          auto-tunnel support at all - it's a real-time
-          immediate-Bresenham-placement loop with no "resolve the whole
-          path, commit on release" point to hook `findBeltPath` into, so it
-          needs its own integration pass. Not started. (2c-6's original
-          implementation note.)
+        - ~~Desktop's belt drag had no auto-tunnel support at all~~ - fixed
+          2026-09-01, see the seventeenth follow-up below.
         - Encountered but *not* a bug, worth remembering if a similar
           report comes back: a stacker (or anything else with
           `ItemProcessor.inputsPerCharge > 1`) won't visibly consume

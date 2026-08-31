@@ -14,6 +14,8 @@ import {
 } from "../../../core/vector";
 import { T } from "../../../translations";
 import { getCodeFromBuildingData } from "../../building_codes";
+import { StaticMapEntityComponent } from "../../components/static_map_entity";
+import { Entity } from "../../entity";
 import { KEYMAPPINGS } from "../../key_action_mapper";
 import { defaultBuildingVariant } from "../../meta_building";
 import { layers } from "../../root";
@@ -252,6 +254,13 @@ export class HUDBuildingPlacer extends HUDBuildingPlacerLogic {
         this.variantsAttach.update(!!this.currentMetaBuilding.get());
         const metaBuilding = this.currentMetaBuilding.get();
 
+        // Item 9: a completed-but-rejected belt drag (findBeltPath couldn't
+        // make it contiguous) blinks red for a moment instead of anything
+        // being placed - independent of whether a building is still selected.
+        if (this.invalidBeltFlash) {
+            this.drawInvalidBeltFlash(parameters);
+        }
+
         if (!metaBuilding) {
             return;
         }
@@ -259,6 +268,8 @@ export class HUDBuildingPlacer extends HUDBuildingPlacerLogic {
         // Draw direction lock
         if (this.isDirectionLockActive) {
             this.drawDirectionLock(parameters);
+        } else if (this.isBeltSelected && this.currentlyDragging && this.beltDragStartTile) {
+            this.drawBeltDragPreview(parameters);
         } else {
             this.drawRegularPlacement(parameters);
         }
@@ -266,6 +277,114 @@ export class HUDBuildingPlacer extends HUDBuildingPlacerLogic {
         if (metaBuilding.getShowWiresLayerPreview()) {
             this.drawLayerPeek(parameters);
         }
+    }
+
+    /**
+     * Item 9: live preview of the belt currently being dragged - either a
+     * steady red tint over the whole attempted path (findBeltPath couldn't
+     * make it contiguous) or a ghost of every entry it resolved to.
+     * @param {DrawParameters} parameters
+     */
+    drawBeltDragPreview(parameters) {
+        if (this.beltDragPreviewInvalid) {
+            this.drawRedTiles(parameters, this.beltDragPath, 0.4);
+            return;
+        }
+        if (this.beltDragPreviewEntries.length === 0) {
+            return;
+        }
+        parameters.context.globalAlpha = 0.6;
+        for (let i = 0; i < this.beltDragPreviewEntries.length; ++i) {
+            this.drawPreviewEntry(parameters, this.beltDragPreviewEntries[i]);
+        }
+        parameters.context.globalAlpha = 1;
+    }
+
+    /**
+     * Item 9 helper: flat red tint over a list of tiles - shared by the live
+     * invalid-drag preview and the post-release blink flash below.
+     * @param {DrawParameters} parameters
+     * @param {Array<Vector>} tiles
+     * @param {number} alpha
+     */
+    drawRedTiles(parameters, tiles, alpha) {
+        parameters.context.fillStyle = `rgba(230, 50, 50, ${alpha})`;
+        for (let i = 0; i < tiles.length; ++i) {
+            const tile = tiles[i];
+            parameters.context.fillRect(
+                tile.x * globalConfig.tileSize,
+                tile.y * globalConfig.tileSize,
+                globalConfig.tileSize,
+                globalConfig.tileSize
+            );
+        }
+    }
+
+    /**
+     * Item 9: a couple of quick alpha pulses over invalidBeltFlash.path,
+     * closer to an actual "blink" than one flat flash - see
+     * HUDBuildingPlacerLogic.flashInvalidBelt.
+     * @param {DrawParameters} parameters
+     */
+    drawInvalidBeltFlash(parameters) {
+        const duration = 0.6;
+        const elapsed = this.root.time.realtimeNow() - this.invalidBeltFlash.startedAt;
+        if (elapsed > duration) {
+            return;
+        }
+        const alpha = 0.3 + 0.35 * Math.abs(Math.sin((elapsed / duration) * Math.PI * 3));
+        this.drawRedTiles(parameters, this.invalidBeltFlash.path, alpha);
+    }
+
+    /**
+     * A standalone fake entity for previewing tunnel pieces (see
+     * drawPreviewEntry) - separate from this.fakeEntity, which only ever has
+     * belt's own components (it's built for whatever building is actually
+     * selected, always belt while any of this matters) and would throw if a
+     * tunnel's updateVariants() tried to touch a
+     * UndergroundBelt/ItemAcceptor/ItemEjector setup it doesn't have.
+     */
+    get tunnelFakeEntity() {
+        if (!this._tunnelFakeEntity) {
+            const building = this.beltPathPlanner.tunnelMetaBuilding;
+            const entity = new Entity(null);
+            building.setupEntityComponents(entity, null);
+            entity.addComponent(
+                new StaticMapEntityComponent({
+                    origin: new Vector(0, 0),
+                    rotation: 0,
+                    tileSize: building.getDimensions(defaultBuildingVariant).copy(),
+                    code: getCodeFromBuildingData(building, defaultBuildingVariant, 0),
+                })
+            );
+            building.updateVariants(entity, 0, defaultBuildingVariant);
+            this._tunnelFakeEntity = entity;
+        }
+        return this._tunnelFakeEntity;
+    }
+
+    /**
+     * Draws a semi-transparent copy of the real building sprite at the given
+     * tile/rotation - a tunnel entry (see BeltPathPlanner.findBeltPath) uses
+     * its own fake entity and the tunnel building/variant instead of belt's,
+     * since its rotationVariant means sender/receiver, not straight/curve.
+     * @param {DrawParameters} parameters
+     * @param {import("./belt_path_planner").PathEntry} entry
+     */
+    drawPreviewEntry(parameters, entry) {
+        const metaBuilding = entry.isTunnel ? this.beltPathPlanner.tunnelMetaBuilding : this.currentMetaBuilding.get();
+        const fakeEntity = entry.isTunnel ? this.tunnelFakeEntity : this.fakeEntity;
+        const variant = entry.isTunnel ? entry.tunnelVariant : this.currentVariant.get();
+        const staticComp = fakeEntity.components.StaticMapEntity;
+
+        staticComp.origin = entry.tile;
+        staticComp.rotation = entry.rotation;
+        metaBuilding.updateVariants(fakeEntity, entry.rotationVariant, variant);
+
+        staticComp.drawSpriteOnBoundsClipped(
+            parameters,
+            metaBuilding.getBlueprintSprite(entry.rotationVariant, variant)
+        );
     }
 
     /**

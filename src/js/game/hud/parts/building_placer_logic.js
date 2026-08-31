@@ -14,6 +14,7 @@ import { KEYMAPPINGS } from "../../key_action_mapper";
 import { defaultBuildingVariant, MetaBuilding } from "../../meta_building";
 import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
+import { BeltPathPlanner } from "./belt_path_planner";
 
 /**
  * Contains all logic for the building placer - this doesn't include the rendering
@@ -86,6 +87,53 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
          * @type {Vector}
          */
         this.lastDragTile = null;
+
+        /**
+         * Item 9: auto-tunnel/routing engine, shared with HUDMobileControls
+         * (see belt_path_planner.js) - see beltDragStartTile's doc for how
+         * desktop's own drag flow uses it.
+         * @type {BeltPathPlanner}
+         */
+        this.beltPathPlanner = new BeltPathPlanner(this.root);
+
+        /**
+         * Item 9 (desktop): the tile a belt drag started from - the anchor
+         * tile itself is placed immediately on mouse-down same as any other
+         * building (unchanged), but every tile from here on is only a
+         * *preview* (beltDragPreviewEntries) until mouse-up, unlike every
+         * other building's real-time per-tile Bresenham placement (onMouseMove
+         * below) - a single "resolve the whole path, commit on release" point
+         * is what lets findBeltPath plan a bounded-bend route and bridge
+         * obstacles with a tunnel, which a real-time immediate-placement loop
+         * has no way to do (it only ever sees one tile at a time, with no
+         * "final destination" to route toward until the button is released).
+         * Null whenever no belt drag is in progress.
+         * @type {Vector}
+         */
+        this.beltDragStartTile = null;
+
+        /** @type {Array<Vector>} */
+        this.beltDragPath = [];
+
+        /** @type {Array<import("./belt_path_planner").PathEntry>} */
+        this.beltDragPreviewEntries = [];
+
+        /**
+         * Set alongside beltDragPreviewEntries whenever findBeltPath can't
+         * make the currently-dragged path contiguous - beltDragPreviewEntries
+         * is left empty and draw() shows a red tint over beltDragPath instead
+         * of a ghost preview.
+         * @type {boolean}
+         */
+        this.beltDragPreviewInvalid = false;
+
+        /**
+         * Item 9: a brief red flash over a just-released belt drag that
+         * findBeltPath couldn't make contiguous - shown instead of placing
+         * anything. Cleared automatically in update().
+         * @type {{ path: Array<Vector>, startedAt: number }}
+         */
+        this.invalidBeltFlash = null;
 
         /**
          * The side for direction lock
@@ -254,6 +302,33 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         this.currentlyDeleting = false;
         this.initialPlacementVector = null;
         this.lastDragTile = null;
+        this.beltDragStartTile = null;
+        this.beltDragPath = [];
+        this.beltDragPreviewEntries = [];
+        this.beltDragPreviewInvalid = false;
+    }
+
+    /**
+     * Whether the currently selected building is a belt - item 9's
+     * auto-tunnel drag only applies to belts, every other building keeps
+     * the ordinary real-time Bresenham placement below.
+     * @returns {boolean}
+     */
+    get isBeltSelected() {
+        const metaBuilding = this.currentMetaBuilding.get();
+        return !!metaBuilding && metaBuilding.getId() === "belt";
+    }
+
+    /**
+     * Item 9: momentarily tints the given (unplaceable) belt drag red
+     * instead of placing anything. Cleared automatically in update().
+     * @param {Array<Vector>} path
+     */
+    flashInvalidBelt(path) {
+        this.invalidBeltFlash = {
+            path,
+            startedAt: this.root.time.realtimeNow(),
+        };
     }
 
     /**
@@ -264,6 +339,10 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         if (this.root.hud.hasBlockingOverlayOpen()) {
             this.abortPlacement();
             return;
+        }
+
+        if (this.invalidBeltFlash && this.root.time.realtimeNow() - this.invalidBeltFlash.startedAt > 0.6) {
+            this.invalidBeltFlash = null;
         }
 
         // Always update since the camera might have moved
@@ -734,6 +813,17 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 if (this.tryPlaceCurrentBuildingAt(this.lastDragTile)) {
                     this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
                 }
+
+                // Item 9: belt drags from here on are a preview committed on
+                // release (see beltDragStartTile's doc) instead of the
+                // ordinary real-time Bresenham loop below - the anchor tile
+                // itself is already placed above, same as any other building.
+                if (this.isBeltSelected) {
+                    this.beltDragStartTile = this.lastDragTile;
+                    this.beltDragPath = [this.lastDragTile];
+                    this.beltDragPreviewEntries = [];
+                    this.beltDragPreviewInvalid = false;
+                }
             }
             return STOP_PROPAGATION;
         }
@@ -784,72 +874,91 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
 
             // Check if anything changed
             if (!oldPos.equals(newPos)) {
-                // Automatic Direction
-                if (
-                    metaBuilding &&
-                    metaBuilding.getRotateAutomaticallyWhilePlacing(this.currentVariant.get()) &&
-                    !this.root.keyMapper.getBinding(
-                        KEYMAPPINGS.placementModifiers.placementDisableAutoOrientation
-                    ).pressed
-                ) {
-                    const delta = newPos.sub(oldPos);
-                    const angleDeg = Math.degrees(delta.angle());
-                    this.currentBaseRotation = (Math.round(angleDeg / 90) * 90 + 360) % 360;
+                if (!this.currentlyDeleting && this.isBeltSelected && this.beltDragStartTile) {
+                    // Item 9: live auto-tunnel planning while dragging, trying
+                    // the other L-corner too if the dominant-axis one can't be
+                    // made contiguous - if neither works, show nothing here
+                    // (draw() reads beltDragPreviewInvalid and tints
+                    // beltDragPath red instead) so release-time feedback
+                    // (flashInvalidBelt) isn't the only hint something's wrong.
+                    const { path, resolved } = this.beltPathPlanner.findBeltPathToward(
+                        this.beltDragStartTile,
+                        newPos,
+                        true
+                    );
+                    this.beltDragPath = path;
+                    this.beltDragPreviewEntries = resolved || [];
+                    this.beltDragPreviewInvalid = !resolved;
+                } else {
+                    // Automatic Direction
+                    if (
+                        metaBuilding &&
+                        metaBuilding.getRotateAutomaticallyWhilePlacing(this.currentVariant.get()) &&
+                        !this.root.keyMapper.getBinding(
+                            KEYMAPPINGS.placementModifiers.placementDisableAutoOrientation
+                        ).pressed
+                    ) {
+                        const delta = newPos.sub(oldPos);
+                        const angleDeg = Math.degrees(delta.angle());
+                        this.currentBaseRotation = (Math.round(angleDeg / 90) * 90 + 360) % 360;
 
-                    // Holding alt inverts the placement
-                    if (this.root.keyMapper.getBinding(KEYMAPPINGS.placementModifiers.placeInverse).pressed) {
-                        this.currentBaseRotation = (180 + this.currentBaseRotation) % 360;
+                        // Holding alt inverts the placement
+                        if (
+                            this.root.keyMapper.getBinding(KEYMAPPINGS.placementModifiers.placeInverse).pressed
+                        ) {
+                            this.currentBaseRotation = (180 + this.currentBaseRotation) % 360;
+                        }
                     }
-                }
 
-                // bresenham
-                let x0 = oldPos.x;
-                let y0 = oldPos.y;
-                let x1 = newPos.x;
-                let y1 = newPos.y;
+                    // bresenham
+                    let x0 = oldPos.x;
+                    let y0 = oldPos.y;
+                    let x1 = newPos.x;
+                    let y1 = newPos.y;
 
-                var dx = Math.abs(x1 - x0);
-                var dy = Math.abs(y1 - y0);
-                var sx = x0 < x1 ? 1 : -1;
-                var sy = y0 < y1 ? 1 : -1;
-                var err = dx - dy;
+                    var dx = Math.abs(x1 - x0);
+                    var dy = Math.abs(y1 - y0);
+                    var sx = x0 < x1 ? 1 : -1;
+                    var sy = y0 < y1 ? 1 : -1;
+                    var err = dx - dy;
 
-                let anythingPlaced = false;
-                let anythingDeleted = false;
+                    let anythingPlaced = false;
+                    let anythingDeleted = false;
 
-                while (this.currentlyDeleting || this.currentMetaBuilding.get()) {
-                    if (this.currentlyDeleting) {
-                        // Deletion
-                        const contents = this.root.map.getLayerContentXY(x0, y0, this.root.currentLayer);
-                        if (contents && !contents.queuedForDestroy && !contents.destroyed) {
-                            if (this.root.logic.tryDeleteBuilding(contents)) {
-                                anythingDeleted = true;
+                    while (this.currentlyDeleting || this.currentMetaBuilding.get()) {
+                        if (this.currentlyDeleting) {
+                            // Deletion
+                            const contents = this.root.map.getLayerContentXY(x0, y0, this.root.currentLayer);
+                            if (contents && !contents.queuedForDestroy && !contents.destroyed) {
+                                if (this.root.logic.tryDeleteBuilding(contents)) {
+                                    anythingDeleted = true;
+                                }
+                            }
+                        } else {
+                            // Placement
+                            if (this.tryPlaceCurrentBuildingAt(new Vector(x0, y0))) {
+                                anythingPlaced = true;
                             }
                         }
-                    } else {
-                        // Placement
-                        if (this.tryPlaceCurrentBuildingAt(new Vector(x0, y0))) {
-                            anythingPlaced = true;
+
+                        if (x0 === x1 && y0 === y1) break;
+                        var e2 = 2 * err;
+                        if (e2 > -dy) {
+                            err -= dy;
+                            x0 += sx;
+                        }
+                        if (e2 < dx) {
+                            err += dx;
+                            y0 += sy;
                         }
                     }
 
-                    if (x0 === x1 && y0 === y1) break;
-                    var e2 = 2 * err;
-                    if (e2 > -dy) {
-                        err -= dy;
-                        x0 += sx;
+                    if (anythingPlaced) {
+                        this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
                     }
-                    if (e2 < dx) {
-                        err += dx;
-                        y0 += sy;
+                    if (anythingDeleted) {
+                        this.root.soundProxy.playUi(SOUNDS.destroyBuilding);
                     }
-                }
-
-                if (anythingPlaced) {
-                    this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
-                }
-                if (anythingDeleted) {
-                    this.root.soundProxy.playUi(SOUNDS.destroyBuilding);
                 }
             }
 
@@ -869,6 +978,18 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         // Check for direction lock
         if (this.lastDragTile && this.currentlyDragging && this.isDirectionLockActive) {
             this.executeDirectionLockedPlacement();
+        }
+
+        // Item 9: commit (or reject) a completed belt drag - see
+        // beltDragStartTile's doc.
+        if (this.currentlyDragging && this.beltDragStartTile && this.beltDragPath.length > 1) {
+            if (this.beltDragPreviewInvalid) {
+                // Crosses an obstacle no unlocked tunnel can bridge - flash it
+                // red instead of placing a gapped/broken belt.
+                this.flashInvalidBelt(this.beltDragPath);
+            } else if (this.beltDragPreviewEntries.length > 0) {
+                this.beltPathPlanner.placePath(this.beltDragPreviewEntries);
+            }
         }
 
         this.abortDragging();
