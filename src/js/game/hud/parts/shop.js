@@ -127,10 +127,17 @@ export class HUDShop extends BaseHUDPart {
                 // instead of a dedicated button (same convention
                 // pinned_shapes.js uses), since there's no room for two tiny
                 // overlaid buttons per shape on a small screen.
+                // Static "pinned" marker, same corner the old .pin button
+                // occupied - not a button (nothing to click, pinning happens
+                // in the info dialog now), just an at-a-glance status badge,
+                // shown/hidden each frame in renderCountsAndStatus().
+                let pinMarker = null;
                 let pinButton = null;
                 let pinDetector = null;
                 let infoDetector;
                 if (IS_MOBILE) {
+                    pinMarker = makeDiv(container, null, ["pinMarker"]);
+
                     shapeCanvas.classList.add("clickable");
                     infoDetector = new ClickDetector(shapeCanvas, {
                         consumeEvents: true,
@@ -186,6 +193,8 @@ export class HUDShop extends BaseHUDPart {
                     progressBar,
                     definition: shapeDef,
                     required: amount,
+                    shapeKey: shape,
+                    pinMarker,
                     pinDetector,
                     infoDetector,
                 });
@@ -197,7 +206,15 @@ export class HUDShop extends BaseHUDPart {
         for (const upgradeId in this.upgradeToElements) {
             const handle = this.upgradeToElements[upgradeId];
             for (let i = 0; i < handle.requireIndexToElement.length; ++i) {
-                const { progressLabel, progressBar, definition, required } = handle.requireIndexToElement[i];
+                const { progressLabel, progressBar, definition, required, shapeKey, pinMarker } =
+                    handle.requireIndexToElement[i];
+
+                if (pinMarker) {
+                    pinMarker.classList.toggle(
+                        "visible",
+                        this.root.hud.parts.pinnedShapes.isShapePinned(shapeKey)
+                    );
+                }
 
                 const haveAmount = this.root.hubGoals.getShapesStored(definition);
                 const progress = Math.min(haveAmount / required, 1.0);

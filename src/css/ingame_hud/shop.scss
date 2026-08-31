@@ -375,6 +375,26 @@ html.is-mobile #ingame_HUD_Shop {
                     pointer-events: all;
                     cursor: pointer;
                 }
+
+                // Static "already pinned" badge, same corner the old .pin
+                // button sat in - purely a status marker (pointer-events:none,
+                // see shop.js), toggled visible per-frame instead of a click
+                // target.
+                .requirement .pinMarker {
+                    display: none;
+                    width: 1.2rem;
+                    height: 1.2rem;
+                    position: absolute;
+                    top: 0.2rem;
+                    right: 0.2rem;
+                    pointer-events: none;
+                    background: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M12%202C7.6%202%204%205.6%204%2010c0%206%208%2012%208%2012s8-6%208-12c0-4.4-3.6-8-8-8z%22%20fill%3D%22%236b5636%22%2F%3E%3C%2Fsvg%3E")
+                        center center / 95% no-repeat;
+
+                    &.visible {
+                        display: block;
+                    }
+                }
             }
 
             button.buy {
