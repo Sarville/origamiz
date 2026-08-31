@@ -437,14 +437,45 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {Vector} to
      * @returns {Array<Vector>}
      */
-    computeCornerPath(from, to) {
-        const dx = Math.abs(to.x - from.x);
-        const dy = Math.abs(to.y - from.y);
-        // Travel the dominant direction first, then correct with the smaller one.
-        const corner = dx >= dy ? new Vector(to.x, from.y) : new Vector(from.x, to.y);
+    computeCornerPath(from, to, horizontalFirst = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y)) {
+        const corner = horizontalFirst ? new Vector(to.x, from.y) : new Vector(from.x, to.y);
         const firstLeg = this.axisSegment(from, corner);
         const secondLeg = this.axisSegment(corner, to);
         return firstLeg.concat(secondLeg.slice(1));
+    }
+
+    /**
+     * Resolves a belt path from `from` to `to`, trying the dominant-axis
+     * corner (computeCornerPath's default) first and falling back to the
+     * other corner if that one can't be bridged - a single fixed corner can
+     * run straight back over a belt that's already there (particularly
+     * against its own direction, which reads as a crossing rather than a
+     * harmless retrace) even when the other way round would have reached
+     * the same destination with nothing in the way. Found live: tapping 2
+     * tiles above the *start* of an L-shaped belt (far from lastBeltTile,
+     * at the other end) picked the horizontal-first corner - which runs
+     * back along the entire belt just built - and rejected as unbridgeable,
+     * while tapping further up (past dx/dy flipping which axis is
+     * "dominant") worked fine as the same request.
+     * @param {Vector} from
+     * @param {Vector} to
+     * @returns {{ path: Array<Vector>, resolved: Array<PathEntry>|null }} `path` is
+     * always the primary corner's tiles (used for the red-flash preview on
+     * total failure), `resolved` is whichever corner actually worked, if any.
+     */
+    resolveBeltPathToward(from, to) {
+        const primaryPath = this.computeCornerPath(from, to);
+        const primaryResolved = this.resolveBeltPath(primaryPath);
+        if (primaryResolved) {
+            return { path: primaryPath, resolved: primaryResolved };
+        }
+        const horizontalFirst = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
+        const altPath = this.computeCornerPath(from, to, !horizontalFirst);
+        const altResolved = this.resolveBeltPath(altPath);
+        if (altResolved) {
+            return { path: altPath, resolved: altResolved };
+        }
+        return { path: primaryPath, resolved: null };
     }
 
     /**
@@ -795,8 +826,7 @@ export class HUDMobileControls extends BaseHUDPart {
      */
     placeBeltTapAt(tile) {
         if (this.lastBeltTile) {
-            const path = this.computeCornerPath(this.lastBeltTile, tile);
-            const resolved = this.resolveBeltPath(path);
+            const { path, resolved } = this.resolveBeltPathToward(this.lastBeltTile, tile);
             if (!resolved) {
                 // Item 9: crosses an obstacle no unlocked tunnel can bridge -
                 // flash it red instead of placing a gapped/broken belt.
@@ -980,13 +1010,14 @@ export class HUDMobileControls extends BaseHUDPart {
                 // Always recomputed from the press point to the current finger position -
                 // not accumulated along wherever the finger physically travelled, which
                 // just traces every wobble of a real finger instead of a clean path.
-                this.dragPath = this.computeCornerPath(this.dragStartTile, tile);
-                // Item 9: live auto-tunnel planning while dragging - if the
-                // path can't be made contiguous, show nothing here (draw()
-                // reads dragPreviewInvalid and tints dragPath red instead) so
-                // release-time feedback (flashInvalidBelt) isn't the only
-                // hint something's wrong.
-                const resolved = this.resolveBeltPath(this.dragPath);
+                // Item 9: live auto-tunnel planning while dragging, trying the
+                // other L-corner too if the dominant-axis one can't be made
+                // contiguous (resolveBeltPathToward) - if neither works, show
+                // nothing here (draw() reads dragPreviewInvalid and tints
+                // dragPath red instead) so release-time feedback
+                // (flashInvalidBelt) isn't the only hint something's wrong.
+                const { path, resolved } = this.resolveBeltPathToward(this.dragStartTile, tile);
+                this.dragPath = path;
                 this.dragPreviewEntries = resolved || [];
                 this.dragPreviewInvalid = !resolved;
             }

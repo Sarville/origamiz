@@ -859,6 +859,26 @@ logs.
         (one clear tile between the tunnel pairs) now preview and place a
         straight belt in that gap, both via a held drag and via the
         underlying path resolution tap-continuation shares.
+
+        **Third follow-up, done 2026-08-31:** tapping/dragging to a point that
+        the *dominant-axis* L-corner would route straight back through the
+        just-built belt (particularly against its own direction) flashed red
+        even when the other corner reached the same destination with nothing
+        in the way - e.g. tapping 2 tiles past the *start* of an L-shaped
+        belt, on the opposite end from lastBeltTile, picked the
+        horizontal-first corner (retracing the whole belt) and rejected,
+        while tapping further out - past the point where dx/dy flips which
+        axis is "dominant" - happened to dodge it by accident. Added
+        `resolveBeltPathToward(from, to)`: tries `computeCornerPath`'s normal
+        dominant-axis corner first and, only if that one can't be bridged,
+        the other corner - `computeCornerPath` gained an optional
+        `horizontalFirst` override to make that possible. Red flash now only
+        fires when *neither* of the two natural L-shaped routes works, not
+        just the one the dx/dy heuristic happened to prefer. Verified live
+        via CDP: the exact reported case (a short vertical leg then a longer
+        horizontal one, tapping 2 tiles past the vertical leg's start) now
+        routes cleanly around and connects with a plain belt, no tunnels, no
+        red flash - previously flashed red every time.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
