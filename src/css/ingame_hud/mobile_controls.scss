@@ -37,8 +37,9 @@
         color: #f2e8d5;
     }
 
-    // Placeholder-only buttons (no undo/redo history to call into yet) - visibly
-    // inert rather than looking clickable.
+    // Toggled live in HUDMobileControls.update() against
+    // root.actionHistory.canUndo/canRedo - visibly inert rather than looking
+    // clickable when there's nothing to undo/redo.
     &.disabled {
         opacity: 0.45;
         pointer-events: none;

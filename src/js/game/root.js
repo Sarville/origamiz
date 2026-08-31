@@ -9,6 +9,7 @@ import { BufferMaintainer } from "../core/buffer_maintainer";
 import { Vector } from "../core/vector";
 import { Savegame } from "../savegame/savegame";
 import { InGameState } from "../states/ingame";
+import { ActionHistory } from "./action_history";
 import { AutomaticSave } from "./automatic_save";
 import { BaseItem } from "./base_item";
 import { Camera } from "./camera";
@@ -98,6 +99,9 @@ export class GameRoot {
 
         /** @type {GameLogic} */
         this.logic = null;
+
+        /** @type {ActionHistory} */
+        this.actionHistory = null;
 
         /** @type {EntityManager} */
         this.entityMgr = null;

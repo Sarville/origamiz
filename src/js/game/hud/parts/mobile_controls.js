@@ -47,16 +47,15 @@ export class HUDMobileControls extends BaseHUDPart {
         this.element.appendChild(this.deleteButton);
         this.trackClicks(this.deleteButton, this.onDeleteClicked);
 
-        // Not wired up yet - there's no undo/redo history anywhere in the game
-        // logic to call into. Placeholder buttons only, disabled, so the mobile
-        // HUD has a home for them ready once that history exists.
         this.undoButton = document.createElement("button");
         this.undoButton.classList.add("undo", "disabled");
         this.element.appendChild(this.undoButton);
+        this.trackClicks(this.undoButton, this.onUndoClicked);
 
         this.redoButton = document.createElement("button");
         this.redoButton.classList.add("redo", "disabled");
         this.element.appendChild(this.redoButton);
+        this.trackClicks(this.redoButton, this.onRedoClicked);
 
         // Active state: preview of the selected building plus its controls,
         // styled like the buildings toolbar.
@@ -236,6 +235,18 @@ export class HUDMobileControls extends BaseHUDPart {
 
     onCancelClicked() {
         this.placerLogic.currentMetaBuilding.set(null);
+    }
+
+    onUndoClicked() {
+        if (this.root.actionHistory.canUndo) {
+            this.root.actionHistory.undo();
+        }
+    }
+
+    onRedoClicked() {
+        if (this.root.actionHistory.canRedo) {
+            this.root.actionHistory.redo();
+        }
     }
 
     /**
@@ -577,8 +588,16 @@ export class HUDMobileControls extends BaseHUDPart {
         if (this.deleteModeActive) {
             const tile = this.root.camera.screenToWorld(pos).toTileSpace();
             const contents = this.root.map.getTileContent(tile, this.root.currentLayer);
-            if (contents && this.root.logic.tryDeleteBuilding(contents)) {
-                this.root.soundProxy.playUi(SOUNDS.destroyBuilding);
+            // Snapshot before deleting (makeDeleteEntry itself doesn't touch
+            // the map) but only actually push it once the deletion succeeds -
+            // tryDeleteBuilding can refuse (e.g. the hub), which shouldn't
+            // leave a stray undo entry for nothing that actually happened.
+            if (contents) {
+                const undoEntry = this.root.actionHistory.makeDeleteEntry(contents);
+                if (this.root.logic.tryDeleteBuilding(contents)) {
+                    this.root.actionHistory.pushCommand(undoEntry);
+                    this.root.soundProxy.playUi(SOUNDS.destroyBuilding);
+                }
             }
             return STOP_PROPAGATION;
         }
@@ -739,6 +758,9 @@ export class HUDMobileControls extends BaseHUDPart {
 
     update() {
         this.updateToolbarOffset();
+
+        this.undoButton.classList.toggle("disabled", !this.root.actionHistory.canUndo);
+        this.redoButton.classList.toggle("disabled", !this.root.actionHistory.canRedo);
 
         const isPlacingBuilding = !!this.placerLogic.currentMetaBuilding.get();
 

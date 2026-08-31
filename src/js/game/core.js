@@ -15,6 +15,7 @@ import { Vector } from "../core/vector";
 import { MOD_SIGNALS } from "../mods/mod_signals";
 import { Savegame } from "../savegame/savegame";
 import { SavegameSerializer } from "../savegame/savegame_serializer";
+import { ActionHistory } from "./action_history";
 import { AutomaticSave } from "./automatic_save";
 import { MetaHubBuilding } from "./buildings/hub";
 import { Camera } from "./camera";
@@ -101,6 +102,7 @@ export class GameCore {
         root.camera = new Camera(root);
         root.map = new MapView(root);
         root.logic = new GameLogic(root);
+        root.actionHistory = new ActionHistory(root);
         root.hud = new GameHUD(root);
         root.time = new GameTime(root);
         root.automaticSave = new AutomaticSave(root);

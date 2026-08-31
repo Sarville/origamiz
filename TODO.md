@@ -716,10 +716,23 @@ logs.
         translated (`translations/base-ru.yaml` `tips:`, 56/56, no code change
         needed — the English tip in the user's screenshot was just an
         English-locale session, `hints.js` already reads the locale-aware `T.tips`).
-      - [ ] **2c-2 — Undo/redo (item 5).** Command-based history, cap 30 entries;
-        wires up the placeholder `.undo`/`.redo` buttons already sitting disabled
-        in `mobile_controls.js` (added 2026-08-30). Do before 2c-4 (edit mode's
-        eraser should go through the same history).
+      - [x] **2c-2 — Undo/redo (item 5).** Done 2026-08-31. New
+        `game/action_history.js` (`root.actionHistory`), capped at 30 entries.
+        Records placements off the existing `entityManuallyPlaced` signal
+        (already dispatched by `HUDBuildingPlacerLogic.tryPlaceCurrentBuildingAt`,
+        shared by desktop and mobile - covers both automatically) rather than
+        touching placement call sites; deletion recording is mobile-only for
+        now, called explicitly from `mobile_controls.js`'s delete-mode tap
+        (`GameLogic.tryDeleteBuilding` has too many non-user-facing internal
+        callers - auto-tunnel pairing, lever/constant-signal rebuilds, etc. -
+        to hook globally without recording a lot of noise). Sub-commands
+        recorded during a bulk operation (a dragged belt path, blueprint
+        paste) are buffered and flushed as one combined command on
+        `bulkOperationFinished`, so a whole dragged belt undoes in one tap
+        instead of one per tile - confirmed live via CDP mobile emulation.
+        Known gap (documented as a `ponytail:` comment in the file): placing a
+        building on top of a replaceable one only records the new placement,
+        not the one it silently replaced.
       - [ ] **2c-3 — Building placement mode rewrite (item 1).** Replace mobile's
         tap-immediately-places flow with a blueprint that follows the finger
         (desktop-style); new icon row (confirm / rotate / variant-swap w/ count
