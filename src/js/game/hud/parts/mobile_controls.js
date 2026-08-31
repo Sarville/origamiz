@@ -992,12 +992,26 @@ export class HUDMobileControls extends BaseHUDPart {
         // coherent way to keep both directions - drop the old one and let
         // this tile just continue the way this path actually arrives,
         // exactly like reshaping any other tile of a merged-into belt.
+        //
+        // None of this applies when the goal itself was reached by a
+        // tunnel jump (lastNode.viaTunnel) - the loop above already pushed
+        // it as a receiver (the only valid representation, no curve
+        // variant exists for one), and a receiver can never have an
+        // existing belt to merge into either (isStrictlyClear rejects a
+        // tunnel landing on any occupied tile, `to` included). Pushing a
+        // second, plain entry for that same tile here would silently
+        // overwrite the receiver with an ordinary belt piece right after
+        // placing it - found live: tapping straight down an extractor's
+        // own row built the tunnel exit, then immediately replaced it with
+        // a belt docked sideways into the extractor instead.
         const lastNode = chain[chain.length - 1];
-        const lastIncoming = lastNode.dir;
-        const outgoingConflicts = endOutgoingDirection === (lastIncoming + 180) % 360;
-        const lastOutgoing =
-            endOutgoingDirection !== undefined && !outgoingConflicts ? endOutgoingDirection : lastNode.dir;
-        entries.push(this.curvedEntry(lastNode.tile, lastOutgoing, lastIncoming));
+        if (!lastNode.viaTunnel) {
+            const lastIncoming = lastNode.dir;
+            const outgoingConflicts = endOutgoingDirection === (lastIncoming + 180) % 360;
+            const lastOutgoing =
+                endOutgoingDirection !== undefined && !outgoingConflicts ? endOutgoingDirection : lastNode.dir;
+            entries.push(this.curvedEntry(lastNode.tile, lastOutgoing, lastIncoming));
+        }
 
         return entries;
     }

@@ -1171,6 +1171,29 @@ logs.
         flagged here rather than attempted this round, since properly fixing
         it means redirecting a whole pre-existing chain's remainder, a much
         larger change than what was asked.
+
+        **Thirteenth follow-up, done 2026-08-31.** Still reported live with
+        two screenshots after the twelfth follow-up: tapping straight down
+        an extractor's own row still failed to build a working tunnel exit
+        - the exit was there for an instant, then replaced by a belt docked
+        sideways into the extractor. Root cause: when the *goal* tile itself
+        was reached by a tunnel jump, the entry-reconstruction loop already
+        pushed it correctly as a receiver (rotationVariant 1, the only valid
+        representation - no curve exists for a tunnel piece) - but the
+        code *after* the loop unconditionally pushed a second, plain
+        curvedEntry for that same goal tile too, meant for the (far more
+        common) case of landing on open ground or an existing belt. Since
+        `entries` is a plain array processed by placePath in order, both
+        entries got placed - the receiver, then immediately a plain belt
+        overwriting it. Now skipped whenever the goal was reached via a
+        tunnel jump (`lastNode.viaTunnel`), matching the guard the loop
+        already had for the *start* tile in the equivalent case. Verified
+        live via CDP with the exact reported geometry (tap-continuing
+        straight down a row, obstacle requiring a tunnel whose natural
+        landing tile is exactly the tapped target): the receiver now stays
+        a receiver, confirmed via entity state (`isTunnel: true`) and a
+        screenshot; no duplicate tile placements anywhere on the map, no
+        console errors.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
