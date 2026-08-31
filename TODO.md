@@ -811,6 +811,34 @@ logs.
         preview-then-commit model that it needs its own integration pass -
         deferred as a separate follow-up rather than risking a rushed retrofit
         of desktop's placement loop in the same chunk.
+
+        **Follow-up polish, done 2026-08-31 (real-phone feedback):** three
+        fixes reported after the user tried 2c-6 live on an Android phone.
+        (1) The live drag preview drew every path entry with belt's own
+        sprite/rotationVariant, including tunnel entries - since a tunnel's
+        `rotationVariant` means sender/receiver rather than straight/curve,
+        this showed as nonsense belt curves at every crossing
+        ("лента выглядит со странными поворотами"). Fixed with a
+        `tunnelFakeEntity` getter (mirrors the existing belt `fakeEntity`
+        pattern) and a `drawPreviewEntry()` that branches on `entry.isTunnel`
+        to pick the right building/fakeEntity/variant per entry.
+        (2) Added an "N" icon to the belt panel (`newBeltButton`,
+        `onNewBeltClicked`) that resets `lastBeltTile`/`invalidBeltFlash`
+        without leaving placement mode - same effect as cancel + reselecting
+        belt from the toolbar, so the next tap starts a fresh, disconnected
+        segment elsewhere instead of continuing the old one.
+        (3) The belt panel's own undo button now dims/disables off
+        `!lastBeltTile` instead of the shared global `!actionHistory.canUndo`
+        - it's scoped to "is there anything left of *this* belt to undo",
+        distinct from the idle-row undo button which still reads the global
+        history. Verified live via CDP (mobile UA emulation + touch events,
+        long-press-then-drag to trigger the belt-drag path since a fast synthetic
+        move before the 350ms hold timer reads as a pan): drag across a
+        perpendicular belt now previews the correct tunnel sender/receiver
+        sprites and places the same on release; tapping "N" mid-belt resets
+        `lastBeltTile` to null (undo re-dims) while staying in belt placement
+        mode, and the next tap places an unconnected fresh tile; undo button
+        toggles disabled/enabled correctly across both.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

@@ -5,8 +5,11 @@ import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
+import { getCodeFromBuildingData } from "../../building_codes";
 import { MetaUndergroundBeltBuilding, enumUndergroundBeltVariants } from "../../buildings/underground_belt";
 import { enumMouseButton } from "../../camera";
+import { StaticMapEntityComponent } from "../../components/static_map_entity";
+import { Entity } from "../../entity";
 import { defaultBuildingVariant } from "../../meta_building";
 import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
@@ -97,6 +100,15 @@ export class HUDMobileControls extends BaseHUDPart {
         this.beltUndoButton.classList.add("undo");
         this.previewPanel.appendChild(this.beltUndoButton);
         this.trackClicks(this.beltUndoButton, this.onUndoClicked);
+
+        // Belt mode only: detaches from the current belt (same effect as
+        // cancel + reselecting belt from the toolbar) without actually
+        // leaving placement mode, so the next tap starts a brand new,
+        // unconnected segment elsewhere instead of continuing this one.
+        this.newBeltButton = document.createElement("button");
+        this.newBeltButton.classList.add("newBelt");
+        this.previewPanel.appendChild(this.newBeltButton);
+        this.trackClicks(this.newBeltButton, this.onNewBeltClicked);
 
         // Blueprint mode only: places the blueprint at its current tile.
         this.confirmButton = document.createElement("button");
@@ -260,6 +272,36 @@ export class HUDMobileControls extends BaseHUDPart {
         return gMetaBuildingRegistry.findByClass(MetaUndergroundBeltBuilding);
     }
 
+    /**
+     * A standalone fake entity for previewing tunnel pieces (see
+     * drawPreviewEntry) - separate from this.placerLogic.fakeEntity, which
+     * only ever has belt's own components (it's built for whatever building
+     * is actually selected, always belt while any of this matters) and would
+     * throw if a tunnel's updateVariants() tried to touch a
+     * UndergroundBelt/ItemAcceptor/ItemEjector setup it doesn't have.
+     * Constructed lazily, once - mirrors
+     * HUDBuildingPlacerLogic.onSelectedMetaBuildingChanged's own fakeEntity
+     * setup.
+     */
+    get tunnelFakeEntity() {
+        if (!this._tunnelFakeEntity) {
+            const building = this.tunnelMetaBuilding;
+            const entity = new Entity(null);
+            building.setupEntityComponents(entity, null);
+            entity.addComponent(
+                new StaticMapEntityComponent({
+                    origin: new Vector(0, 0),
+                    rotation: 0,
+                    tileSize: building.getDimensions(defaultBuildingVariant).copy(),
+                    code: getCodeFromBuildingData(building, defaultBuildingVariant, 0),
+                })
+            );
+            building.updateVariants(entity, 0, defaultBuildingVariant);
+            this._tunnelFakeEntity = entity;
+        }
+        return this._tunnelFakeEntity;
+    }
+
     // Not cached via document.getElementById at initialize() time - by then
     // HUDBuildingPlacer.initialize() has already wrapped this element in a
     // DynamicDomAttach, whose constructor immediately detaches it from the DOM
@@ -334,6 +376,17 @@ export class HUDMobileControls extends BaseHUDPart {
             const meta = this.root.actionHistory.redo();
             this.lastBeltTile = meta ? meta.beltTileAfter : null;
         }
+    }
+
+    /**
+     * Belt mode only: detaches from the current belt without leaving
+     * placement mode - the next tap starts a fresh, unconnected segment
+     * elsewhere, same as tapping cancel and reselecting belt from the
+     * toolbar, minus actually leaving placement mode in between.
+     */
+    onNewBeltClicked() {
+        this.lastBeltTile = null;
+        this.invalidBeltFlash = null;
     }
 
     /**
@@ -970,22 +1023,29 @@ export class HUDMobileControls extends BaseHUDPart {
     /**
      * Draws a semi-transparent copy of the real building sprite at the given
      * tile/rotation - reuses the same fakeEntity + blueprint sprite mechanism
-     * HUDBuildingPlacer uses for its (desktop, mouse-hover-driven) ghost preview.
+     * HUDBuildingPlacer uses for its (desktop, mouse-hover-driven) ghost
+     * preview. A tunnel entry (see resolveBeltPath) uses its own fake entity
+     * and the tunnel building/variant instead of belt's - its
+     * rotationVariant means sender/receiver, not straight/curve, so drawing
+     * it as a belt would show the wrong sprite entirely (found live on a
+     * real device: tunnel spans previewed as random-looking belt curves).
      * @param {import("../../../core/draw_parameters").DrawParameters} parameters
-     * @param {MetaBuilding} metaBuilding
      * @param {PathEntry} entry
      */
-    drawPreviewEntry(parameters, metaBuilding, entry) {
-        const staticComp = this.placerLogic.fakeEntity.components.StaticMapEntity;
-        const variant = this.placerLogic.currentVariant.get();
+    drawPreviewEntry(parameters, entry) {
+        const metaBuilding = entry.isTunnel ? this.tunnelMetaBuilding : this.placerLogic.currentMetaBuilding.get();
+        const fakeEntity = entry.isTunnel ? this.tunnelFakeEntity : this.placerLogic.fakeEntity;
+        const variant = entry.isTunnel ? entry.tunnelVariant : this.placerLogic.currentVariant.get();
+        const staticComp = fakeEntity.components.StaticMapEntity;
 
-        // entry.rotation/rotationVariant (computed in beltTilesToEntries from the
-        // dragged path itself) already account for curves. Querying
+        // entry.rotation/rotationVariant (computed in beltTilesToEntries, or
+        // explicitly by resolveBeltPath for a tunnel entry) already accounts
+        // for curves/sender-vs-receiver. Querying
         // computeOptimalDirectionAndRotationVariantAtTile here instead would look at
         // *real* map neighbours, none of which exist yet since nothing is built.
         staticComp.origin = entry.tile;
         staticComp.rotation = entry.rotation;
-        metaBuilding.updateVariants(this.placerLogic.fakeEntity, entry.rotationVariant, variant);
+        metaBuilding.updateVariants(fakeEntity, entry.rotationVariant, variant);
 
         staticComp.drawSpriteOnBoundsClipped(
             parameters,
@@ -1058,14 +1118,13 @@ export class HUDMobileControls extends BaseHUDPart {
         if (this.dragPreviewEntries.length === 0) {
             return;
         }
-        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
-        if (!metaBuilding) {
+        if (!this.placerLogic.currentMetaBuilding.get()) {
             return;
         }
 
         parameters.context.globalAlpha = 0.6;
         for (let i = 0; i < this.dragPreviewEntries.length; ++i) {
-            this.drawPreviewEntry(parameters, metaBuilding, this.dragPreviewEntries[i]);
+            this.drawPreviewEntry(parameters, this.dragPreviewEntries[i]);
         }
         parameters.context.globalAlpha = 1;
     }
@@ -1130,9 +1189,13 @@ export class HUDMobileControls extends BaseHUDPart {
     update() {
         this.updateToolbarOffset();
 
-        const undoDisabled = !this.root.actionHistory.canUndo;
-        this.undoButton.classList.toggle("disabled", undoDisabled);
-        this.beltUndoButton.classList.toggle("disabled", undoDisabled);
+        this.undoButton.classList.toggle("disabled", !this.root.actionHistory.canUndo);
+        // The belt panel's own undo is scoped to *this belt* specifically,
+        // not the global history - dims once there's nothing left of the
+        // current belt to undo (no tap made yet, or already rolled all the
+        // way back to its start), even if the global stack still has older,
+        // unrelated history it could otherwise undo into.
+        this.beltUndoButton.classList.toggle("disabled", !this.lastBeltTile);
         this.redoButton.classList.toggle("disabled", !this.root.actionHistory.canRedo);
 
         if (this.invalidBeltFlash && this.root.time.realtimeNow() - this.invalidBeltFlash.startedAt > 0.6) {
