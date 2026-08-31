@@ -11,26 +11,31 @@ const MAX_HISTORY_LENGTH = 30;
  */
 
 /**
- * Undo/redo history for building placement and (mobile) deletion. Records
- * itself off the existing entityManuallyPlaced/bulkOperationFinished signals
- * rather than being called explicitly from every placement call site - both
- * the desktop and mobile placers already route every interactive placement
- * through HUDBuildingPlacerLogic.tryPlaceCurrentBuildingAt, which dispatches
- * entityManuallyPlaced exactly once per placed tile, so hooking that one
- * signal covers both platforms for free.
+ * Undo/redo history for building placement and deletion.
  *
- * Deletion has no equivalent shared signal - GameLogic.tryDeleteBuilding is
- * also called internally for all sorts of non-user-facing cleanup (automatic
- * tunnel pairing, lever/constant-signal rebuilds, mass-selector, ...), so
- * hooking it globally would record a lot of noise that was never a real user
- * action. makeDeleteEntry() is instead called explicitly by the one place
- * that currently needs it (the mobile delete-mode tap in mobile_controls.js).
+ * Records itself transactionally rather than off a single "this one entity
+ * changed" signal: GameLogic.tryPlaceBuilding and tryDeleteBuilding both
+ * unconditionally report to noteEntityPlaced/noteEntityWillBeDeleted, but
+ * those are no-ops unless a transaction is currently open (see
+ * beginTransaction/endTransaction below) - so every other caller (puzzle
+ * editor setup, savegame/puzzle deserialization, the mass-selector, and
+ * every side effect *other* systems trigger - automatic tunnel-pair belt
+ * cleanup, lever/constant-signal rebuilds, wired-pins auto-cleanup, ...) is
+ * completely unaffected, by construction, with no per-caller allowlist to
+ * maintain.
  *
- * ponytail: placing a building on top of a replaceable one (e.g. re-placing
- * a belt to change its direction) only records the new placement, not the
- * old entity it silently replaced - undoing it removes the new building but
- * doesn't bring the old one back. Add if replace-in-place undo turns out to
- * matter in practice.
+ * A transaction wraps one user-initiated action end to end - a single tap, a
+ * whole dragged belt path, one delete-mode tap - not one tile at a time (see
+ * the beginTransaction/endTransaction call sites in mobile_controls.js). It
+ * captures every placement/deletion that happens synchronously within it, in
+ * order, including side effects other systems trigger off entityManuallyPlaced
+ * (e.g. underground_belt.js silently deleting obsolete belts between a
+ * newly-completed tunnel pair - placing the tunnel receiver and the belts it
+ * silently removes both land in the same transaction, since that removal
+ * happens synchronously inside the same tryPlaceCurrentBuildingAt call).
+ * Undo replays the recorded operations in reverse, redo replays them
+ * forwards, so every affected building comes back - not just the one
+ * directly tapped.
  */
 export class ActionHistory {
     /** @param {GameRoot} root */
@@ -43,16 +48,9 @@ export class ActionHistory {
         this.redoStack = [];
 
         /**
-         * Sub-commands recorded while a bulk operation (drag-placed belt
-         * path, blueprint paste) is in progress - flushed as a single
-         * combined command once it finishes, so e.g. a long belt drag undoes
-         * in one step instead of one per tile.
-         * @type {Array<HistoryCommand>}
+         * @type {{ operations: Array<{ type: "place"|"delete", snapshot: Entity }> }}
          */
-        this.pendingGroup = null;
-
-        root.signals.entityManuallyPlaced.add(this.recordPlace, this);
-        root.signals.bulkOperationFinished.add(this.flushPendingGroup, this);
+        this.transaction = null;
     }
 
     get canUndo() {
@@ -64,61 +62,67 @@ export class ActionHistory {
     }
 
     /**
-     * @param {Entity} entity The entity that was just placed
+     * Opens a new recording window - call once around a single user action
+     * (a tap, a whole dragged path, a delete-mode tap), not per tile placed.
      */
-    recordPlace(entity) {
-        const snapshot = entity.clone();
-        this.pushCommand({
-            undo: () => this.removeAt(snapshot),
-            redo: () => this.restore(snapshot),
-        });
+    beginTransaction() {
+        this.transaction = { operations: [] };
     }
 
     /**
-     * Builds (but doesn't push) an undo entry for deleting the given entity -
-     * call this BEFORE actually deleting it, then pushCommand() the result
-     * only if the deletion actually succeeds (GameLogic.tryDeleteBuilding
-     * can refuse, e.g. for the hub - nothing should be recorded then).
-     * @param {Entity} entity The entity about to be deleted
-     * @returns {HistoryCommand}
+     * Called by GameLogic.tryPlaceBuilding after every successful placement -
+     * a no-op unless a transaction is currently open.
+     * @param {Entity} entity
      */
-    makeDeleteEntry(entity) {
-        const snapshot = entity.clone();
-        return {
-            undo: () => this.restore(snapshot),
-            redo: () => this.removeAt(snapshot),
-        };
+    noteEntityPlaced(entity) {
+        if (!this.transaction) {
+            return;
+        }
+        this.transaction.operations.push({ type: "place", snapshot: entity.clone() });
     }
 
     /**
-     * @param {HistoryCommand} command
+     * Called by GameLogic.tryDeleteBuilding right before every deletion - a
+     * no-op unless a transaction is currently open.
+     * @param {Entity} entity
      */
-    pushCommand(command) {
-        if (this.root.bulkOperationRunning) {
-            if (!this.pendingGroup) {
-                this.pendingGroup = [];
-            }
-            this.pendingGroup.push(command);
+    noteEntityWillBeDeleted(entity) {
+        if (!this.transaction) {
             return;
         }
-        this.push(command);
+        this.transaction.operations.push({ type: "delete", snapshot: entity.clone() });
     }
 
-    flushPendingGroup() {
-        const commands = this.pendingGroup;
-        this.pendingGroup = null;
-        if (!commands || commands.length === 0) {
+    /**
+     * Closes the current transaction and pushes it as a single undo step, if
+     * anything actually happened during it.
+     */
+    endTransaction() {
+        const tx = this.transaction;
+        this.transaction = null;
+        if (!tx || tx.operations.length === 0) {
             return;
         }
+        const ops = tx.operations;
         this.push({
             undo: () => {
-                for (let i = commands.length - 1; i >= 0; --i) {
-                    commands[i].undo();
+                for (let i = ops.length - 1; i >= 0; --i) {
+                    const op = ops[i];
+                    if (op.type === "place") {
+                        this.removeAt(op.snapshot);
+                    } else {
+                        this.restore(op.snapshot);
+                    }
                 }
             },
             redo: () => {
-                for (let i = 0; i < commands.length; ++i) {
-                    commands[i].redo();
+                for (let i = 0; i < ops.length; ++i) {
+                    const op = ops[i];
+                    if (op.type === "place") {
+                        this.restore(op.snapshot);
+                    } else {
+                        this.removeAt(op.snapshot);
+                    }
                 }
             },
         });
@@ -175,6 +179,12 @@ export class ActionHistory {
      * fresh cost/collision check. Clones the snapshot again rather than
      * placing it directly so the same snapshot can be restored more than
      * once across repeated undo/redo cycles.
+     *
+     * No transaction is open at this point - undo()/redo() never call
+     * beginTransaction - so any collision cleanup this triggers via
+     * freeEntityAreaBeforeBuild (a rare edge case, restoring back onto a
+     * tile that should normally already be empty) is correctly ignored
+     * rather than re-recorded as new history.
      * @param {Entity} snapshot
      */
     restore(snapshot) {

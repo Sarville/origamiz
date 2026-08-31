@@ -1,23 +1,14 @@
-import { MAX_MOVE_DISTANCE_PX, clickDetectorGlobals } from "../../../core/click_detector";
+import { MAX_MOVE_DISTANCE_PX } from "../../../core/click_detector";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
-import { T } from "../../../translations";
 import { enumMouseButton } from "../../camera";
 import { BaseHUDPart } from "../base_hud_part";
 
 // How long a finger has to stay down before it counts as "hold" (start laying a
 // belt path) instead of "move" (pan the map) or "tap" (place a single tile).
 const LONG_PRESS_MS = 350;
-
-// How far (px) a swipe on the building preview has to travel before it's treated
-// as "cycle the variant" instead of snapping back.
-const SWIPE_THRESHOLD_PX = 30;
-
-// How far (px) the preview slides out/in during the swipe animation. Arbitrary -
-// just has to clear the (small) preview box.
-const SWIPE_SLIDE_PX = 120;
 
 /**
  * @typedef {{ tile: Vector, rotation: number, rotationVariant: number }} PathEntry
@@ -26,22 +17,25 @@ const SWIPE_SLIDE_PX = 120;
 /**
  * Touch controls for building placement.
  *
- * Belts are unchanged from the original mobile design: holding and dragging
- * lays a path, previewed live as a semi-transparent copy of the real sprite,
- * committed all at once on release (see beginDrag/placePath). A plain tap
- * places a single tile immediately - unless a belt tile already exists
+ * Belt placement mechanics are unchanged from the original mobile design:
+ * holding and dragging lays a path, previewed live as a semi-transparent copy
+ * of the real sprite, committed all at once on release (see
+ * beginDrag/placePath) - it places immediately, with no confirm step. A plain
+ * tap places a single tile immediately - unless a belt tile already exists
  * somewhere, in which case every tap after the first instead continues the
  * belt from there to the newly tapped tile (see placeBeltTapAt), so a very
  * long belt can be built one tap at a time without needing to drag precisely
- * across the whole visible map.
+ * across the whole visible map. Because it places immediately, belt's control
+ * row only has undo (for correcting a mistake) and cancel - no confirm/
+ * rotate/variant/copy, none of which apply to it (see the "blueprintMode"
+ * class toggled in onPlacementBuildingChanged, and its comment on
+ * createElements' buildingPreview panel below).
  *
  * Every other building instead uses a "blueprint" that follows the finger,
  * mirroring desktop's mouse-hover ghost preview - see onMouseDown/onMouseMove
  * below and drawBlueprintGhost. Touching the map (tap or drag) moves the
  * blueprint to/with the finger; nothing is actually built until the confirm
- * button is tapped ("blueprint mode" - the buildingPreview panel's layout
- * switches entirely between the two, see the "blueprintMode" class toggled in
- * onPlacementBuildingChanged).
+ * button is tapped.
  */
 export class HUDMobileControls extends BaseHUDPart {
     createElements(parent) {
@@ -65,23 +59,26 @@ export class HUDMobileControls extends BaseHUDPart {
         this.element.appendChild(this.redoButton);
         this.trackClicks(this.redoButton, this.onRedoClicked);
 
-        // Active state: preview of the selected building plus its controls,
-        // styled like the buildings toolbar. Two very different layouts share
-        // this same element/button set, toggled by the "blueprintMode" class
-        // (see onPlacementBuildingChanged): belts keep the original panel (a
-        // static sprite preview box, buttons pinned to its corners), while
-        // every other building gets a flat row of square icons instead - the
-        // sprite itself is drawn on the map (see drawBlueprintGhost) as a
-        // blueprint that follows the finger, not in a side panel.
+        // Active state: a flat row of square control icons, shown above the
+        // toolbar while a building is selected - which icons depend on the
+        // "blueprintMode" class (see onPlacementBuildingChanged). Belt places
+        // immediately (drag or tap) with no confirm step and no meaningful
+        // multiplace toggle (it never leaves placement mode anyway), so it
+        // only needs undo (in case that immediate placement was a mistake)
+        // and cancel; every other building gets the full confirm/rotate/
+        // variant/copy/cancel row for its blueprint (see drawBlueprintGhost).
         this.previewPanel = makeDiv(this.element, null, ["buildingPreview"]);
 
-        // Top-right corner of the panel (belt mode) / first-ish in the row
-        // (blueprint mode), like a dialog's close button - not grouped with
-        // rotate/copy below.
         this.cancelButton = document.createElement("button");
         this.cancelButton.classList.add("cancel");
         this.previewPanel.appendChild(this.cancelButton);
         this.trackClicks(this.cancelButton, this.onCancelClicked);
+
+        // Belt mode only.
+        this.beltUndoButton = document.createElement("button");
+        this.beltUndoButton.classList.add("undo");
+        this.previewPanel.appendChild(this.beltUndoButton);
+        this.trackClicks(this.beltUndoButton, this.onUndoClicked);
 
         // Blueprint mode only: places the blueprint at its current tile.
         this.confirmButton = document.createElement("button");
@@ -89,32 +86,13 @@ export class HUDMobileControls extends BaseHUDPart {
         this.previewPanel.appendChild(this.confirmButton);
         this.trackClicks(this.confirmButton, this.onConfirmClicked);
 
-        this.swipeHint = makeDiv(
-            this.previewPanel,
-            null,
-            ["swipeHint"],
-            T.ingame.buildingPlacement.swipeForVariants
-        );
-
-        // The actual building sprite (not the flat toolbar icon) - sized per its
-        // real tile footprint via data-tile-w/h, same convention
-        // HUDBuildingPlacer.rerenderVariants uses for its (desktop) variant icons.
-        // Belt mode only - blueprint mode draws the sprite on the map instead.
-        this.spriteWrap = makeDiv(this.previewPanel, null, ["spriteWrap"]);
-        this.previewSprite = makeDiv(this.spriteWrap, null, ["sprite"]);
-
-        // Bottom-left/right corners of the panel (belt mode) / row items
-        // (blueprint mode), same overhang treatment as .cancel above.
         this.rotateButton = document.createElement("button");
         this.rotateButton.classList.add("rotate");
         this.previewPanel.appendChild(this.rotateButton);
         this.trackClicks(this.rotateButton, this.onRotateClicked);
 
-        // Blueprint mode only: cycles variants (replaces belt mode's swipe
-        // gesture on the sprite, which doesn't exist any more here since the
-        // sprite itself isn't in this panel) - the badge shows how many
-        // variants there are, same count that used to just enable the swipe
-        // hint text.
+        // Cycles variants - the badge shows how many there are, hidden
+        // entirely for a building with only one (see renderPreview).
         this.variantButton = document.createElement("button");
         this.variantButton.classList.add("variant");
         this.variantBadge = makeDiv(this.variantButton, null, ["badge"]);
@@ -199,32 +177,6 @@ export class HUDMobileControls extends BaseHUDPart {
             }
         };
         this.root.canvas.addEventListener("touchstart", this.cancelGestureOnSecondTouch);
-
-        // Swipe-to-cycle-variants state for the building preview.
-        this.swipeStartX = null;
-        this.swipeOffset = 0;
-        this.swipeAnimating = false;
-        this.spriteWrap.addEventListener("touchstart", this.onSpriteTouchStart.bind(this), {
-            passive: true,
-        });
-        this.spriteWrap.addEventListener("touchmove", this.onSpriteTouchMove.bind(this), {
-            passive: false,
-        });
-        this.spriteWrap.addEventListener("touchend", this.onSpriteTouchEnd.bind(this));
-        this.spriteWrap.addEventListener("touchcancel", this.onSpriteTouchEnd.bind(this));
-
-        // Tap-to-rotate for a plain mouse click (desktop browser testing, or a
-        // mouse-driven "mobile" session) - the touch handlers above cover real
-        // touch input for this already, but never fire for a mouse click at
-        // all, which otherwise did nothing when clicking the preview sprite.
-        // Guarded by the same lastTouchTime de-dupe ClickDetector itself uses,
-        // so a real touch tap doesn't also fire this and rotate twice.
-        this.spriteWrap.addEventListener("click", () => {
-            if (performance.now() - clickDetectorGlobals.lastTouchTime < 1000) {
-                return;
-            }
-            this.onRotateClicked();
-        });
     }
 
     onPlacementBuildingChanged(metaBuilding) {
@@ -344,130 +296,9 @@ export class HUDMobileControls extends BaseHUDPart {
         if (!metaBuilding) {
             return;
         }
-        const variant = this.placerLogic.currentVariant.get();
-        const dimensions = metaBuilding.getDimensions(variant);
-
-        // Matches HUDBuildingPlacer.rerenderVariants' convention for its (desktop)
-        // variant icons - the actual pixel size just has to be proportional to the
-        // real w:h footprint, the sprite markup positions itself with percentages.
-        // 64 * 1.1 rounded - preview bumped ~10% bigger alongside the panel below.
-        const iconSize = 70;
-        const sprite = metaBuilding.getPreviewSprite(0, variant);
-        this.previewSprite.setAttribute("data-tile-w", String(dimensions.x));
-        this.previewSprite.setAttribute("data-tile-h", String(dimensions.y));
-        this.previewSprite.innerHTML = sprite.getAsHTML(iconSize * dimensions.x, iconSize * dimensions.y);
-
         const variantCount = metaBuilding.getAvailableVariants(this.root).length;
         this.previewPanel.classList.toggle("hasVariants", variantCount > 1);
         this.variantBadge.innerText = String(variantCount);
-
-        this.swipeStartX = null;
-        this.swipeOffset = 0;
-        this.swipeAnimating = false;
-        this.previewSprite.style.transition = "none";
-        this.applySpriteTransform();
-    }
-
-    /**
-     * Applies the current rotation + in-progress swipe offset to the preview
-     * sprite. Rotation is a plain CSS rotate of the (already oriented) preview
-     * sprite - not pixel-perfect for non-square buildings, but close enough for a
-     * preview and matches the desktop ghost preview's rotation behaviour.
-     */
-    applySpriteTransform() {
-        const rotation = this.placerLogic.currentBaseRotation;
-        this.previewSprite.style.transform = `translateX(${this.swipeOffset}px) rotate(${rotation}deg)`;
-    }
-
-    onSpriteTouchStart(event) {
-        if (this.swipeAnimating) {
-            return;
-        }
-        if (!this.placerLogic.currentMetaBuilding.get()) {
-            return;
-        }
-        // Marks this as touch input so the plain "click" listener (registered
-        // alongside these touch listeners, for mouse-only input) knows to
-        // ignore the synthetic click a real touch tap generates afterwards -
-        // same de-dupe ClickDetector itself uses.
-        clickDetectorGlobals.lastTouchTime = performance.now();
-        // Always tracked now, even with a single variant (nothing to swipe-cycle
-        // to) - onSpriteTouchEnd below still needs the start position to tell a
-        // tap-to-rotate apart from a drag.
-        this.swipeStartX = event.touches[0].clientX;
-        this.swipeOffset = 0;
-        this.previewSprite.style.transition = "none";
-    }
-
-    onSpriteTouchMove(event) {
-        if (this.swipeStartX === null) {
-            return;
-        }
-        event.preventDefault();
-        this.swipeOffset = event.touches[0].clientX - this.swipeStartX;
-        this.applySpriteTransform();
-    }
-
-    onSpriteTouchEnd() {
-        if (this.swipeStartX === null) {
-            return;
-        }
-        const offset = this.swipeOffset;
-        this.swipeStartX = null;
-
-        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
-        const hasVariants = !!metaBuilding && metaBuilding.getAvailableVariants(this.root).length > 1;
-
-        if (hasVariants && Math.abs(offset) > SWIPE_THRESHOLD_PX) {
-            this.playSwipeAnimation(offset < 0 ? 1 : -1);
-            return;
-        }
-
-        this.previewSprite.style.transition = "transform 0.15s ease";
-        this.swipeOffset = 0;
-        this.applySpriteTransform();
-
-        // Not a swipe (either below the threshold, or nothing to swipe to in the
-        // first place) - treat it as a tap on the building itself, same as the
-        // rotate button.
-        this.onRotateClicked();
-    }
-
-    /**
-     * Slides the current preview out, swaps to the next/previous variant, then
-     * slides the new one in from the opposite side.
-     * @param {number} direction 1 for next variant, -1 for previous
-     */
-    playSwipeAnimation(direction) {
-        this.swipeAnimating = true;
-        const outOffset = direction > 0 ? -SWIPE_SLIDE_PX : SWIPE_SLIDE_PX;
-
-        this.previewSprite.style.transition = "transform 0.15s ease";
-        this.swipeOffset = outOffset;
-        this.applySpriteTransform();
-
-        setTimeout(() => {
-            // Triggers currentVariant's TrackedState, which synchronously calls
-            // renderPreview via the variantChanged signal - resetting
-            // transition/offset to neutral, so jump to the opposite edge with no
-            // transition, then animate back in.
-            this.placerLogic.cycleVariants(direction);
-            this.previewSprite.style.transition = "none";
-            this.swipeOffset = -outOffset;
-            this.applySpriteTransform();
-
-            // Force a reflow so the transition change below doesn't get merged
-            // with the jump above into a single (invisible) step.
-            void this.previewSprite.offsetWidth;
-
-            this.previewSprite.style.transition = "transform 0.15s ease";
-            this.swipeOffset = 0;
-            this.applySpriteTransform();
-
-            setTimeout(() => {
-                this.swipeAnimating = false;
-            }, 160);
-        }, 160);
     }
 
     /**
@@ -586,7 +417,14 @@ export class HUDMobileControls extends BaseHUDPart {
             return;
         }
         this.placerLogic.currentBaseRotation = rotation;
-        if (this.placerLogic.tryPlaceCurrentBuildingAt(tile)) {
+        // One transaction for this whole placement, including any side
+        // effects other systems trigger off it (e.g. underground_belt.js
+        // silently removing obsolete belts on a tunnel pair) - see
+        // ActionHistory's class doc.
+        this.root.actionHistory.beginTransaction();
+        const placed = this.placerLogic.tryPlaceCurrentBuildingAt(tile);
+        this.root.actionHistory.endTransaction();
+        if (placed) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
             // Most buildings deselect themselves after one placement (unless they
             // "stay in placement mode", like belts always do) - multiplace mode
@@ -637,6 +475,10 @@ export class HUDMobileControls extends BaseHUDPart {
         const savedRotation = this.placerLogic.currentBaseRotation;
         let anythingPlaced = false;
 
+        // One transaction for the whole path (and any side effects it
+        // triggers), not one per tile - so a whole dragged/tapped-out belt
+        // undoes in a single step. See ActionHistory's class doc.
+        this.root.actionHistory.beginTransaction();
         this.root.logic.performBulkOperation(() => {
             for (let i = 0; i < entries.length; ++i) {
                 // Belts always "stay in placement mode" so this shouldn't normally be
@@ -651,6 +493,7 @@ export class HUDMobileControls extends BaseHUDPart {
                 }
             }
         });
+        this.root.actionHistory.endTransaction();
 
         this.placerLogic.currentBaseRotation = savedRotation;
 
@@ -700,14 +543,14 @@ export class HUDMobileControls extends BaseHUDPart {
         if (this.deleteModeActive) {
             const tile = this.root.camera.screenToWorld(pos).toTileSpace();
             const contents = this.root.map.getTileContent(tile, this.root.currentLayer);
-            // Snapshot before deleting (makeDeleteEntry itself doesn't touch
-            // the map) but only actually push it once the deletion succeeds -
-            // tryDeleteBuilding can refuse (e.g. the hub), which shouldn't
-            // leave a stray undo entry for nothing that actually happened.
             if (contents) {
-                const undoEntry = this.root.actionHistory.makeDeleteEntry(contents);
-                if (this.root.logic.tryDeleteBuilding(contents)) {
-                    this.root.actionHistory.pushCommand(undoEntry);
+                // tryDeleteBuilding can refuse (e.g. the hub) - endTransaction
+                // already only pushes an undo entry if something was actually
+                // recorded, so a refusal just leaves nothing to undo.
+                this.root.actionHistory.beginTransaction();
+                const deleted = this.root.logic.tryDeleteBuilding(contents);
+                this.root.actionHistory.endTransaction();
+                if (deleted) {
                     this.root.soundProxy.playUi(SOUNDS.destroyBuilding);
                 }
             }
@@ -926,18 +769,11 @@ export class HUDMobileControls extends BaseHUDPart {
     update() {
         this.updateToolbarOffset();
 
-        this.undoButton.classList.toggle("disabled", !this.root.actionHistory.canUndo);
+        const undoDisabled = !this.root.actionHistory.canUndo;
+        this.undoButton.classList.toggle("disabled", undoDisabled);
+        this.beltUndoButton.classList.toggle("disabled", undoDisabled);
         this.redoButton.classList.toggle("disabled", !this.root.actionHistory.canRedo);
 
-        const isPlacingBuilding = !!this.placerLogic.currentMetaBuilding.get();
-
-        this.element.classList.toggle("placing", isPlacingBuilding);
-        if (!isPlacingBuilding) {
-            return;
-        }
-
-        if (!this.swipeAnimating && this.swipeStartX === null) {
-            this.applySpriteTransform();
-        }
+        this.element.classList.toggle("placing", !!this.placerLogic.currentMetaBuilding.get());
     }
 }

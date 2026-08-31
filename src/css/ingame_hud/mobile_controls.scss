@@ -107,8 +107,10 @@
     // Flattened hook arrows (matching the reference's undo icon), not a near-
     // full circle - visually distinct from the rotate icon below, which *is*
     // a full loop since it represents a 90-degree spin rather than "one step
-    // back/forward".
-    > .undo {
+    // back/forward". Descendant (not direct-child) selector - matches both
+    // the idle row's .undo and the belt-mode panel's own .undo button (see
+    // mobile_controls.js's beltUndoButton), one icon shared by both.
+    .undo {
         background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M9%2014L4%209l5-5%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%209h10a6%206%200%200%201%200%2012h-1%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M9%2014L4%209l5-5%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%209h10a6%206%200%200%201%200%2012h-1%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
         background-size: 52%;
     }
@@ -135,145 +137,47 @@
         }
     }
 
+    // Always a flat row of square icons now, no more static-sprite box panel -
+    // belt places immediately (drag or tap, unchanged - see mobile_controls.js's
+    // class doc) so its blueprint never needs staging in a side panel either,
+    // just an on-map ghost preview like every other building gets. Which
+    // icons show depends on the "blueprintMode" class (see
+    // onPlacementBuildingChanged): belt (not blueprintMode) only gets undo (in
+    // case that immediate placement was a mistake) and cancel - no confirm
+    // step, no meaningful multiplace toggle (belt never leaves placement mode
+    // anyway) - while every other building gets the full confirm/rotate/
+    // variant/copy/cancel row for its blueprint (see drawBlueprintGhost).
     .buildingPreview {
         position: relative;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        gap: 0.6rem;
-
-        // ~10% bigger all round than the original 1.5vmin/2.25 cells.
-        padding: 1.65vmin;
-        // Big enough to comfortably cover even a 1x1 building's small sprite -
-        // pointer-events:all below means everything inside this box (padding,
-        // gaps, the swipe hint text) eats taps instead of letting them fall
-        // through to the canvas and place a building underneath the panel.
-        // A bit wider/taller than the previous pass, per feedback - also gives
-        // .cancel (top-right corner) more breathing room instead of reading as
-        // clipped against the panel's own edge.
-        min-width: calc($mobileCell * 3.1);
-        // Tall enough that .cancel (top-right) and .multiplace (bottom-right)
-        // below never overlap - both are full-size buttons pinned to opposite
-        // corners with the same inset, so the panel needs room for both plus
-        // that inset, regardless of how small the sprite in between is.
-        min-height: calc(2 * (0.8rem + $mobileCell));
-        border-radius: $globalBorderRadius;
-        // A touch darker than the first pass, per feedback.
-        background-color: rgba($ingameHudBg, 0.16);
+        gap: 0.5rem;
         pointer-events: all;
 
-        @include DarkThemeOverride {
-            background-color: rgba(
-                color.adjust($darkModeGameBackground, $lightness: -15%, $space: hsl),
-                0.95
-            );
-        }
-
-        // Top-right corner, like a dialog's close button - separate from the
-        // rotate/copy group below instead of sharing its row. Inset (not
-        // overhanging past the panel edge) by the same margin on both axes as
-        // rotate/copy below, so all three sit flush and evenly spaced.
-        > .cancel {
-            @include MobileHudButton;
-            position: absolute;
-            top: 0.6rem;
-            right: 0.6rem;
-            width: $mobileCell;
-            height: $mobileCell;
-            border-radius: 50%;
-            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M6%206l12%2012%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%206L6%2018%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%206l12%2012%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%206L6%2018%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
-            background-size: 55%;
-            z-index: 10;
-        }
-
-        .swipeHint {
-            @include SuperSmallText;
-            color: #fff;
-            text-transform: uppercase;
-            text-align: center;
-            visibility: hidden;
-
-            // Plain white text blended into the light panel background -
-            // a dark outline (stacked text-shadows, since -webkit-text-stroke
-            // eats into the glyphs themselves at this font size) keeps it
-            // readable regardless of what's behind it.
-            text-shadow:
-                0.05rem 0 rgba(0, 0, 0, 0.6),
-                -0.05rem 0 rgba(0, 0, 0, 0.6),
-                0 0.05rem rgba(0, 0, 0, 0.6),
-                0 -0.05rem rgba(0, 0, 0, 0.6);
-        }
-
-        &.hasVariants .swipeHint {
-            visibility: visible;
-        }
-
-        // Not a fixed-size box: sizing the wrap itself (instead of just centering
-        // an oversized .sprite inside a smaller fixed one) avoids flexbox
-        // shrinking .sprite's width to fit and squashing multi-tile buildings out
-        // of proportion. .sprite is sized per its real tile footprint below, and
-        // flex-shrink:0 guarantees it never gets compressed either way.
-        .spriteWrap {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: visible;
-            touch-action: none;
-            // Every element is pointer-events:none by default (see the * rule
-            // in common.scss) - .buildingPreview opts back in, but that alone
-            // doesn't carry to this specific child. Without this, tap/swipe on
-            // the sprite never actually reached its touch listeners via real
-            // screen-coordinate hit-testing (only direct dispatchEvent() calls
-            // in testing "worked", which skip hit-testing entirely) - this was
-            // true even before today's tap-to-rotate addition.
-            pointer-events: all;
-
-            // ~10% bigger - matches HUDMobileControls.renderPreview's iconSize.
-            .sprite {
-                position: relative;
-                flex-shrink: 0;
-                width: calc($mobileCell * 1.1);
-                height: calc($mobileCell * 1.1);
-                transition: transform 0.15s ease;
-
-                &[data-tile-w="2"] {
-                    width: 2.2 * $mobileCell;
-                }
-                &[data-tile-h="2"] {
-                    height: 2.2 * $mobileCell;
-                }
-                &[data-tile-h="3"] {
-                    height: 3.3 * $mobileCell;
-                }
-                &[data-tile-w="3"] {
-                    width: 3.3 * $mobileCell;
-                }
-                &[data-tile-w="4"] {
-                    width: 4.4 * $mobileCell;
-                }
-            }
-        }
-
-        // Bottom-left/right corners, inset by the same margin as .cancel above
-        // (not overhanging past the panel edge) - not a centered row any more.
+        > .cancel,
+        > .undo,
+        > .confirm,
         > .rotate,
+        > .variant,
         > .multiplace {
             @include MobileHudButton;
-            position: absolute;
-            bottom: 0.6rem;
             width: $mobileCell;
             height: $mobileCell;
-            border-radius: 0.7rem;
+            border-radius: 0.8rem;
+            box-shadow: 0 0.15rem 0.35rem rgba(0, 0, 0, 0.25);
+        }
+
+        > .cancel {
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M6%206l12%2012%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%206L6%2018%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M6%206l12%2012%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%206L6%2018%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            background-size: 55%;
         }
 
         > .rotate {
-            left: 0.6rem;
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M18%204v6h-6%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M15.49%209a9%209%200%201%200%202.12%209.36L18%2014%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M18%204v6h-6%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M15.49%209a9%209%200%201%200%202.12%209.36L18%2014%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
             background-size: 55%;
         }
 
         > .multiplace {
-            right: 0.6rem;
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M3%207h13v13H3z%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M8%203h13v13%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M3%207h13v13H3z%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M8%203h13v13%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
             background-size: 52%;
 
@@ -286,31 +190,23 @@
             }
         }
 
-        // Blueprint-mode-only buttons (confirm, variant) - hidden entirely in
-        // belt mode (display:none here, deliberately last within each of
-        // their own rules below so it beats MobileHudButton's inline-flex),
-        // positioned/sized properly below under &.blueprintMode.
         > .confirm {
-            @include MobileHudButton;
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M4%2012l5%206L20%206%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%2012l5%206L20%206%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
             background-size: 55%;
 
             // The one button that actually does something "final" here - a
             // faint green tint (same hue the toolbar uses for its own
             // just-placed flash) distinguishes it from the neutral cream of
-            // the other 4 at a glance.
+            // the other icons at a glance.
             background-color: rgba($colorGreenBright, 0.3);
-            display: none;
         }
 
         // Bidirectional swap arrows - distinct from .rotate's single loop,
         // reads as "switch to a different one" rather than "spin this one".
         > .variant {
-            @include MobileHudButton;
             position: relative;
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%22-5%20-5%2034%2034%22%3E%3Cdefs%3E%3ClinearGradient%20id%3D%22g%22%20x1%3D%220%22%20y1%3D%220%22%20x2%3D%220%22%20y2%3D%221%22%3E%3Cstop%20offset%3D%220%22%20stop-color%3D%22%23f7efdc%22%2F%3E%3Cstop%20offset%3D%221%22%20stop-color%3D%22%23d8c48f%22%2F%3E%3C%2FlinearGradient%3E%3Cfilter%20id%3D%22s%22%20x%3D%22-60%25%22%20y%3D%22-60%25%22%20width%3D%22220%25%22%20height%3D%22220%25%22%3E%3CfeDropShadow%20dx%3D%220%22%20dy%3D%220.6%22%20stdDeviation%3D%220.5%22%20flood-color%3D%22%235c4b2a%22%20flood-opacity%3D%220.5%22%2F%3E%3C%2Ffilter%3E%3C%2Fdefs%3E%3Cg%20filter%3D%22url%28%23s%29%22%3E%3Cpath%20d%3D%22M4%208h13M13%204l4%204-4%204M20%2016H7M11%2012l-4%204%204%204%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%224.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3Cpath%20d%3D%22M4%208h13M13%204l4%204-4%204M20%2016H7M11%2012l-4%204%204%204%22%20fill%3D%22none%22%20stroke%3D%22url%28%23g%29%22%20stroke-width%3D%222.6%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
             background-size: 52%;
-            display: none;
 
             .badge {
                 @include SuperDuperSmallText;
@@ -331,48 +227,41 @@
             }
         }
 
-        // Only shown for non-belt buildings (see
-        // HUDMobileControls.onPlacementBuildingChanged) - a flat row of 5
-        // square icons instead of the belt panel's box-with-corner-buttons,
-        // since the sprite itself is drawn on the map as a blueprint that
-        // follows the finger (see drawBlueprintGhost) rather than sitting
-        // static in a side panel.
+        // Belt mode (default - not blueprintMode): undo, then cancel. Nothing
+        // else applies (see the class comment above).
+        > .undo {
+            order: 1;
+        }
+        > .cancel {
+            order: 2;
+        }
+        > .confirm,
+        > .rotate,
+        > .variant,
+        > .multiplace {
+            display: none;
+        }
+
+        // Blueprint mode (every building except belt): the full confirm/
+        // rotate/variant/copy/cancel row instead, in that reading order.
+        // .variant only when there's actually more than one to switch between
+        // (same &.hasVariants this panel already tracked before).
         &.blueprintMode {
-            position: static;
-            flex-direction: row;
-            align-items: center;
-            gap: 0.5rem;
-            min-width: 0;
-            min-height: 0;
-            padding: 0;
-            background: none;
-
-            @include DarkThemeOverride {
-                background: none;
-            }
-
-            > .spriteWrap,
-            > .swipeHint {
+            > .undo {
                 display: none;
             }
-
-            > .cancel,
             > .confirm,
             > .rotate,
-            > .variant,
             > .multiplace {
-                position: static;
-                width: $mobileCell;
-                height: $mobileCell;
-                border-radius: 0.8rem;
-                box-shadow: 0 0.15rem 0.35rem rgba(0, 0, 0, 0.25);
+                display: inline-flex;
+            }
+            > .variant {
+                display: none;
+            }
+            &.hasVariants > .variant {
+                display: inline-flex;
             }
 
-            // DOM order (see mobile_controls.js) is cancel/confirm/rotate/
-            // variant/multiplace, cancel first for the belt-mode panel's
-            // top-right-corner convention - reordered here to the requested
-            // confirm/rotate/variant/copy/cancel reading order instead of
-            // touching the DOM itself.
             > .confirm {
                 order: 1;
             }
@@ -387,22 +276,6 @@
             }
             > .cancel {
                 order: 5;
-            }
-
-            // Both default to display:none outside blueprintMode (see their
-            // own rules above) - re-enabled here. .confirm always shows,
-            // .variant only when there's actually more than one variant to
-            // switch between (same &.hasVariants this panel already tracked
-            // for the old swipe hint).
-            > .confirm {
-                display: inline-flex;
-            }
-
-            > .variant {
-                display: none;
-            }
-            &.hasVariants > .variant {
-                display: inline-flex;
             }
         }
     }

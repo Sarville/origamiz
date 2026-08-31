@@ -716,23 +716,28 @@ logs.
         translated (`translations/base-ru.yaml` `tips:`, 56/56, no code change
         needed — the English tip in the user's screenshot was just an
         English-locale session, `hints.js` already reads the locale-aware `T.tips`).
-      - [x] **2c-2 — Undo/redo (item 5).** Done 2026-08-31. New
-        `game/action_history.js` (`root.actionHistory`), capped at 30 entries.
-        Records placements off the existing `entityManuallyPlaced` signal
-        (already dispatched by `HUDBuildingPlacerLogic.tryPlaceCurrentBuildingAt`,
-        shared by desktop and mobile - covers both automatically) rather than
-        touching placement call sites; deletion recording is mobile-only for
-        now, called explicitly from `mobile_controls.js`'s delete-mode tap
-        (`GameLogic.tryDeleteBuilding` has too many non-user-facing internal
-        callers - auto-tunnel pairing, lever/constant-signal rebuilds, etc. -
-        to hook globally without recording a lot of noise). Sub-commands
-        recorded during a bulk operation (a dragged belt path, blueprint
-        paste) are buffered and flushed as one combined command on
-        `bulkOperationFinished`, so a whole dragged belt undoes in one tap
-        instead of one per tile - confirmed live via CDP mobile emulation.
-        Known gap (documented as a `ponytail:` comment in the file): placing a
-        building on top of a replaceable one only records the new placement,
-        not the one it silently replaced.
+      - [x] **2c-2 — Undo/redo (item 5).** Done 2026-08-31, redesigned the same
+        day per user feedback (see below). New `game/action_history.js`
+        (`root.actionHistory`), capped at 30 entries. Records
+        *transactionally*: `mobile_controls.js` calls
+        `beginTransaction()`/`endTransaction()` around one whole user action
+        (a tap, a dragged belt path, a delete-mode tap - not per tile), and
+        `GameLogic.tryPlaceBuilding`/`tryDeleteBuilding` unconditionally report
+        every placement/deletion to `noteEntityPlaced`/`noteEntityWillBeDeleted`
+        - a no-op unless a transaction is open, so every other caller (puzzle
+        editor, savegame/puzzle deserialization, mass-selector, and every
+        side-effect system - automatic tunnel-pair belt cleanup,
+        lever/constant-signal rebuilds, wired-pins auto-cleanup) is unaffected
+        by construction. This closes the gap the first version had (that one
+        hooked the `entityManuallyPlaced` *signal* instead, which only ever
+        saw the one entity the signal carried) - user feedback was explicit:
+        undo must restore *every* building a placement/deletion affected, not
+        just the one directly tapped, since e.g. re-placing a belt over an
+        existing one, or completing an underground-belt pair, silently
+        deletes other entities as a side effect. Verified live via CDP:
+        placing a building on top of a replaceable belt, then undo, restores
+        both the removal of the new building *and* the belt it silently
+        replaced; redo re-applies both correctly too.
       - [x] **2c-3 — Building placement mode rewrite (item 1), non-belt part
         done 2026-08-31.** Non-belt buildings now use a blueprint that
         follows the finger (mirrors desktop's mouse-hover ghost preview,
@@ -743,14 +748,19 @@ logs.
         all newly hand-drawn in the project's style except rotate/copy which
         already existed) replaces the old static side-panel entirely for
         these buildings - see the `blueprintMode` class toggle in
-        `mobile_controls.js`/`.scss`. **Belt is deliberately untouched** -
-        still today's drag-immediately-places flow, old panel and all - the
-        user asked to defer belt's icon-row question (which 2 of the 5
-        icons apply to it) until after 2c-4 clarifies the belt behavior
-        further. Verified live via CDP mobile emulation: drag-to-reposition,
-        confirm at the dragged tile, rotate, cancel, undo of a
-        blueprint-mode placement, and belt's drag-to-lay + panel confirmed
-        pixel-identical to before.
+        `mobile_controls.js`/`.scss`. Belt's placement *mechanics* stayed
+        untouched throughout (still today's drag/tap-immediately-places
+        flow) - its icon row was resolved once 2c-4 was done, per the user's
+        request to defer that question: belt only gets undo + cancel (no
+        confirm/rotate/variant/copy - none apply, since it never stages a
+        blueprint or leaves placement mode). The old static-sprite side panel
+        was retired entirely for both modes at that point too - belt's ghost
+        preview during a drag already draws on the map, so the panel was pure
+        redundancy once it had no buttons left needing the sprite. Verified
+        live via CDP mobile emulation throughout: drag-to-reposition, confirm
+        at the dragged tile, rotate, cancel, undo of a blueprint-mode
+        placement, belt's drag-to-lay pixel-identical to before, and the
+        final 2-icon belt panel.
       - [x] **2c-4 — Continuous belt placement across taps + across zoom (item
         8).** Done 2026-08-31. New `lastBeltTile`/`placeBeltTapAt()` in
         `mobile_controls.js`: the first tap after selecting belt still places
