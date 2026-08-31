@@ -1033,6 +1033,32 @@ logs.
         mess, confirmed via entity state that the belt is still exactly
         4 plain tiles, no tunnel pieces anywhere; drag-based reversal
         (which legitimately needs to retrace its own belt) still works.
+
+        **Ninth follow-up, done 2026-08-31:** the eighth follow-up correctly
+        stopped a tap from tunnelling under its own belt's interior, but
+        just rejecting outright wasn't the actual ask - explicit follow-up:
+        "if the tap runs along the same line the belt just ended on, in the
+        opposite direction, that piece needs to be gone *around*". Added
+        `computeSidestepPath(from, to, offset)`: steps one tile
+        perpendicular, runs parallel to the straight from→to line, steps
+        back in - a "staple"/paperclip shape around whatever's directly on
+        that line. `resolveBeltPathToward` tries it (both perpendicular
+        directions) as a last resort, tap-continuation only, specifically
+        when `to.x === from.x` or `to.y === from.y` - the one case
+        computeCornerPath's two corners can't offer any alternative for at
+        all, since with no actual corner to swap they collapse to the
+        identical straight line already rejected by the own-chain guard.
+        Verified live via CDP with the same short-belt setup as the eighth
+        follow-up: a tap retracing straight back along the belt's own line
+        now sidesteps one column over, runs parallel past the untouched
+        original for its whole length, and steps back in to land exactly on
+        the tapped tile - confirmed via entity state that not one tile of
+        the original belt changed, and visually matches the "staple" shape
+        from the earlier screenshot. Only engages for the exact degenerate
+        same-line case; drag and every other tap scenario (open territory,
+        an L-shaped retrace the alt-corner can already route around) are
+        unaffected, since the sidestep branch only runs after both existing
+        attempts have already failed.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

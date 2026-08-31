@@ -465,6 +465,28 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
+     * Steps one tile to the side, runs parallel to a straight from->to line,
+     * then steps back in - a "staple" shape around whatever sits directly
+     * on that line, for the one case computeCornerPath's two corners can't
+     * offer any alternative for at all: from and to share an axis (dx or dy
+     * exactly 0), so "which axis goes first" doesn't mean anything and both
+     * corners collapse to the identical straight line. Only meaningful for
+     * that degenerate case - callers check dx===0/dy===0 before using this.
+     * @param {Vector} from
+     * @param {Vector} to
+     * @param {Vector} offset A single perpendicular step, e.g. (1,0) or (0,-1).
+     * @returns {Array<Vector>}
+     */
+    computeSidestepPath(from, to, offset) {
+        const stepOut = from.add(offset);
+        const stepIn = to.add(offset);
+        const out = this.axisSegment(from, stepOut);
+        const across = this.axisSegment(stepOut, stepIn);
+        const back = this.axisSegment(stepIn, to);
+        return out.concat(across.slice(1)).concat(back.slice(1));
+    }
+
+    /**
      * Resolves a belt path from `from` to `to`, trying the dominant-axis
      * corner (computeCornerPath's default) first and falling back to the
      * other corner if that one can't be bridged - a single fixed corner can
@@ -496,6 +518,29 @@ export class HUDMobileControls extends BaseHUDPart {
         const altResolved = this.resolveBeltPath(altPath, allowReshape);
         if (altResolved) {
             return { path: altPath, resolved: altResolved };
+        }
+        // Tap-continuation only: a straight retrace back along the same
+        // line the belt just ended on (dx or dy exactly 0) can't reshape or
+        // tunnel through its own interior (resolveBeltPath's own-chain
+        // guard), and the corner fallback above can't help either - with no
+        // actual corner to swap, both attempts above were the identical
+        // straight line. Sidestepping one tile out, running parallel past
+        // it, and stepping back in reaches the same destination without
+        // touching it at all, so try that (both sides) before giving up.
+        if (!allowReshape) {
+            const offsets =
+                to.x === from.x
+                    ? [new Vector(1, 0), new Vector(-1, 0)]
+                    : to.y === from.y
+                    ? [new Vector(0, 1), new Vector(0, -1)]
+                    : [];
+            for (const offset of offsets) {
+                const sidePath = this.computeSidestepPath(from, to, offset);
+                const sideResolved = this.resolveBeltPath(sidePath, allowReshape);
+                if (sideResolved) {
+                    return { path: sidePath, resolved: sideResolved };
+                }
+            }
         }
         return { path: primaryPath, resolved: null };
     }
