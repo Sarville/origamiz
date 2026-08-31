@@ -3,12 +3,13 @@ import { globalConfig } from "../../../core/config";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
-import { Vector } from "../../../core/vector";
+import { enumAngleToDirection, enumDirectionToVector, Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
 import { getCodeFromBuildingData } from "../../building_codes";
 import { MetaUndergroundBeltBuilding, enumUndergroundBeltVariants } from "../../buildings/underground_belt";
 import { enumMouseButton } from "../../camera";
 import { StaticMapEntityComponent } from "../../components/static_map_entity";
+import { enumUndergroundBeltMode } from "../../components/underground_belt";
 import { Entity } from "../../entity";
 import { defaultBuildingVariant } from "../../meta_building";
 import { enumHubGoalRewards } from "../../tutorial_goals";
@@ -47,10 +48,10 @@ const LONG_PRESS_MS = 350;
  *
  * Auto-tunnel planning: any belt path (a drag or a tap-continuation) that
  * crosses an existing, non-belt-replaceable building - or a belt that isn't
- * part of the chain the path itself starts or ends on, see resolveBeltPath's
+ * part of the chain the path itself starts or ends on, see findBeltPath's
  * exemptPaths - is auto-bridged with a tunnel pair instead of just leaving a
  * gap there, if an unlocked tunnel tier's range covers it - see
- * resolveBeltPath. A belt the path starts *or* ends on (dragging/tapping
+ * findBeltPath. A belt the path starts *or* ends on (dragging/tapping
  * from one belt to another) is never tunnelled, just reshaped to connect the
  * two. If a genuine crossing can't be bridged (too
  * long a gap, tunnels not unlocked yet, or the blocked run isn't a single
@@ -154,14 +155,14 @@ export class HUDMobileControls extends BaseHUDPart {
         this.dragPath = [];
         /** @type {Array<PathEntry>} */
         this.dragPreviewEntries = [];
-        // Set alongside dragPreviewEntries whenever resolveBeltPath (item 9's
+        // Set alongside dragPreviewEntries whenever findBeltPath (item 9's
         // auto-tunnel planning) can't make the currently-dragged path
         // contiguous - dragPreviewEntries is left empty and draw() shows a
         // red tint over dragPath instead of ghost belts.
         this.dragPreviewInvalid = false;
 
         // Item 9: a brief red flash over a just-rejected belt path (a tap or
-        // a completed drag that resolveBeltPath couldn't make contiguous),
+        // a completed drag that findBeltPath couldn't make contiguous),
         // shown instead of placing anything. Cleared automatically in
         // update() once its duration elapses - see flashInvalidBelt.
         /** @type {{ path: Array<Vector>, startedAt: number }} */
@@ -465,84 +466,20 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Steps one tile to the side, runs parallel to a straight from->to line,
-     * then steps back in - a "staple" shape around whatever sits directly
-     * on that line, for the one case computeCornerPath's two corners can't
-     * offer any alternative for at all: from and to share an axis (dx or dy
-     * exactly 0), so "which axis goes first" doesn't mean anything and both
-     * corners collapse to the identical straight line. Only meaningful for
-     * that degenerate case - callers check dx===0/dy===0 before using this.
+     * Resolves a belt path from `from` to `to` - see findBeltPath for the
+     * actual search. `path` in the return value is only ever
+     * computeCornerPath's plain two-leg shape, used purely as the red-flash
+     * preview's outline on total failure (the real search may have explored
+     * tiles well outside it - this is just a reasonable "here's roughly
+     * where it was headed" hint, not a claim that shape was actually tried).
      * @param {Vector} from
      * @param {Vector} to
-     * @param {Vector} offset A single perpendicular step, e.g. (1,0) or (0,-1).
-     * @returns {Array<Vector>}
-     */
-    computeSidestepPath(from, to, offset) {
-        const stepOut = from.add(offset);
-        const stepIn = to.add(offset);
-        const out = this.axisSegment(from, stepOut);
-        const across = this.axisSegment(stepOut, stepIn);
-        const back = this.axisSegment(stepIn, to);
-        return out.concat(across.slice(1)).concat(back.slice(1));
-    }
-
-    /**
-     * Resolves a belt path from `from` to `to`, trying the dominant-axis
-     * corner (computeCornerPath's default) first and falling back to the
-     * other corner if that one can't be bridged - a single fixed corner can
-     * run straight back over a belt that's already there (particularly
-     * against its own direction, which reads as a crossing rather than a
-     * harmless retrace) even when the other way round would have reached
-     * the same destination with nothing in the way. Found live: tapping 2
-     * tiles above the *start* of an L-shaped belt (far from lastBeltTile,
-     * at the other end) picked the horizontal-first corner - which runs
-     * back along the entire belt just built - and rejected as unbridgeable,
-     * while tapping further up (past dx/dy flipping which axis is
-     * "dominant") worked fine as the same request.
-     * @param {Vector} from
-     * @param {Vector} to
-     * @param {boolean} allowReshape See resolveBeltPath - true for a drag,
+     * @param {boolean} allowReshape See findBeltPath - true for a drag,
      * false for tap-continuation.
-     * @returns {{ path: Array<Vector>, resolved: Array<PathEntry>|null }} `path` is
-     * always the primary corner's tiles (used for the red-flash preview on
-     * total failure), `resolved` is whichever corner actually worked, if any.
+     * @returns {{ path: Array<Vector>, resolved: Array<PathEntry>|null }}
      */
-    resolveBeltPathToward(from, to, allowReshape) {
-        const primaryPath = this.computeCornerPath(from, to);
-        const primaryResolved = this.resolveBeltPath(primaryPath, allowReshape);
-        if (primaryResolved) {
-            return { path: primaryPath, resolved: primaryResolved };
-        }
-        const horizontalFirst = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
-        const altPath = this.computeCornerPath(from, to, !horizontalFirst);
-        const altResolved = this.resolveBeltPath(altPath, allowReshape);
-        if (altResolved) {
-            return { path: altPath, resolved: altResolved };
-        }
-        // Tap-continuation only: a straight retrace back along the same
-        // line the belt just ended on (dx or dy exactly 0) can't reshape or
-        // tunnel through its own interior (resolveBeltPath's own-chain
-        // guard), and the corner fallback above can't help either - with no
-        // actual corner to swap, both attempts above were the identical
-        // straight line. Sidestepping one tile out, running parallel past
-        // it, and stepping back in reaches the same destination without
-        // touching it at all, so try that (both sides) before giving up.
-        if (!allowReshape) {
-            const offsets =
-                to.x === from.x
-                    ? [new Vector(1, 0), new Vector(-1, 0)]
-                    : to.y === from.y
-                    ? [new Vector(0, 1), new Vector(0, -1)]
-                    : [];
-            for (const offset of offsets) {
-                const sidePath = this.computeSidestepPath(from, to, offset);
-                const sideResolved = this.resolveBeltPath(sidePath, allowReshape);
-                if (sideResolved) {
-                    return { path: sidePath, resolved: sideResolved };
-                }
-            }
-        }
-        return { path: primaryPath, resolved: null };
+    findBeltPathToward(from, to, allowReshape) {
+        return { path: this.computeCornerPath(from, to), resolved: this.findBeltPath(from, to, allowReshape) };
     }
 
     /**
@@ -597,8 +534,8 @@ export class HUDMobileControls extends BaseHUDPart {
      * direction it heads onward (outgoing) and the direction it was reached
      * from (incoming - omit for a path's very first tile, which has none).
      * Shared by beltTilesToEntries (an isolated, no-tunnel path) and
-     * resolveBeltPath's flushRun (a plain run flanked by tunnel entries) -
-     * the latter needs outgoing/incoming from the *whole* path (resolveBeltPath's
+     * findBeltPath's flushRun (a plain run flanked by tunnel entries) -
+     * the latter needs outgoing/incoming from the *whole* path (findBeltPath's
      * own `directions`), not ones recomputed from an out-of-context slice, or a
      * run that's only one tile long (sandwiched directly between two tunnels)
      * has no neighbours left in the slice to compute a direction from at all
@@ -631,12 +568,21 @@ export class HUDMobileControls extends BaseHUDPart {
     /**
      * The Belt component at the given tile, or null - just the
      * getLayerContentXY + null-check dance isTileBlockedForBelt and
-     * resolveBeltPath both need, shared to avoid repeating it.
+     * findBeltPath both need, shared to avoid repeating it.
      * @param {Vector} tile
      */
     beltAt(tile) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         return (contents && contents.components.Belt) || null;
+    }
+
+    /**
+     * The UndergroundBelt component at the given tile, or null.
+     * @param {Vector} tile
+     */
+    tunnelAt(tile) {
+        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        return (contents && contents.components.UndergroundBelt) || null;
     }
 
     /**
@@ -651,7 +597,7 @@ export class HUDMobileControls extends BaseHUDPart {
      * either of the path's own two ends (the tile the finger pressed down
      * on, or the tile it's currently released/tapped at) or part of that
      * same connected chain (`anchorTiles`/`exemptPaths`, computed once in
-     * resolveBeltPath from path[0]/path[last] - this is what lets a drag
+     * findBeltPath from path[0]/path[last] - this is what lets a drag
      * starting *or* ending on an existing belt reshape/merge/reverse it, and
      * what lets tapping one belt's tile to another's connect the two). A
      * *different* belt encountered strictly in between - not the one being
@@ -717,240 +663,281 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Item 9 - auto-tunnel planning: given a raw belt tile path, checks
-     * whether it's blocked by any real (non-belt-replaceable) building, or
-     * by a belt that isn't part of the chain the path itself starts or ends
-     * on (see isTileBlockedForBelt/exemptPaths - the two ends' own belts,
-     * dragged/tapped from one to the other, always just get reshaped, never
-     * tunnelled), and, if every blocked run can be bridged with a tunnel
-     * pair, returns the full placement plan with tunnel entries substituted
-     * in; otherwise returns null, meaning this path can't become a
-     * contiguous belt at all (too long a gap for any unlocked tier, tunnels
-     * not unlocked, or the
-     * blocked run doesn't lie on a single straight line - a tunnel can't
-     * turn a corner underground).
+     * Item 9 - auto-tunnel planning, now a proper bounded search rather than
+     * a fixed L-corner (or one sidestep shape for the degenerate same-line
+     * case): a 0-1 BFS over (tile, facing direction) states. Continuing
+     * straight - including jumping a tunnel across a bridgeable obstacle in
+     * the way - costs nothing; turning 90 degrees costs one "bend". Capped
+     * at MAX_BENDS bends total and a padded bounding box around from/to;
+     * genuinely no route within that means rejection (the caller flashes
+     * red), same outcome as the old fixed-shape version, just reached after
+     * actually trying harder first.
      *
-     * Splits the path into alternating plain-belt runs and tunnel bridges
-     * rather than patching beltTilesToEntries' output in place - a tunnel
-     * breaks curve continuity anyway (the belt travels straight underground,
-     * so there's nothing to curve-detect across it), so each plain run's
-     * rotation/curves are computed independently and the two are
-     * concatenated back together in order.
-     * @param {Array<Vector>} path
+     * Which belt tiles are "ours" to reshape/extend rather than a foreign
+     * crossing to tunnel under is unchanged from before: `to` and `from`
+     * (and, for a drag only - allowReshape - their whole connected chains,
+     * BeltPath/Belt.assignedPath) are exempt from ever blocking; anything
+     * else already built, including the rest of the *same* belt for a tap,
+     * is a genuine obstacle, bridged with a tunnel if geometrically
+     * possible or left as a reason to reject this branch of the search.
+     *
+     * A tunnel sender can't curve - its acceptor is fixed opposite its own
+     * rotation, no curve variant exists at all - so the search only ever
+     * proposes a tunnel jump while already heading in the direction that
+     * jump would use (never right off a turn), and a jump starting at
+     * `from` itself is further restricted to whichever direction that tile
+     * can actually send in: its real established incoming flow if it's an
+     * existing plain belt (mirroring lastBeltIncomingDirection when this is
+     * a true continuation), or its own fixed ejector if `from` is itself an
+     * existing tunnel receiver - which also can never become a new sender
+     * of its own, being one already.
+     * @param {Vector} from
+     * @param {Vector} to
      * @param {boolean} allowReshape Drag (a held finger moving across the
-     * map) may reshape/merge whichever belts the path starts and ends on -
-     * see the anchorTiles/exemptPaths doc just below. Tap-continuation
-     * (placeBeltTapAt, item 8) never may: each tap only ever *extends* the
-     * belt from wherever it last ended, so anything already built beyond
-     * that single tile is treated as a genuine obstacle like any other -
-     * bridged with a tunnel if geometrically possible, otherwise rejected -
-     * rather than silently rewritten. Found live: tapping 2 tiles past the
-     * *start* of an already-built belt, continuing from its far end,
-     * reshaped/reversed the whole thing in one tap instead of leaving it
-     * alone.
+     * map) may reshape/merge whichever belts the path starts and ends on.
+     * Tap-continuation (placeBeltTapAt, item 8) never may: each tap only
+     * ever *extends* the belt from wherever it last ended.
      * @returns {Array<PathEntry>|null}
      */
-    resolveBeltPath(path, allowReshape) {
-        if (path.length < 2) {
-            // Nothing to bridge - if the lone tile is itself blocked,
-            // placement just fails normally, same as before this feature.
-            return this.beltTilesToEntries(path);
+    findBeltPath(from, to, allowReshape) {
+        if (from.equals(to)) {
+            return this.beltTilesToEntries([from]);
         }
 
-        // The direction our own path travels through each tile - used by
-        // curvedEntry below and by the straight-line check a bit further
-        // down (a tunnel bridging a real building can't turn a corner). Same
-        // convention beltTilesToEntries' "outgoing" uses: the tile's own
-        // onward direction, or its incoming one for the last tile.
-        const directions = path.map((tile, idx) =>
-            idx < path.length - 1
-                ? this.directionBetween(path[idx], path[idx + 1])
-                : this.directionBetween(path[idx - 1], path[idx])
-        );
+        const MAX_BENDS = 6;
+        const MAX_VISITED = 6000;
+        const maxTunnelRange =
+            globalConfig.undergroundBeltMaxTilesByTier[globalConfig.undergroundBeltMaxTilesByTier.length - 1];
 
-        // Both ends of the path - the tile the finger pressed down on, and
-        // wherever it's currently released/tapped at - are exempt from
-        // isTileBlockedForBelt's crossing check, along with their whole
-        // connected chain (BeltPath, tracked as Belt.assignedPath): pressing
-        // on one belt and dragging to another should merge/reshape them,
-        // not tunnel between them. A *different*, unrelated belt crossed
-        // strictly in between still counts as a foreign crossing. Only for
-        // a drag, though (allowReshape) - a tap-continuation exempts tile 0
-        // alone (still needed so the very tile it continues from isn't a
-        // "crossing" of itself), never its wider chain or the end tile, so
-        // it only ever extends, never reshapes.
-        const endTile = path[path.length - 1];
-        const startBelt = this.beltAt(path[0]);
-        const endBelt = this.beltAt(endTile);
-        const anchorTiles = allowReshape ? [path[0], endTile] : [path[0]];
+        const startBelt = this.beltAt(from);
+        const startTunnel = this.tunnelAt(from);
+        const endBelt = this.beltAt(to);
+        const anchorTiles = allowReshape ? [from, to] : [from];
         const exemptPaths = allowReshape
             ? [startBelt && startBelt.assignedPath, endBelt && endBelt.assignedPath].filter(Boolean)
             : [];
-
-        // Both anchors need the direction flow already had there *before*
-        // this call overwrites them, so the junction curves to continue it
-        // instead of meeting it with a flat right-angle joint (found live,
-        // twice: a chained continuation tap not curving into its own
-        // previous corner, and connecting into a *different*, previously
-        // untouched belt not curving into whichever way that one already
-        // flowed). For the end anchor that's simply its current rotation
-        // (the direction it keeps flowing in past this point). For the
-        // start anchor it's almost the same, with one refinement: if this
-        // is a *true* continuation (path[0] is lastBeltTile, which we
-        // placed ourselves last call) lastBeltIncomingDirection has the
-        // tile's *real* incoming edge on file already - its own current
-        // rotation is only that same value for a straight tile, but wrong
-        // for a curve (rotation there is its outgoing, not incoming). A
-        // fresh grab of some other, already-standing belt has no such
-        // history to consult, so its current rotation is the best available
-        // stand-in - right for the (overwhelmingly common) straight case,
-        // an approximation only where that tile itself happens to be a
-        // curve.
-        const startIncomingDirection = startBelt
-            ? !!this.lastBeltTile && path[0].equals(this.lastBeltTile)
-                ? this.lastBeltIncomingDirection
-                : this.root.map.getLayerContentXY(path[0].x, path[0].y, "regular").components.StaticMapEntity
-                      .rotation
-            : undefined;
-        const endOutgoingDirection = endBelt
-            ? this.root.map.getLayerContentXY(endTile.x, endTile.y, "regular").components.StaticMapEntity
-                  .rotation
-            : undefined;
-
-        const resolvedEntries = [];
-        let runStart = 0;
-        // Built from the global directions[] (computed above from the *whole*
-        // path) rather than delegating to beltTilesToEntries on a bare slice -
-        // a run flanked by tunnel entries on both sides still needs its
-        // real incoming/outgoing direction, and a slice loses that entirely
-        // for a run that's only one tile long (no neighbours left inside the
-        // slice to compute a direction from at all - see curvedEntry's doc).
-        const flushRun = endExclusive => {
-            for (let k = runStart; k < endExclusive; ++k) {
-                const incoming = k > 0 ? directions[k - 1] : startIncomingDirection;
-                const outgoing =
-                    k === path.length - 1 && endOutgoingDirection !== undefined
-                        ? endOutgoingDirection
-                        : directions[k];
-                resolvedEntries.push(this.curvedEntry(path[k], outgoing, incoming));
+        const isOwnChain = tile => {
+            if (allowReshape || !startBelt || !startBelt.assignedPath) {
+                return false;
             }
+            const belt = this.beltAt(tile);
+            return !!belt && belt.assignedPath === startBelt.assignedPath;
         };
+        // A tunnel exit/entrance can never land on a tile that already has
+        // *anything* on it, even a same-direction belt isTileBlockedForBelt
+        // would otherwise wave through as a harmless overwrite for a plain
+        // tile - converting an existing tile into a tunnel piece is never
+        // harmless, it changes the building entirely (found live: an
+        // auto-planned exit landing on top of an unrelated, already-built
+        // belt, silently replacing it).
+        const isStrictlyClear = tile => !this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        const isBlocked = (tile, dir) => this.isTileBlockedForBelt(tile, dir, exemptPaths, anchorTiles);
 
-        let i = 0;
-        while (i < path.length) {
-            if (!this.isTileBlockedForBelt(path[i], directions[i], exemptPaths, anchorTiles)) {
-                i++;
+        const forcedStartDirection =
+            startTunnel && startTunnel.mode === enumUndergroundBeltMode.receiver
+                ? this.root.map.getLayerContentXY(from.x, from.y, "regular").components.StaticMapEntity.rotation
+                : undefined;
+        const startIncomingDirection =
+            forcedStartDirection === undefined && startBelt
+                ? !!this.lastBeltTile && from.equals(this.lastBeltTile)
+                    ? this.lastBeltIncomingDirection
+                    : this.root.map.getLayerContentXY(from.x, from.y, "regular").components.StaticMapEntity
+                          .rotation
+                : undefined;
+        const endOutgoingDirection = endBelt
+            ? this.root.map.getLayerContentXY(to.x, to.y, "regular").components.StaticMapEntity.rotation
+            : undefined;
+
+        const padding = 24;
+        const minX = Math.min(from.x, to.x) - padding;
+        const maxX = Math.max(from.x, to.x) + padding;
+        const minY = Math.min(from.y, to.y) - padding;
+        const maxY = Math.max(from.y, to.y) + padding;
+        const inBounds = tile => tile.x >= minX && tile.x <= maxX && tile.y >= minY && tile.y <= maxY;
+
+        const DIRECTIONS = [0, 90, 180, 270];
+        const stepFor = dir => enumDirectionToVector[enumAngleToDirection[dir]];
+
+        /**
+         * @typedef {{ tile: Vector, dir: number, bends: number, parentKey: string|null,
+         * viaTunnel: boolean, tunnelTier?: string }} SearchNode
+         */
+        /** @type {Map<string, SearchNode>} */
+        const visited = new Map();
+        const key = (tile, dir) => tile.x + "," + tile.y + "," + dir;
+
+        /** @type {Array<string>} */
+        const deque = [];
+        const initialDirs = forcedStartDirection !== undefined ? [forcedStartDirection] : DIRECTIONS;
+        for (const dir of initialDirs) {
+            const k = key(from, dir);
+            visited.set(k, { tile: from, dir, bends: 0, parentKey: null, viaTunnel: false });
+            deque.push(k);
+        }
+
+        let goalKey = null;
+        let iterations = 0;
+        while (deque.length > 0) {
+            if (++iterations > MAX_VISITED) {
+                break;
+            }
+            const currentKey = deque.shift();
+            const current = visited.get(currentKey);
+            if (current.tile.equals(to)) {
+                goalKey = currentKey;
+                break;
+            }
+            if (current.bends >= MAX_BENDS) {
                 continue;
             }
 
-            // Found the start of a blocked run - find where it ends.
-            let j = i;
-            while (
-                j + 1 < path.length &&
-                this.isTileBlockedForBelt(path[j + 1], directions[j + 1], exemptPaths, anchorTiles)
-            ) {
-                j++;
-            }
+            for (const dir of DIRECTIONS) {
+                const bendCost = dir === current.dir ? 0 : 1;
+                if (current.bends + bendCost > MAX_BENDS) {
+                    continue;
+                }
+                const step = stepFor(dir);
+                const nextTile = current.tile.add(step);
+                if (!inBounds(nextTile)) {
+                    continue;
+                }
 
-            // Needs a clear tile on both sides to flank with a tunnel pair.
-            if (i === 0 || j === path.length - 1) {
-                return null;
-            }
+                if (!isBlocked(nextTile, dir)) {
+                    const k = key(nextTile, dir);
+                    if (!visited.has(k)) {
+                        visited.set(k, {
+                            tile: nextTile,
+                            dir,
+                            bends: current.bends + bendCost,
+                            parentKey: currentKey,
+                            viaTunnel: false,
+                        });
+                        if (bendCost === 0) {
+                            deque.unshift(k);
+                        } else {
+                            deque.push(k);
+                        }
+                    }
+                    continue;
+                }
 
-            // A tap-continuation can't tunnel *under its own belt's
-            // interior* either - unlike a genuinely foreign obstacle,
-            // "bridging" it wouldn't skip past anything real, it would just
-            // orphan that stretch as a disconnected dead stub while a brand
-            // new tunnel duplicates the same span underground right next to
-            // it (found live: a tap retracing back through the belt it was
-            // extending from left the old middle section sitting there
-            // doing nothing, bracketed by a tunnel pair that didn't need to
-            // exist). Reject outright, same as an out-of-range gap - only a
-            // drag may retrace/reshape its own belt (see allowReshape),
-            // never a tap.
-            if (
-                !allowReshape &&
-                startBelt &&
-                startBelt.assignedPath &&
-                path.slice(i, j + 1).some(tile => {
-                    const belt = this.beltAt(tile);
-                    return belt && belt.assignedPath === startBelt.assignedPath;
-                })
-            ) {
-                return null;
-            }
-
-            // Must lie on a single straight line - a tunnel can't turn a
-            // corner, so a blocked run straddling the path's own corner (or
-            // one that isn't axis-aligned throughout for any other reason)
-            // can't be bridged.
-            const direction = this.directionBetween(path[i - 1], path[i]);
-            for (let k = i - 1; k <= j; ++k) {
-                if (this.directionBetween(path[k], path[k + 1]) !== direction) {
-                    return null;
+                // Blocked - only a straight continuation (never a turn
+                // landing directly on an obstacle) may try tunnelling under
+                // it, and never right after another tunnel jump (the
+                // receiver that just landed here can't also double as a
+                // sender for a second one with nothing in between).
+                if (dir !== current.dir || current.viaTunnel) {
+                    continue;
+                }
+                if (current.parentKey === null) {
+                    // The very first jump, right off the start tile: an
+                    // existing tunnel piece there can never become a brand
+                    // new sender (it's already something else), and a known
+                    // real incoming/fixed ejector direction that disagrees
+                    // with `dir` can't legally send this way either.
+                    if (startTunnel) {
+                        continue;
+                    }
+                    if (startIncomingDirection !== undefined && dir !== startIncomingDirection) {
+                        continue;
+                    }
+                }
+                if (isOwnChain(nextTile)) {
+                    continue;
+                }
+                let scanTile = nextTile;
+                let distance = 1;
+                while (distance <= maxTunnelRange) {
+                    if (isOwnChain(scanTile)) {
+                        break;
+                    }
+                    if (!isBlocked(scanTile, dir)) {
+                        if (isStrictlyClear(scanTile) && inBounds(scanTile)) {
+                            const tier = this.pickTunnelTier(distance);
+                            if (tier !== null) {
+                                const k = key(scanTile, dir);
+                                if (!visited.has(k)) {
+                                    visited.set(k, {
+                                        tile: scanTile,
+                                        dir,
+                                        bends: current.bends,
+                                        parentKey: currentKey,
+                                        viaTunnel: true,
+                                        tunnelTier: tier,
+                                    });
+                                    deque.unshift(k);
+                                }
+                            }
+                        }
+                        // Either landed (pushed above) or this tile ends the
+                        // scan either way - a tunnel can only bridge one
+                        // contiguous blocked run in a straight line.
+                        break;
+                    }
+                    scanTile = scanTile.add(step);
+                    distance++;
                 }
             }
-
-            const entrance = path[i - 1];
-            const exit = path[j + 1];
-
-            // A tunnel sender is always straight-through - its acceptor is
-            // fixed opposite its own rotation, with no curve variant at all
-            // (unlike a plain belt tile, which can bend to meet whichever
-            // direction its real predecessor actually feeds it from). If the
-            // entrance tile would need to curve to correctly receive its
-            // real incoming flow - either startIncomingDirection, when the
-            // entrance is path[0] itself (lastBeltTile, or an existing belt
-            // being grabbed fresh), or simply the direction our own path
-            // arrived at it from otherwise - placing a sender here can't
-            // actually work: found live, a tunnel built with its own
-            // forward direction as rotation while the real belt it was
-            // continuing from approached at a right angle - visually
-            // touching, but the sender's fixed acceptor faced a completely
-            // different way and would never receive anything.
-            const entranceIncoming = i - 1 === 0 ? startIncomingDirection : directions[i - 2];
-            if (entranceIncoming !== undefined && entranceIncoming !== direction) {
-                return null;
-            }
-
-            // The tile right before this obstacle may already be claimed as
-            // the *previous* tunnel's exit (two separate obstacles with only
-            // one clear tile between them) - no room for it to also be this
-            // one's entrance.
-            const previous = resolvedEntries[resolvedEntries.length - 1];
-            if (previous && previous.isTunnel && previous.tile.equals(entrance)) {
-                return null;
-            }
-
-            const distance = Math.round(exit.sub(entrance).length());
-            const tier = this.pickTunnelTier(distance);
-            if (tier === null) {
-                return null;
-            }
-
-            // Flush the plain run up to (not including) the entrance tile -
-            // it's about to be pushed as a tunnel entry instead.
-            flushRun(i - 1);
-            resolvedEntries.push({
-                tile: entrance,
-                rotation: direction,
-                rotationVariant: 0, // sender
-                isTunnel: true,
-                tunnelVariant: tier,
-            });
-            resolvedEntries.push({
-                tile: exit,
-                rotation: direction,
-                rotationVariant: 1, // receiver
-                isTunnel: true,
-                tunnelVariant: tier,
-            });
-
-            runStart = j + 2; // next plain run starts right after the exit tile
-            i = runStart;
         }
-        flushRun(path.length);
-        return resolvedEntries;
+
+        if (!goalKey) {
+            return null;
+        }
+
+        // Reconstruct the chain of states from start to goal, then walk it
+        // forward turning each edge into a PathEntry - a tunnel jump becomes
+        // a sender/receiver pair, everything else a curvedEntry exactly like
+        // the old fixed-shape version used, just driven by this chain's own
+        // incoming/outgoing at each tile instead of a flat directions[] array.
+        /** @type {Array<SearchNode>} */
+        const chain = [];
+        for (let k = goalKey; k !== null; ) {
+            const node = visited.get(k);
+            chain.push(node);
+            k = node.parentKey;
+        }
+        chain.reverse();
+
+        const entries = [];
+        for (let idx = 0; idx < chain.length - 1; ++idx) {
+            const node = chain[idx];
+            const next = chain[idx + 1];
+            if (idx === 0 && startTunnel) {
+                // from is already a tunnel piece being continued from, not
+                // replaced - nothing to place there.
+                continue;
+            }
+            if (next.viaTunnel) {
+                entries.push({
+                    tile: node.tile,
+                    rotation: next.dir,
+                    rotationVariant: 0, // sender
+                    isTunnel: true,
+                    tunnelVariant: next.tunnelTier,
+                });
+                entries.push({
+                    tile: next.tile,
+                    rotation: next.dir,
+                    rotationVariant: 1, // receiver
+                    isTunnel: true,
+                    tunnelVariant: next.tunnelTier,
+                });
+            } else {
+                const incoming = idx === 0 ? startIncomingDirection : node.dir;
+                entries.push(this.curvedEntry(node.tile, next.dir, incoming));
+            }
+        }
+
+        // The goal tile itself - curve into whatever it's connecting to
+        // (endOutgoingDirection, an existing belt being merged into) if
+        // that's known, otherwise just keep pointing the way the search
+        // arrived.
+        const lastNode = chain[chain.length - 1];
+        const lastIncoming = lastNode.dir;
+        const lastOutgoing = endOutgoingDirection !== undefined ? endOutgoingDirection : lastNode.dir;
+        entries.push(this.curvedEntry(lastNode.tile, lastOutgoing, lastIncoming));
+
+        return entries;
     }
 
     /**
@@ -1025,7 +1012,7 @@ export class HUDMobileControls extends BaseHUDPart {
      */
     placeBeltTapAt(tile) {
         if (this.lastBeltTile) {
-            const { path, resolved } = this.resolveBeltPathToward(this.lastBeltTile, tile, false);
+            const { path, resolved } = this.findBeltPathToward(this.lastBeltTile, tile, false);
             if (!resolved) {
                 // Item 9: crosses an obstacle no unlocked tunnel can bridge -
                 // flash it red instead of placing a gapped/broken belt.
@@ -1235,11 +1222,11 @@ export class HUDMobileControls extends BaseHUDPart {
                 // just traces every wobble of a real finger instead of a clean path.
                 // Item 9: live auto-tunnel planning while dragging, trying the
                 // other L-corner too if the dominant-axis one can't be made
-                // contiguous (resolveBeltPathToward) - if neither works, show
+                // contiguous (findBeltPathToward) - if neither works, show
                 // nothing here (draw() reads dragPreviewInvalid and tints
                 // dragPath red instead) so release-time feedback
                 // (flashInvalidBelt) isn't the only hint something's wrong.
-                const { path, resolved } = this.resolveBeltPathToward(this.dragStartTile, tile, true);
+                const { path, resolved } = this.findBeltPathToward(this.dragStartTile, tile, true);
                 this.dragPath = path;
                 this.dragPreviewEntries = resolved || [];
                 this.dragPreviewInvalid = !resolved;
@@ -1307,7 +1294,7 @@ export class HUDMobileControls extends BaseHUDPart {
      * Draws a semi-transparent copy of the real building sprite at the given
      * tile/rotation - reuses the same fakeEntity + blueprint sprite mechanism
      * HUDBuildingPlacer uses for its (desktop, mouse-hover-driven) ghost
-     * preview. A tunnel entry (see resolveBeltPath) uses its own fake entity
+     * preview. A tunnel entry (see findBeltPath) uses its own fake entity
      * and the tunnel building/variant instead of belt's - its
      * rotationVariant means sender/receiver, not straight/curve, so drawing
      * it as a belt would show the wrong sprite entirely (found live on a
@@ -1322,7 +1309,7 @@ export class HUDMobileControls extends BaseHUDPart {
         const staticComp = fakeEntity.components.StaticMapEntity;
 
         // entry.rotation/rotationVariant (computed in beltTilesToEntries, or
-        // explicitly by resolveBeltPath for a tunnel entry) already accounts
+        // explicitly by findBeltPath for a tunnel entry) already accounts
         // for curves/sender-vs-receiver. Querying
         // computeOptimalDirectionAndRotationVariantAtTile here instead would look at
         // *real* map neighbours, none of which exist yet since nothing is built.
@@ -1384,7 +1371,7 @@ export class HUDMobileControls extends BaseHUDPart {
         }
 
         // Item 9: a completed-but-rejected belt (a tap or a released drag
-        // resolveBeltPath couldn't make contiguous) blinks red for a moment
+        // findBeltPath couldn't make contiguous) blinks red for a moment
         // instead of anything being placed.
         if (this.invalidBeltFlash) {
             this.drawInvalidBeltFlash(parameters);

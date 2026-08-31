@@ -1087,6 +1087,44 @@ logs.
         tested against originally) still tunnels cleanly, unaffected, since
         the new check is a no-op whenever the entrance's required and actual
         directions already agree.
+
+        **Eleventh follow-up, done 2026-08-31 - real pathfinder.** All ten
+        follow-ups above patched the same fixed-shape approach (one of two
+        L-corners, plus one "staple" sidestep for the degenerate same-line
+        case) with more and more rejection rules for what that shape
+        couldn't safely do - each new rule closed one reported case but the
+        underlying shape never got any more capable. Explicit follow-up
+        request: a real bounded pathfinder (5-6 bends max) instead of
+        another rejection rule, since the shape genuinely couldn't reach a
+        valid destination that existed. Also reported live with a
+        screenshot: even within the old shape, an auto-planned tunnel exit
+        landed on top of an unrelated, already-built belt, silently
+        overwriting it - isTileBlockedForBelt's "same-direction belt is a
+        harmless overwrite" leniency (fine for a plain tile) doesn't apply
+        to a tunnel exit, which always replaces the entire building there.
+        Replaced `resolveBeltPath`+`resolveBeltPathToward`'s fixed-shape
+        logic with `findBeltPath`: a 0-1 BFS over (tile, facing direction)
+        states - continuing straight (including tunnelling under a
+        bridgeable obstacle) costs nothing, turning 90° costs one "bend",
+        capped at 6 total and a padded bounding box around the two
+        endpoints. All the same rules still apply (own-chain rejection for
+        a tap, anchor/chain exemption for a drag, entrance-direction
+        matching for a sender, tunnel exits requiring a *strictly* empty
+        landing tile) - now enforced as constraints on which edges the
+        search may even consider, instead of after-the-fact rejections
+        bolted onto one fixed shape. `computeSidestepPath` (superseded) and
+        the whole old `resolveBeltPath` blocked-run-scanner (superseded)
+        are gone; `computeCornerPath` stays, now used only to draw the
+        red-flash outline on total failure. Verified live via CDP: plain
+        straight/single-corner continuation unaffected; the same-line
+        own-chain case still routes around via a sidestep-shaped route (now
+        discovered by the search rather than a hardcoded shape); a
+        conflicting belt sitting exactly on a naive tunnel's landing spot is
+        now correctly skipped past (the tunnel lands one tile further,
+        confirmed via entity state that the conflicting belt is untouched);
+        an ordinary single-obstacle crossing still tunnels cleanly; a drag
+        reversing its own belt still works. No console errors across the
+        whole test pass.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
