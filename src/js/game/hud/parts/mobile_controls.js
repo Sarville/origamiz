@@ -457,20 +457,43 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Item 9: whether a plain belt can't go on this tile - anything that
-     * isn't itself belt-replaceable (see MetaBuilding.getIsReplaceable; only
-     * belts/wires override it) sitting on the regular layer there.
+     * Item 9: whether a plain belt can't go on this tile without either
+     * failing outright or silently severing something already there.
+     *
+     * A real building (anything that isn't itself belt-replaceable - see
+     * MetaBuilding.getIsReplaceable, only belts/wires override it) always
+     * blocks. A belt already there is trickier: getIsReplaceable() says yes
+     * for *any* belt, so a naive placement would just silently overwrite it
+     * - fine if it's already flowing the exact way we're about to build here
+     * (redundant, harmless), but if it's angled differently, overwriting it
+     * severs that belt's own line rather than genuinely crossing it. Only
+     * that second case counts as "blocked" for tunnel-planning purposes -
+     * pass the direction *we'd* be travelling through this tile so it can
+     * tell the two apart.
      * @param {Vector} tile
+     * @param {number} incomingDirection Compass degrees (0/90/180/270) our
+     * own path travels through this tile.
      */
-    isTileBlockedForBelt(tile) {
+    isTileBlockedForBelt(tile, incomingDirection) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         if (!contents) {
             return false;
         }
         const staticComp = contents.components.StaticMapEntity;
-        return !staticComp
-            .getMetaBuilding()
-            .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant());
+        if (
+            !staticComp
+                .getMetaBuilding()
+                .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant())
+        ) {
+            return true;
+        }
+        // Replaceable and not a belt (e.g. a hub-adjacent marker, if such a
+        // thing exists) - nothing belt-specific to worry about, same as
+        // before this feature.
+        if (!contents.components.Belt) {
+            return false;
+        }
+        return staticComp.rotation !== incomingDirection;
     }
 
     /**
@@ -524,6 +547,27 @@ export class HUDMobileControls extends BaseHUDPart {
             return this.beltTilesToEntries(path);
         }
 
+        // The direction our own path travels through each tile - needed by
+        // isTileBlockedForBelt to tell "crosses an existing belt" apart from
+        // "continues one that already flows this way". Same convention
+        // beltTilesToEntries' "outgoing" uses: the tile's own onward
+        // direction, or its incoming one for the last tile.
+        const directions = path.map((tile, idx) =>
+            idx < path.length - 1
+                ? this.directionBetween(path[idx], path[idx + 1])
+                : this.directionBetween(path[idx - 1], path[idx])
+        );
+
+        // path[0] is often lastBeltTile - the belt's own current endpoint
+        // from a previous placement, being continued/re-oriented by this
+        // very path (see placeBeltTapAt). That's always fine even if it
+        // doesn't yet face the same way this path needs - it's not a
+        // foreign belt being crossed, it's this belt being extended. Only
+        // check it for crossing-blocking when it's some *other* tile (a drag
+        // starting fresh on an existing, unrelated belt should still tunnel
+        // under it like any other crossing).
+        const skipFirstTileCrossingCheck = !!this.lastBeltTile && path[0].equals(this.lastBeltTile);
+
         const resolvedEntries = [];
         let runStart = 0;
         const flushRun = endExclusive => {
@@ -532,16 +576,16 @@ export class HUDMobileControls extends BaseHUDPart {
             }
         };
 
-        let i = 0;
+        let i = skipFirstTileCrossingCheck ? 1 : 0;
         while (i < path.length) {
-            if (!this.isTileBlockedForBelt(path[i])) {
+            if (!this.isTileBlockedForBelt(path[i], directions[i])) {
                 i++;
                 continue;
             }
 
             // Found the start of a blocked run - find where it ends.
             let j = i;
-            while (j + 1 < path.length && this.isTileBlockedForBelt(path[j + 1])) {
+            while (j + 1 < path.length && this.isTileBlockedForBelt(path[j + 1], directions[j + 1])) {
                 j++;
             }
 
