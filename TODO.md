@@ -943,6 +943,39 @@ logs.
         tap-continuations back to back) still curves correctly at every
         corner; a real building (miner) in the path still gets tunnelled
         under exactly as before.
+
+        **Sixth follow-up, done 2026-08-31:** the fifth follow-up's "never
+        tunnel between two belts, always reshape" rule was too broad -
+        connecting two belts that were never part of the same chain (built
+        as separate gestures) worked, but so did crossing a genuinely
+        unrelated *third* belt sitting strictly in between the two, silently
+        overwriting it instead of tunnelling under it. Refined per explicit
+        spec: a belt at either *end* of the path (the tile the finger
+        pressed down on, or wherever it's currently released/tapped at) is
+        always reshaped, connecting the two if both ends land on belts - but
+        a belt encountered strictly in between, that isn't part of either
+        end's own chain, still counts as a foreign crossing needing a
+        tunnel. `resolveBeltPath` now computes `exemptPaths`/`anchorTiles`
+        from *both* path[0] and path[last] (previously only path[0]).
+        Surfaced a second, separate bug live: the connecting stretch met
+        both belts with a flat right-angle joint instead of curving into
+        them - curvedEntry's incoming/outgoing at each anchor only knew
+        about our own new path's geometry, with no visibility into which
+        way the belt already flowing through that tile continued past it.
+        Fixed by reading each anchor's *real*, pre-overwrite rotation
+        (`startIncomingDirection`/`endOutgoingDirection`) directly off the
+        map right before overwriting it, so the junction curves to continue
+        whichever way flow already went there - for the start anchor,
+        preferring the already-tracked `lastBeltIncomingDirection` instead
+        when this is a true continuation (path[0] is lastBeltTile itself,
+        which has a real *incoming* edge on file - its own current rotation
+        would only be its *outgoing* one, wrong for a tile that's itself a
+        curve). Verified live via CDP: connecting two belts built as
+        separate gestures (different directions, matching the reported
+        screenshot) now curves smoothly at both ends instead of meeting at a
+        flat joint; a third, unrelated belt crossing the connecting path
+        still gets bridged with a tunnel; the multi-tap zigzag case still
+        curves correctly at all four corners.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

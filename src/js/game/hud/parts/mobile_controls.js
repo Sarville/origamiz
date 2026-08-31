@@ -46,9 +46,13 @@ const LONG_PRESS_MS = 350;
  * button is tapped.
  *
  * Auto-tunnel planning: any belt path (a drag or a tap-continuation) that
- * crosses an existing, non-belt-replaceable building is auto-bridged with a
- * tunnel pair instead of just leaving a gap there, if an unlocked tunnel
- * tier's range covers it - see resolveBeltPath. If it can't be bridged (too
+ * crosses an existing, non-belt-replaceable building - or a belt that isn't
+ * part of the chain the path itself starts or ends on, see resolveBeltPath's
+ * exemptPaths - is auto-bridged with a tunnel pair instead of just leaving a
+ * gap there, if an unlocked tunnel tier's range covers it - see
+ * resolveBeltPath. A belt the path starts *or* ends on (dragging/tapping
+ * from one belt to another) is never tunnelled, just reshaped to connect the
+ * two. If a genuine crossing can't be bridged (too
  * long a gap, tunnels not unlocked yet, or the blocked run isn't a single
  * straight line), nothing is placed and the attempted path flashes red
  * instead (flashInvalidBelt) - this is mobile's default belt behavior,
@@ -578,26 +582,66 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Item 9: whether a plain belt can't go on this tile at all without a
-     * tunnel - i.e. a real, non-replaceable building sits there
-     * (MetaBuilding.getIsReplaceable). A belt already on the tile, no
-     * matter which way it faces or when/how it got built, is never
-     * "blocked" - it's simply overwritten and rebuilt facing the new path's
-     * own direction, the same way a single tap already overwrites whatever
-     * belt was underneath it. Only machines ever need a tunnel to get
-     * bridged; two belts crossing (or merging, or reversing into each
-     * other) never do.
+     * The Belt component at the given tile, or null - just the
+     * getLayerContentXY + null-check dance isTileBlockedForBelt and
+     * resolveBeltPath both need, shared to avoid repeating it.
      * @param {Vector} tile
      */
-    isTileBlockedForBelt(tile) {
+    beltAt(tile) {
+        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        return (contents && contents.components.Belt) || null;
+    }
+
+    /**
+     * Item 9: whether a plain belt can't go on this tile without either
+     * failing outright or silently severing something unrelated.
+     *
+     * A real, non-replaceable building always blocks
+     * (MetaBuilding.getIsReplaceable) - still needs a tunnel to get past.
+     * A belt already on the tile is never blocked - freely overwritten and
+     * rebuilt facing the new path's own direction, the same way a single
+     * tap already overwrites whatever belt was underneath it - when it's
+     * either of the path's own two ends (the tile the finger pressed down
+     * on, or the tile it's currently released/tapped at) or part of that
+     * same connected chain (`anchorTiles`/`exemptPaths`, computed once in
+     * resolveBeltPath from path[0]/path[last] - this is what lets a drag
+     * starting *or* ending on an existing belt reshape/merge/reverse it, and
+     * what lets tapping one belt's tile to another's connect the two). A
+     * *different* belt encountered strictly in between - not the one being
+     * dragged from, not the one being dragged to - still counts as a
+     * foreign crossing needing a tunnel, unless it already happens to face
+     * the exact direction this path needs there anyway (redundant,
+     * harmless to overwrite).
+     * @param {Vector} tile
+     * @param {number} incomingDirection Compass degrees (0/90/180/270) our
+     * own path travels through this tile.
+     * @param {Array<import("../../belt_path").BeltPath>} exemptPaths
+     * @param {Array<Vector>} anchorTiles
+     */
+    isTileBlockedForBelt(tile, incomingDirection, exemptPaths, anchorTiles) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         if (!contents) {
             return false;
         }
         const staticComp = contents.components.StaticMapEntity;
-        return !staticComp
-            .getMetaBuilding()
-            .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant());
+        if (
+            !staticComp
+                .getMetaBuilding()
+                .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant())
+        ) {
+            return true;
+        }
+        if (!contents.components.Belt) {
+            return false;
+        }
+        if (anchorTiles.some(anchor => anchor && anchor.equals(tile))) {
+            return false;
+        }
+        const assignedPath = contents.components.Belt.assignedPath;
+        if (assignedPath && exemptPaths.includes(assignedPath)) {
+            return false;
+        }
+        return staticComp.rotation !== incomingDirection;
     }
 
     /**
@@ -627,11 +671,15 @@ export class HUDMobileControls extends BaseHUDPart {
 
     /**
      * Item 9 - auto-tunnel planning: given a raw belt tile path, checks
-     * whether it's blocked by any existing (non-belt-replaceable) buildings
-     * and, if every blocked run can be bridged with a tunnel pair, returns
-     * the full placement plan with tunnel entries substituted in; otherwise
-     * returns null, meaning this path can't become a contiguous belt at all
-     * (too long a gap for any unlocked tier, tunnels not unlocked, or the
+     * whether it's blocked by any real (non-belt-replaceable) building, or
+     * by a belt that isn't part of the chain the path itself starts or ends
+     * on (see isTileBlockedForBelt/exemptPaths - the two ends' own belts,
+     * dragged/tapped from one to the other, always just get reshaped, never
+     * tunnelled), and, if every blocked run can be bridged with a tunnel
+     * pair, returns the full placement plan with tunnel entries substituted
+     * in; otherwise returns null, meaning this path can't become a
+     * contiguous belt at all (too long a gap for any unlocked tier, tunnels
+     * not unlocked, or the
      * blocked run doesn't lie on a single straight line - a tunnel can't
      * turn a corner underground).
      *
@@ -662,14 +710,50 @@ export class HUDMobileControls extends BaseHUDPart {
                 : this.directionBetween(path[idx - 1], path[idx])
         );
 
-        // True continuation (path[0] is lastBeltTile itself, being extended
-        // by the same gesture that ended there) vs. grabbing some other,
-        // already-built belt tile fresh (a branch or a reversal) - only the
-        // former has a real incoming direction to curve from
-        // (lastBeltIncomingDirection); the latter deliberately gets none, so
-        // its own new direction always wins outright rather than curving to
-        // meet whatever it used to connect to.
-        const isTrueContinuation = !!this.lastBeltTile && path[0].equals(this.lastBeltTile);
+        // Both ends of the path - the tile the finger pressed down on, and
+        // wherever it's currently released/tapped at - are exempt from
+        // isTileBlockedForBelt's crossing check, along with their whole
+        // connected chain (BeltPath, tracked as Belt.assignedPath): pressing
+        // on one belt and dragging to another should merge/reshape them,
+        // not tunnel between them. A *different*, unrelated belt crossed
+        // strictly in between still counts as a foreign crossing.
+        const endTile = path[path.length - 1];
+        const startBelt = this.beltAt(path[0]);
+        const endBelt = this.beltAt(endTile);
+        const anchorTiles = [path[0], endTile];
+        const exemptPaths = [startBelt && startBelt.assignedPath, endBelt && endBelt.assignedPath].filter(
+            Boolean
+        );
+
+        // Both anchors need the direction flow already had there *before*
+        // this call overwrites them, so the junction curves to continue it
+        // instead of meeting it with a flat right-angle joint (found live,
+        // twice: a chained continuation tap not curving into its own
+        // previous corner, and connecting into a *different*, previously
+        // untouched belt not curving into whichever way that one already
+        // flowed). For the end anchor that's simply its current rotation
+        // (the direction it keeps flowing in past this point). For the
+        // start anchor it's almost the same, with one refinement: if this
+        // is a *true* continuation (path[0] is lastBeltTile, which we
+        // placed ourselves last call) lastBeltIncomingDirection has the
+        // tile's *real* incoming edge on file already - its own current
+        // rotation is only that same value for a straight tile, but wrong
+        // for a curve (rotation there is its outgoing, not incoming). A
+        // fresh grab of some other, already-standing belt has no such
+        // history to consult, so its current rotation is the best available
+        // stand-in - right for the (overwhelmingly common) straight case,
+        // an approximation only where that tile itself happens to be a
+        // curve.
+        const startIncomingDirection = startBelt
+            ? !!this.lastBeltTile && path[0].equals(this.lastBeltTile)
+                ? this.lastBeltIncomingDirection
+                : this.root.map.getLayerContentXY(path[0].x, path[0].y, "regular").components.StaticMapEntity
+                      .rotation
+            : undefined;
+        const endOutgoingDirection = endBelt
+            ? this.root.map.getLayerContentXY(endTile.x, endTile.y, "regular").components.StaticMapEntity
+                  .rotation
+            : undefined;
 
         const resolvedEntries = [];
         let runStart = 0;
@@ -679,30 +763,30 @@ export class HUDMobileControls extends BaseHUDPart {
         // real incoming/outgoing direction, and a slice loses that entirely
         // for a run that's only one tile long (no neighbours left inside the
         // slice to compute a direction from at all - see curvedEntry's doc).
-        // Tile 0 specifically also loses its *real* incoming direction this
-        // way whenever it's lastBeltTile being physically overwritten by
-        // this same path - fall back to lastBeltIncomingDirection there so
-        // the reconnect curves the same way it did when this tile was first
-        // placed, instead of always drawing straight (found live: chained
-        // continuation taps stopped curving into their own previous corner).
         const flushRun = endExclusive => {
             for (let k = runStart; k < endExclusive; ++k) {
-                const incoming =
-                    k > 0 ? directions[k - 1] : isTrueContinuation ? this.lastBeltIncomingDirection : undefined;
-                resolvedEntries.push(this.curvedEntry(path[k], directions[k], incoming));
+                const incoming = k > 0 ? directions[k - 1] : startIncomingDirection;
+                const outgoing =
+                    k === path.length - 1 && endOutgoingDirection !== undefined
+                        ? endOutgoingDirection
+                        : directions[k];
+                resolvedEntries.push(this.curvedEntry(path[k], outgoing, incoming));
             }
         };
 
         let i = 0;
         while (i < path.length) {
-            if (!this.isTileBlockedForBelt(path[i])) {
+            if (!this.isTileBlockedForBelt(path[i], directions[i], exemptPaths, anchorTiles)) {
                 i++;
                 continue;
             }
 
             // Found the start of a blocked run - find where it ends.
             let j = i;
-            while (j + 1 < path.length && this.isTileBlockedForBelt(path[j + 1])) {
+            while (
+                j + 1 < path.length &&
+                this.isTileBlockedForBelt(path[j + 1], directions[j + 1], exemptPaths, anchorTiles)
+            ) {
                 j++;
             }
 
