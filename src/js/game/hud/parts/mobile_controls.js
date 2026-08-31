@@ -488,25 +488,46 @@ export class HUDMobileControls extends BaseHUDPart {
                 });
                 continue;
             }
-
-            let rotation = outgoing;
-            let rotationVariant = 0;
-            if (i > 0) {
-                const incoming = this.directionBetween(path[i - 1], path[i]);
-                if (incoming === (outgoing + 270) % 360) {
-                    // Fed from the right - curves to meet it, same as
-                    // MetaBeltBuilding.computeOptimalDirectionAndRotationVariantAtTile
-                    // does for a real ejector feeding in from that side.
-                    rotation = (outgoing + 270) % 360;
-                    rotationVariant = 2;
-                } else if (incoming === (outgoing + 90) % 360) {
-                    rotation = (outgoing + 90) % 360;
-                    rotationVariant = 1;
-                }
-            }
-            entries.push({ tile: path[i], rotation, rotationVariant });
+            const incoming = i > 0 ? this.directionBetween(path[i - 1], path[i]) : undefined;
+            entries.push(this.curvedEntry(path[i], outgoing, incoming));
         }
         return entries;
+    }
+
+    /**
+     * Rotation + curve rotationVariant for one belt tile, given the
+     * direction it heads onward (outgoing) and the direction it was reached
+     * from (incoming - omit for a path's very first tile, which has none).
+     * Shared by beltTilesToEntries (an isolated, no-tunnel path) and
+     * resolveBeltPath's flushRun (a plain run flanked by tunnel entries) -
+     * the latter needs outgoing/incoming from the *whole* path (resolveBeltPath's
+     * own `directions`), not ones recomputed from an out-of-context slice, or a
+     * run that's only one tile long (sandwiched directly between two tunnels)
+     * has no neighbours left in the slice to compute a direction from at all
+     * and used to silently fall back to whatever currentBaseRotation happened
+     * to be left over from an unrelated previous placement - reproduced live:
+     * tapping straight across two belt crossings in one go left a turned
+     * piece between the two tunnel pairs instead of a straight one.
+     * @param {Vector} tile
+     * @param {number} outgoing
+     * @param {number=} incoming
+     */
+    curvedEntry(tile, outgoing, incoming) {
+        let rotation = outgoing;
+        let rotationVariant = 0;
+        if (incoming !== undefined) {
+            if (incoming === (outgoing + 270) % 360) {
+                // Fed from the right - curves to meet it, same as
+                // MetaBeltBuilding.computeOptimalDirectionAndRotationVariantAtTile
+                // does for a real ejector feeding in from that side.
+                rotation = (outgoing + 270) % 360;
+                rotationVariant = 2;
+            } else if (incoming === (outgoing + 90) % 360) {
+                rotation = (outgoing + 90) % 360;
+                rotationVariant = 1;
+            }
+        }
+        return { tile, rotation, rotationVariant };
     }
 
     /**
@@ -623,9 +644,17 @@ export class HUDMobileControls extends BaseHUDPart {
 
         const resolvedEntries = [];
         let runStart = 0;
+        // Built from the global directions[] (computed above from the *whole*
+        // path) rather than delegating to beltTilesToEntries on a bare slice -
+        // a run flanked by tunnel entries on both sides still needs its
+        // real incoming/outgoing direction, and a slice loses that entirely
+        // for a run that's only one tile long (no neighbours left inside the
+        // slice to compute a direction from at all - see curvedEntry's doc).
         const flushRun = endExclusive => {
-            if (endExclusive > runStart) {
-                resolvedEntries.push(...this.beltTilesToEntries(path.slice(runStart, endExclusive)));
+            for (let k = runStart; k < endExclusive; ++k) {
+                resolvedEntries.push(
+                    this.curvedEntry(path[k], directions[k], k > 0 ? directions[k - 1] : undefined)
+                );
             }
         };
 

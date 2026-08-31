@@ -839,6 +839,26 @@ logs.
         `lastBeltTile` to null (undo re-dims) while staying in belt placement
         mode, and the next tap places an unconnected fresh tile; undo button
         toggles disabled/enabled correctly across both.
+
+        **Second follow-up, done 2026-08-31:** crossing two belts in one
+        continuous tap/drag left a turned piece between the two tunnel pairs
+        instead of a straight one whenever exactly one plain tile separated
+        them. Root cause: `resolveBeltPath`'s `flushRun` called
+        `beltTilesToEntries` on a bare `path.slice(...)` for each plain run
+        between tunnel entries - a slice has no visibility into the tile
+        before/after it, so a run only one tile long had no neighbours left
+        to compute a direction from and silently fell back to
+        `currentBaseRotation` (whatever was last set, unrelated to this
+        path). Fixed by extracting the rotation/curve math into
+        `curvedEntry(tile, outgoing, incoming)` and having `flushRun` call it
+        directly off `resolveBeltPath`'s own `directions` array (already
+        computed from the *whole* path, tunnels included) instead of
+        delegating to a context-free slice; `beltTilesToEntries` itself
+        (still used standalone for the tunnel-free case) now shares the same
+        helper. Verified live via CDP: two belt crossings 4 tiles apart
+        (one clear tile between the tunnel pairs) now preview and place a
+        straight belt in that gap, both via a held drag and via the
+        underlying path resolution tap-continuation shares.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
