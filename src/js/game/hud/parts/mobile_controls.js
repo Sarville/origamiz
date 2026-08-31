@@ -277,12 +277,22 @@ export class HUDMobileControls extends BaseHUDPart {
     onUndoClicked() {
         if (this.root.actionHistory.canUndo) {
             this.root.actionHistory.undo();
+            // The tile lastBeltTile points at may have just been removed (or
+            // changed identity - it's a fresh clone with a new uid) by the
+            // undo itself. Rather than trying to figure out where the belt
+            // now actually ends, just forget it - the next tap places a
+            // single tile instead of wrongly continuing from a piece that
+            // may no longer exist.
+            this.lastBeltTile = null;
         }
     }
 
     onRedoClicked() {
         if (this.root.actionHistory.canRedo) {
             this.root.actionHistory.redo();
+            // Same reasoning as onUndoClicked - don't continue from a tile
+            // whose state redo may have just changed out from under us.
+            this.lastBeltTile = null;
         }
     }
 
