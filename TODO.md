@@ -1125,6 +1125,52 @@ logs.
         an ordinary single-obstacle crossing still tunnels cleanly; a drag
         reversing its own belt still works. No console errors across the
         whole test pass.
+
+        **Twelfth follow-up, done 2026-08-31 - functional verification pass.**
+        Explicit request: test with several complex, self-intersecting
+        belts and verify correctness by how resources actually *move*
+        (starting from an extractor), not just structural placement. Also
+        reported live with a screenshot: a tap past a third belt line built
+        two tunnels, one landing where another belt already was and one
+        docking sideways into a neighbour instead of matching its fixed
+        orientation. Found and fixed two real bugs via that testing:
+        (1) `findBeltPath`'s search had no way to know a given tile was
+        already claimed elsewhere by the *same* route being planned - real
+        obstacles read as "clear" against the actual map (nothing's placed
+        yet), so two different tunnel jumps a single complex path needed
+        could both land on the same tile, only conflicting once placePath
+        actually built them in order. Added `usedTiles`, threaded through
+        each search node (parent's set plus its own tile), checked before
+        proposing any new tile - a route can no longer reuse a tile it's
+        already claimed for itself. (2) A drag merging into an existing
+        belt from the exact opposite direction it already flowed created a
+        dead end - the goal tile kept the old belt's downstream direction
+        (via endOutgoingDirection) while accepting input from the new
+        path's opposite arrival, a self-contradiction no single belt tile
+        can represent (a belt tile bends 90 degrees or runs straight, never
+        reverses in place). The search now rejects that specific approach
+        direction outright at the goal tile (forcing it to find a
+        genuinely compatible angle, or fail) instead of completing a route
+        that can't actually carry items - confirmed live with a real miner
+        that this used to leave items visibly piling up at the junction.
+        Verified live via CDP with an actual miner + resource patch: items
+        confirmed flowing (belt path item count > 0, visible on screen) end
+        to end through a plain belt, through a tunnel crossing a genuinely
+        foreign belt (miner untouched, obstacle untouched), and through a
+        complex self-avoiding multi-turn route merging two different belt
+        chains - no duplicate tile placements anywhere, no console errors.
+        **Known remaining limitation, not fixed this round:** merging into
+        an existing chain from an angle that's merely *incompatible* rather
+        than exactly opposite (e.g. only reachable via a curve whose
+        acceptor ends up facing away from that chain's own unmodified
+        remainder) can still silently strand tiles further back in that
+        remainder - the fix above stops the hard, visible dead-end at the
+        merge point itself, but doesn't cascade a reshape through an
+        arbitrary-length existing chain beyond it. Confirmed via a deliberate
+        test (BeltPath.entityPath inspection, not just rotation values) -
+        flagged here rather than attempted this round, since properly fixing
+        it means redirecting a whole pre-existing chain's remainder, a much
+        larger change than what was asked.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

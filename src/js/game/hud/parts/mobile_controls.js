@@ -757,10 +757,11 @@ export class HUDMobileControls extends BaseHUDPart {
 
         const DIRECTIONS = [0, 90, 180, 270];
         const stepFor = dir => enumDirectionToVector[enumAngleToDirection[dir]];
+        const tileKey = tile => tile.x + "," + tile.y;
 
         /**
          * @typedef {{ tile: Vector, dir: number, bends: number, parentKey: string|null,
-         * viaTunnel: boolean, tunnelTier?: string }} SearchNode
+         * viaTunnel: boolean, tunnelTier?: string, usedTiles: Set<string> }} SearchNode
          */
         /** @type {Map<string, SearchNode>} */
         const visited = new Map();
@@ -771,7 +772,14 @@ export class HUDMobileControls extends BaseHUDPart {
         const initialDirs = forcedStartDirection !== undefined ? [forcedStartDirection] : DIRECTIONS;
         for (const dir of initialDirs) {
             const k = key(from, dir);
-            visited.set(k, { tile: from, dir, bends: 0, parentKey: null, viaTunnel: false });
+            visited.set(k, {
+                tile: from,
+                dir,
+                bends: 0,
+                parentKey: null,
+                viaTunnel: false,
+                usedTiles: new Set([tileKey(from)]),
+            });
             deque.push(k);
         }
 
@@ -803,14 +811,49 @@ export class HUDMobileControls extends BaseHUDPart {
                 }
 
                 if (!isBlocked(nextTile, dir)) {
+                    // Never step onto a tile this same path has already
+                    // claimed elsewhere - a real obstacle a few tiles later
+                    // reads as "clear" against the *actual* map (nothing's
+                    // been placed yet), but landing a tunnel receiver - or
+                    // another plain tile - right on top of a spot this same
+                    // route already uses would silently conflict once
+                    // placePath actually builds it in order (found live on
+                    // a long, complex retrace: two different tunnels ended
+                    // up planned onto the same tile).
+                    if (current.usedTiles.has(tileKey(nextTile))) {
+                        continue;
+                    }
+                    // Reaching the goal itself from a direction that's
+                    // exactly opposite the existing belt's own established
+                    // continuation there is a dead end, not a valid
+                    // approach - a belt tile can bend 90 degrees or run
+                    // straight, never reverse outright, so there's no way
+                    // to both arrive from this side *and* keep flowing the
+                    // way that tile already did (found live: a drag merging
+                    // into an existing belt from the opposite direction it
+                    // used to flow made every tile from the merge point
+                    // onward eject back the way items had just arrived from
+                    // - a dead end they piled up against, not a working
+                    // junction). Try a different approach instead of
+                    // completing the route this way.
+                    if (
+                        nextTile.equals(to) &&
+                        endOutgoingDirection !== undefined &&
+                        endOutgoingDirection === (dir + 180) % 360
+                    ) {
+                        continue;
+                    }
                     const k = key(nextTile, dir);
                     if (!visited.has(k)) {
+                        const usedTiles = new Set(current.usedTiles);
+                        usedTiles.add(tileKey(nextTile));
                         visited.set(k, {
                             tile: nextTile,
                             dir,
                             bends: current.bends + bendCost,
                             parentKey: currentKey,
                             viaTunnel: false,
+                            usedTiles,
                         });
                         if (bendCost === 0) {
                             deque.unshift(k);
@@ -852,11 +895,17 @@ export class HUDMobileControls extends BaseHUDPart {
                         break;
                     }
                     if (!isBlocked(scanTile, dir)) {
-                        if (isStrictlyClear(scanTile) && inBounds(scanTile)) {
+                        if (
+                            isStrictlyClear(scanTile) &&
+                            inBounds(scanTile) &&
+                            !current.usedTiles.has(tileKey(scanTile))
+                        ) {
                             const tier = this.pickTunnelTier(distance);
                             if (tier !== null) {
                                 const k = key(scanTile, dir);
                                 if (!visited.has(k)) {
+                                    const usedTiles = new Set(current.usedTiles);
+                                    usedTiles.add(tileKey(scanTile));
                                     visited.set(k, {
                                         tile: scanTile,
                                         dir,
@@ -864,6 +913,7 @@ export class HUDMobileControls extends BaseHUDPart {
                                         parentKey: currentKey,
                                         viaTunnel: true,
                                         tunnelTier: tier,
+                                        usedTiles,
                                     });
                                     deque.unshift(k);
                                 }
@@ -930,11 +980,23 @@ export class HUDMobileControls extends BaseHUDPart {
 
         // The goal tile itself - curve into whatever it's connecting to
         // (endOutgoingDirection, an existing belt being merged into) if
-        // that's known, otherwise just keep pointing the way the search
-        // arrived.
+        // that's known *and* geometrically possible - a belt tile can bend
+        // 90 degrees or run straight, never reverse outright, so preserving
+        // the old continuation is only valid when it isn't headed directly
+        // back the way our own path just arrived (found live: a drag
+        // merging into an existing belt from the opposite direction it used
+        // to flow kept that old direction, so the belt one step earlier
+        // ejected forward into this tile while this tile itself ejected
+        // straight back the way it came - a dead end items piled up
+        // against instead of a working junction). In that case there's no
+        // coherent way to keep both directions - drop the old one and let
+        // this tile just continue the way this path actually arrives,
+        // exactly like reshaping any other tile of a merged-into belt.
         const lastNode = chain[chain.length - 1];
         const lastIncoming = lastNode.dir;
-        const lastOutgoing = endOutgoingDirection !== undefined ? endOutgoingDirection : lastNode.dir;
+        const outgoingConflicts = endOutgoingDirection === (lastIncoming + 180) % 360;
+        const lastOutgoing =
+            endOutgoingDirection !== undefined && !outgoingConflicts ? endOutgoingDirection : lastNode.dir;
         entries.push(this.curvedEntry(lastNode.tile, lastOutgoing, lastIncoming));
 
         return entries;
