@@ -751,9 +751,20 @@ logs.
         confirm at the dragged tile, rotate, cancel, undo of a
         blueprint-mode placement, and belt's drag-to-lay + panel confirmed
         pixel-identical to before.
-      - [ ] **2c-4 — Continuous belt placement across taps + across zoom (item 8).**
-        Builds on 2c-3: each tap after the first extends the belt from the last
-        built tile, surviving a zoom change mid-build.
+      - [x] **2c-4 — Continuous belt placement across taps + across zoom (item
+        8).** Done 2026-08-31. New `lastBeltTile`/`placeBeltTapAt()` in
+        `mobile_controls.js`: the first tap after selecting belt still places
+        one tile as before, but every tap after that lays an L-shaped corner
+        path (same shape/curve logic a held drag already used) from wherever
+        the belt last ended to the newly tapped tile, via the existing
+        `placePath()`. Persistence across zoom needed no extra code - zooming
+        never touches `currentMetaBuilding` or the new state, only an
+        explicit selection change resets it. Verified live via CDP: two taps
+        in sequence connect with a proper corner curve; belt selection and
+        `lastBeltTile` both survive a zoom-level change (tested a jump to
+        0.95, just above the 0.9 map-overview threshold - below that,
+        `getIsMapOverlayActive()` already blocks placement entirely and
+        deselects, pre-existing/unrelated behavior, not a regression).
       - [ ] **2c-5 — Edit/selection mode (item 2).** New pencil-icon mode:
         tap-to-select, long-press to enter + select what's under the finger,
         drag to rubber-band-select an area. New center icon row while active:

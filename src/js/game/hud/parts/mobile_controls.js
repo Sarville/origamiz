@@ -29,7 +29,11 @@ const SWIPE_SLIDE_PX = 120;
  * Belts are unchanged from the original mobile design: holding and dragging
  * lays a path, previewed live as a semi-transparent copy of the real sprite,
  * committed all at once on release (see beginDrag/placePath). A plain tap
- * places a single tile immediately.
+ * places a single tile immediately - unless a belt tile already exists
+ * somewhere, in which case every tap after the first instead continues the
+ * belt from there to the newly tapped tile (see placeBeltTapAt), so a very
+ * long belt can be built one tap at a time without needing to drag precisely
+ * across the whole visible map.
  *
  * Every other building instead uses a "blueprint" that follows the finger,
  * mirroring desktop's mouse-hover ghost preview - see onMouseDown/onMouseMove
@@ -139,6 +143,19 @@ export class HUDMobileControls extends BaseHUDPart {
         /** @type {Array<PathEntry>} */
         this.dragPreviewEntries = [];
 
+        // Belt continuation: the tile the belt last ended at (from any
+        // placement - a drag, a plain tap, or a previous continuation tap).
+        // Once set, the next plain tap doesn't place a lone tile any more -
+        // it lays a path from here to the tapped tile instead, same shape a
+        // drag would (see placeBeltTapAt). Lets a long belt be built one tap
+        // at a time, which matters at a zoomed-out scale where dragging
+        // precisely across the whole visible map isn't practical. Persists
+        // across zoom on its own - zooming doesn't touch currentMetaBuilding
+        // or this field, only an explicit selection change resets it (see
+        // onPlacementBuildingChanged).
+        /** @type {Vector} */
+        this.lastBeltTile = null;
+
         // Blueprint mode (non-belt buildings): the tile the ghost preview is
         // currently resting at, moved by touch on the map, placed only via
         // the explicit confirm button - see onMouseDown/onMouseMove below.
@@ -245,6 +262,7 @@ export class HUDMobileControls extends BaseHUDPart {
         this.dragPath = [];
         this.dragging = false;
         this.draggingBlueprint = false;
+        this.lastBeltTile = null;
         this.clearPendingHold();
         this.panning = false;
     }
@@ -576,11 +594,35 @@ export class HUDMobileControls extends BaseHUDPart {
             if (this.multiplaceMode && !this.placerLogic.currentMetaBuilding.get()) {
                 this.placerLogic.currentMetaBuilding.set(metaBuilding);
             }
+            if (this.isBeltSelected) {
+                this.lastBeltTile = tile;
+            }
         }
     }
 
     /**
-     * Places every entry of a completed belt drag immediately.
+     * Handles a plain tap (no drag) while belt is selected. The very first
+     * tap just places one tile, same as any other building - but once a
+     * belt tile exists (lastBeltTile set), every following tap continues
+     * the belt from wherever it last ended to the newly tapped tile, laid
+     * out the same L-shaped-corner way a held drag would (item 8: lets a
+     * very long belt be built one tap at a time, which matters at a
+     * zoomed-out scale where dragging precisely across the whole visible
+     * map isn't practical).
+     * @param {Vector} tile
+     */
+    placeBeltTapAt(tile) {
+        if (this.lastBeltTile) {
+            const path = this.computeCornerPath(this.lastBeltTile, tile);
+            this.placePath(this.beltTilesToEntries(path));
+        } else {
+            this.placeSingle(tile, this.placerLogic.currentBaseRotation);
+        }
+    }
+
+    /**
+     * Places every entry of a completed belt drag (or tap-continuation,
+     * see placeBeltTapAt) immediately.
      * @param {Array<PathEntry>} entries
      */
     placePath(entries) {
@@ -614,6 +656,7 @@ export class HUDMobileControls extends BaseHUDPart {
 
         if (anythingPlaced) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
+            this.lastBeltTile = entries[entries.length - 1].tile;
         }
     }
 
@@ -732,8 +775,9 @@ export class HUDMobileControls extends BaseHUDPart {
 
         if (this.pendingPos) {
             if (pos.sub(this.pendingPos).length() > MAX_MOVE_DISTANCE_PX) {
-                // Moved too far before the hold fired (or, for non-belt buildings,
-                // moved at all) - this is a pan, not a placement.
+                // Moved too far before the hold fired - this is a pan, not a
+                // placement. Belt-only at this point (non-belt buildings never
+                // reach pendingPos any more, see onMouseDown's early return).
                 this.clearPendingHold();
                 this.panning = true;
                 this.lastPanPos = pos;
@@ -752,10 +796,7 @@ export class HUDMobileControls extends BaseHUDPart {
             this.dragging = false;
             if (this.dragPath.length <= 1) {
                 // Held without ever moving - treat like a plain tap.
-                this.placeSingle(
-                    this.dragPath[0] || this.dragStartTile,
-                    this.placerLogic.currentBaseRotation
-                );
+                this.placeBeltTapAt(this.dragPath[0] || this.dragStartTile);
             } else {
                 this.placePath(this.dragPreviewEntries);
             }
@@ -766,7 +807,7 @@ export class HUDMobileControls extends BaseHUDPart {
 
         if (this.pendingPos && !this.panning) {
             // Released without moving and without the hold firing - plain tap.
-            this.placeSingle(this.pendingTile, this.placerLogic.currentBaseRotation);
+            this.placeBeltTapAt(this.pendingTile);
         }
         this.clearPendingHold();
         this.panning = false;
