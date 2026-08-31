@@ -519,6 +519,8 @@ ingame:
         title: Layers
         empty: Empty
         copyKey: Copy Key
+        pin: Pin
+        unpin: Unpin
 
     # Interactive tutorial
     interactiveTutorial:

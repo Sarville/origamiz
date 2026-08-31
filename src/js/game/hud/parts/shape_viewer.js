@@ -20,6 +20,13 @@ export class HUDShapeViewer extends BaseHUDPart {
         this.renderArea = makeDiv(this.contentDiv, null, ["renderArea"]);
         this.infoArea = makeDiv(this.contentDiv, null, ["infoArea"]);
 
+        // Pin/unpin the shape being viewed - hidden for the goal/blueprint
+        // shapes, which are always pinned and can't be toggled (see
+        // renderForShape).
+        this.pinButton = document.createElement("button");
+        this.pinButton.classList.add("styledButton", "pinButton");
+        this.infoArea.appendChild(this.pinButton);
+
         // Create button to copy the shape area
         this.copyButton = document.createElement("button");
         this.copyButton.classList.add("styledButton", "copyKey");
@@ -42,6 +49,7 @@ export class HUDShapeViewer extends BaseHUDPart {
         this.keyActionMapper.getBinding(KEYMAPPINGS.general.back).add(this.close, this);
 
         this.trackClicks(this.copyButton, this.onCopyKeyRequested);
+        this.trackClicks(this.pinButton, this.onPinRequested);
 
         this.close();
     }
@@ -58,6 +66,39 @@ export class HUDShapeViewer extends BaseHUDPart {
             navigator.clipboard.writeText(this.currentShapeKey);
             this.close();
         }
+    }
+
+    /**
+     * Toggles pinned state for the shape currently being viewed. Stays open
+     * (unlike copy-key) so the button label can flip to reflect the new
+     * state, matching what the pinned-shapes strip now shows.
+     */
+    onPinRequested() {
+        if (!this.currentShapeDefinition) {
+            return;
+        }
+        const pinnedShapes = this.root.hud.parts.pinnedShapes;
+        if (pinnedShapes.isShapePinned(this.currentShapeKey)) {
+            pinnedShapes.unpinShape(this.currentShapeKey);
+        } else {
+            pinnedShapes.pinNewShape(this.currentShapeDefinition);
+        }
+        this.updatePinButton();
+    }
+
+    updatePinButton() {
+        const currentGoal = this.root.hubGoals.currentGoal.definition.getHash();
+        const isSpecial =
+            this.currentShapeKey === currentGoal ||
+            this.currentShapeKey === this.root.gameMode.getBlueprintShapeKey();
+
+        this.pinButton.classList.toggle("hidden", isSpecial);
+        if (isSpecial) {
+            return;
+        }
+        const isPinned = this.root.hud.parts.pinnedShapes.isShapePinned(this.currentShapeKey);
+        this.pinButton.classList.toggle("pinned", isPinned);
+        this.pinButton.innerText = isPinned ? T.ingame.shapeViewer.unpin : T.ingame.shapeViewer.pin;
     }
 
     /**
@@ -80,6 +121,8 @@ export class HUDShapeViewer extends BaseHUDPart {
         removeAllChildren(this.renderArea);
 
         this.currentShapeKey = definition.getHash();
+        this.currentShapeDefinition = definition;
+        this.updatePinButton();
 
         const layers = definition.layers;
         this.contentDiv.setAttribute("data-layers", layers.length);

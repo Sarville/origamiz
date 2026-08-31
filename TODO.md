@@ -698,6 +698,47 @@ logs.
         this one hotkey text label needs to be hidden or replaced when `IS_MOBILE`.
       Start this chunk with live device debugging via the existing `tailscale serve`
       link (see Infra notes below), not more code archaeology.
+- [ ] **Chunk 2c — Mobile placement/edit UX overhaul (9-item user request,
+      2026-08-31).** Desktop-style blueprint-follow-finger placement, an edit/select
+      mode, undo/redo, a warm-theme pass, and auto-tunnel placement. Split into
+      sub-chunks per session (see `sessions/2026-08-31-0123-session.md` for the full
+      plan/rationale):
+      - [x] **2c-1 — icons/pin/theme/tips.** Done 2026-08-31, see
+        `sessions/2026-08-31-0123-session.md`. Redrew the game-menu crane icon
+        (was reading as a paper dart); moved shape pin/unpin out of the mobile
+        pinned-shapes strip and into the shape info dialog
+        (`shape_viewer.js`/`.scss`, new `pin`/`unpin` translation keys); warmed the
+        whole app's background (`$mainBgColor`) and primary-button color
+        (`$colorBlueBright` → the toolbar's own orange highlight) via two
+        variable changes in `variables.scss` plus a few hardcoded-hex spots
+        (`gulp/preloader/preloader.css`, `main_menu.scss`, `preload.scss`,
+        `settings.scss`); confirmed the Russian loading tips were already fully
+        translated (`translations/base-ru.yaml` `tips:`, 56/56, no code change
+        needed — the English tip in the user's screenshot was just an
+        English-locale session, `hints.js` already reads the locale-aware `T.tips`).
+      - [ ] **2c-2 — Undo/redo (item 5).** Command-based history, cap 30 entries;
+        wires up the placeholder `.undo`/`.redo` buttons already sitting disabled
+        in `mobile_controls.js` (added 2026-08-30). Do before 2c-4 (edit mode's
+        eraser should go through the same history).
+      - [ ] **2c-3 — Building placement mode rewrite (item 1).** Replace mobile's
+        tap-immediately-places flow with a blueprint that follows the finger
+        (desktop-style); new icon row (confirm / rotate / variant-swap w/ count
+        badge / multiplace / cancel) in the project's visual style. Belt keeps its
+        current drag-immediately-places behavior unchanged, icon row shrinks to
+        redo + cancel only. Biggest single sub-chunk — rewrites
+        `mobile_controls.js`'s `onMouseDown`/`onMouseMove`/`onMouseUp`.
+      - [ ] **2c-4 — Continuous belt placement across taps + across zoom (item 8).**
+        Builds on 2c-3: each tap after the first extends the belt from the last
+        built tile, surviving a zoom change mid-build.
+      - [ ] **2c-5 — Edit/selection mode (item 2).** New pencil-icon mode:
+        tap-to-select, long-press to enter + select what's under the finger,
+        drag to rubber-band-select an area. New center icon row while active:
+        eraser (delete selected, via 2c-2's history), broom (clear belt contents
+        for any belt with a selected segment), cancel.
+      - [ ] **2c-6 — Auto-tunnel placement (item 9).** While laying a belt (desktop:
+        Ctrl-drag; mobile: default), detect crossings with existing belts/buildings
+        and auto-insert tunnel pairs to keep the belt contiguous if geometrically
+        possible; flash the belt red if it isn't. Depends on 2c-3.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

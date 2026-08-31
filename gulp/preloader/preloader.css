@@ -20,7 +20,9 @@ html {
     left: 0;
     bottom: 0;
     right: 0;
-    background: #dee1ea;
+    /* Mirrors $mainBgColor in src/css/variables.scss - this file can't @use
+       the SCSS build, so kept in sync by hand. */
+    background: #e8dfc9;
 }
 
 body {
@@ -52,7 +54,7 @@ body {
     bottom: 0;
     justify-content: center;
     place-items: center;
-    background: #d5d8de;
+    background: #e0d6bd;
     grid-template-rows: 1fr 200px;
     grid-gap: 40px;
     padding: 20px;
@@ -109,7 +111,7 @@ body {
     transform: translateY(-50%);
     top: 50%;
     display: inline-flex;
-    background-color: #269fba;
+    background-color: #ef9d50;
     animation: LL_LoadingAnimation 4s ease-in-out infinite;
     position: relative;
     z-index: 10;

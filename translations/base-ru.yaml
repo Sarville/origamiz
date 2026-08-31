@@ -325,6 +325,8 @@ ingame:
         title: Слои
         empty: Пусто
         copyKey: Копировать
+        pin: Закрепить
+        unpin: Открепить
     interactiveTutorial:
         title: Обучение
         hints:

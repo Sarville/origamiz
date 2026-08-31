@@ -34,15 +34,21 @@ $superSmallTextLineHeight: 1.3rem;
 $buttonFontSize: 1.4rem;
 $buttonLineHeight: 1.8rem;
 
-// Main background color
-$mainBgColor: #dee1ea;
+// Main background color (was a cool light blue-gray, #dee1ea - warmed up to
+// match the papyrus/wood palette used everywhere else in the rebrand).
+$mainBgColor: #e8dfc9;
 
 // Accent colors
 
 $accentColorBright: #e1e4ed;
 $accentColorDark: #7d808a;
 $colorGreenBright: #66bb6a;
-$colorBlueBright: rgb(74, 151, 223);
+// Was a cool blue, rgb(74, 151, 223) - every "primary/active" button
+// (.styledButton, dialog confirm buttons, the settings category tabs, etc.)
+// used it, which clashed with the warm wood/toolbar palette. Now the same
+// warm orange as the buildings toolbar's own selection highlight
+// ($colorOrangeBright below), so "active" reads consistently everywhere.
+$colorBlueBright: #ef9d50;
 $colorRedBright: #ef5072;
 $colorOrangeBright: #ef9d50;
 $themeColor: #393747;

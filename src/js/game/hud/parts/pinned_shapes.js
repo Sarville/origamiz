@@ -216,7 +216,10 @@ export class HUDPinnedShapes extends BaseHUDPart {
         }
 
         let detector = null;
-        if (canUnpin) {
+        // On mobile, unpinning moved into the shape info dialog (see
+        // shape_viewer.js) - no room for a dedicated tiny button in the strip,
+        // and it was easy to hit by accident.
+        if (canUnpin && !IS_MOBILE) {
             const unpinButton = document.createElement("button");
             unpinButton.classList.add("unpinButton");
             element.appendChild(unpinButton);
@@ -227,7 +230,7 @@ export class HUDPinnedShapes extends BaseHUDPart {
                 targetOnly: true,
             });
             detector.click.add(() => this.unpinShape(key));
-        } else {
+        } else if (!canUnpin) {
             element.classList.add("marked");
         }
 
@@ -308,7 +311,6 @@ export class HUDPinnedShapes extends BaseHUDPart {
      * @param {string} key
      */
     unpinShape(key) {
-        console.log("unpin", key);
         arrayDeleteValue(this.pinnedShapes, key);
         this.rerenderFull();
     }

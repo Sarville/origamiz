@@ -34,12 +34,22 @@
             align-self: flex-end;
             margin-top: 1rem;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
+            gap: 0.6rem;
             overflow: hidden;
 
             button {
                 margin: 0;
+                flex: 1;
                 @include PlainText;
+
+                &.hidden {
+                    display: none;
+                }
+            }
+
+            .pinButton.pinned {
+                background-color: $colorRedBright;
             }
         }
 

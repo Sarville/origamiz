@@ -12,7 +12,8 @@
     grid-template-columns: 1fr;
 
     // background: #aaacb4 center center / cover !important;
-    background: #bbc2cf center center / cover !important;
+    // Was a cool gray, #bbc2cf - warmed up to match $mainBgColor's palette.
+    background: #e8dfc9 center center / cover !important;
 
     .topButtons {
         position: absolute;
