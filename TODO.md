@@ -1341,6 +1341,47 @@ logs.
         is a materially different, more speculative feature (implicit
         proximity detection during any placement, not endpoint resolution)
         from what this follow-up added and wasn't attempted here.
+
+        **Item 9 (auto-tunnel/routing) outstanding debts as of 2026-08-31,
+        consolidated from the follow-ups above so a future session can scan
+        this in one place instead of re-reading all of them:**
+        - Merging into an existing chain from an angle that's merely
+          *incompatible* rather than exactly opposite (e.g. only reachable
+          via a curve whose acceptor ends up facing away from that chain's
+          own unmodified remainder) can still silently strand tiles further
+          back in that remainder - only the hard, visible dead-end at the
+          merge point itself is prevented. Fixing it properly means
+          cascading a reshape through an arbitrary-length existing chain, a
+          much larger change than item 9 asked for. (12th follow-up.)
+        - Tap-continuation reaching into a pocket that's only accessible by
+          crossing the tap's *own* chain, with no valid bent detour within
+          `MAX_BENDS`/the padded bounding box, correctly reports "no route"
+          (flashes red) rather than building something broken - but it
+          doesn't try to find the kind of bent detour a human would build by
+          hand (see the "build a bend to make room" screenshot in the 15th
+          follow-up). Same root cause as the point above: no cascading
+          reshape of an existing chain. (15th follow-up.)
+        - Belts don't opportunistically curve toward a *nearby* building
+          input/output unless the drag/tap's own endpoint explicitly lands
+          on that building - an ordinary belt segment built elsewhere that
+          happens to end up adjacent to one won't bend into it on its own.
+          Explicitly flagged live by the user as a separate, broader ask
+          from endpoint-targeted routing. Not started. (16th follow-up.)
+        - Desktop's belt drag (`building_placer_logic.js`) still has no
+          auto-tunnel support at all - it's a real-time
+          immediate-Bresenham-placement loop with no "resolve the whole
+          path, commit on release" point to hook `findBeltPath` into, so it
+          needs its own integration pass. Not started. (2c-6's original
+          implementation note.)
+        - Encountered but *not* a bug, worth remembering if a similar
+          report comes back: a stacker (or anything else with
+          `ItemProcessor.inputsPerCharge > 1`) won't visibly consume
+          anything on one input until every input it needs is filled - a
+          belt correctly routed into one of its two feed tiles alone will
+          just sit there with nothing appearing to happen, which looks
+          identical to a routing failure from the outside. Verified via a
+          single-input trash can instead when confirming the routing math
+          itself. (16th follow-up.)
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.
