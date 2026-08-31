@@ -69,9 +69,8 @@ export class HUDShapeViewer extends BaseHUDPart {
     }
 
     /**
-     * Toggles pinned state for the shape currently being viewed. Stays open
-     * (unlike copy-key) so the button label can flip to reflect the new
-     * state, matching what the pinned-shapes strip now shows.
+     * Toggles pinned state for the shape currently being viewed, then closes
+     * the dialog - same as copy-key.
      */
     onPinRequested() {
         if (!this.currentShapeDefinition) {
@@ -83,7 +82,7 @@ export class HUDShapeViewer extends BaseHUDPart {
         } else {
             pinnedShapes.pinNewShape(this.currentShapeDefinition);
         }
-        this.updatePinButton();
+        this.close();
     }
 
     updatePinButton() {
