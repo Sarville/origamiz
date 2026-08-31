@@ -914,6 +914,35 @@ logs.
         foreign, unrelated belt crossing the path still gets bridged with a
         tunnel exactly as before (assignedPath-based exemption doesn't touch
         that case) - all three checked by entity state, not just screenshots.
+        **Superseded by the fifth follow-up below** - belts no longer need a
+        tunnel to cross at all, so the assignedPath exemption this added is
+        gone again (dead code once nothing needs exempting from a check that
+        no longer exists), but the curve-continuity piece (2) stays.
+
+        **Fifth follow-up, done 2026-08-31:** the assignedPath exemption above
+        still wasn't enough - connecting two *separately*-built belts (never
+        part of the same BeltPath chain) still flashed red, since only a
+        shared chain was exempt from the crossing check. Live testing showed
+        the tunnel-for-belt-crossing-belt behavior itself (the original item
+        9 spec) wasn't what actually felt right in practice: unlike a real
+        building, a belt is always freely overwritable by a single tap
+        anyway, so tunneling under one mid-drag just to avoid touching it
+        reads as unnecessary ceremony rather than a useful safeguard.
+        Simplified `isTileBlockedForBelt` to a single check - a real,
+        non-replaceable building blocks (and still gets bridged with a
+        tunnel if geometrically possible, unchanged); a belt never does, no
+        matter which way it faces, which BeltPath it's assigned to, or when
+        it was built - it's simply overwritten and rebuilt facing the new
+        path's direction, same as any lone tap already does to whatever's
+        under it. Dropped the now-pointless `assignedPath`/`skipFirstTileCrossingCheck`
+        machinery from `resolveBeltPath` entirely (the curve-continuity fix
+        above stays - that's a separate, still-valid concern). Verified live
+        via CDP: dragging from the end of one previously-built belt down into
+        a second, entirely separate one merges them with a plain connector,
+        no tunnel, no red flash; the zigzag curve-continuity case (a chain of
+        tap-continuations back to back) still curves correctly at every
+        corner; a real building (miner) in the path still gets tunnelled
+        under exactly as before.
 - [ ] **Chunk 3 — Build system.** Add a `web` variant to `gulp/build_variants.js`
       (`standalone: false`), verify `gulp/tasks.js`/`gulp/html.js` produce a
       self-contained static bundle with no Electron-specific parts.

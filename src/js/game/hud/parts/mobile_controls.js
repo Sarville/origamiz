@@ -176,6 +176,18 @@ export class HUDMobileControls extends BaseHUDPart {
         /** @type {Vector} */
         this.lastBeltTile = null;
 
+        // The compass direction the belt actually flowed *into*
+        // lastBeltTile from its own previous tile (undefined if
+        // lastBeltTile is a lone tile with no such predecessor) - kept
+        // alongside lastBeltTile so the next continuation's own first entry
+        // (which physically overwrites this same tile) can still curve
+        // smoothly from that true incoming direction, the same way it did
+        // when this tile was originally placed. curvedEntry has no other way
+        // to know this: from a brand-new path's own point of view this tile
+        // is just its unconnected starting point, with nothing "before" it.
+        /** @type {number=} */
+        this.lastBeltIncomingDirection = undefined;
+
         // Blueprint mode (non-belt buildings): the tile the ghost preview is
         // currently resting at, moved by touch on the map, placed only via
         // the explicit confirm button - see onMouseDown/onMouseMove below.
@@ -260,6 +272,7 @@ export class HUDMobileControls extends BaseHUDPart {
         this.dragging = false;
         this.draggingBlueprint = false;
         this.lastBeltTile = null;
+        this.lastBeltIncomingDirection = undefined;
         this.clearPendingHold();
         this.panning = false;
     }
@@ -365,6 +378,7 @@ export class HUDMobileControls extends BaseHUDPart {
             // onPlacementBuildingChanged - so null is the correct fallback.
             const meta = this.root.actionHistory.undo();
             this.lastBeltTile = meta ? meta.beltTileBefore : null;
+            this.lastBeltIncomingDirection = meta ? meta.beltIncomingBefore : undefined;
         }
     }
 
@@ -375,6 +389,7 @@ export class HUDMobileControls extends BaseHUDPart {
             // where undo had rolled it back from.
             const meta = this.root.actionHistory.redo();
             this.lastBeltTile = meta ? meta.beltTileAfter : null;
+            this.lastBeltIncomingDirection = meta ? meta.beltIncomingAfter : undefined;
         }
     }
 
@@ -386,6 +401,7 @@ export class HUDMobileControls extends BaseHUDPart {
      */
     onNewBeltClicked() {
         this.lastBeltTile = null;
+        this.lastBeltIncomingDirection = undefined;
         this.invalidBeltFlash = null;
     }
 
@@ -562,49 +578,26 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Item 9: whether a plain belt can't go on this tile without either
-     * failing outright or silently severing something already there.
-     *
-     * A real building (anything that isn't itself belt-replaceable - see
-     * MetaBuilding.getIsReplaceable, only belts/wires override it) always
-     * blocks. A belt already there is trickier: getIsReplaceable() says yes
-     * for *any* belt, so a naive placement would just silently overwrite it
-     * - fine if it's already flowing the exact way we're about to build here
-     * (redundant, harmless), but if it's angled differently, overwriting it
-     * severs that belt's own line rather than genuinely crossing it. Only
-     * that second case counts as "blocked" for tunnel-planning purposes -
-     * pass the direction *we'd* be travelling through this tile so it can
-     * tell the two apart.
+     * Item 9: whether a plain belt can't go on this tile at all without a
+     * tunnel - i.e. a real, non-replaceable building sits there
+     * (MetaBuilding.getIsReplaceable). A belt already on the tile, no
+     * matter which way it faces or when/how it got built, is never
+     * "blocked" - it's simply overwritten and rebuilt facing the new path's
+     * own direction, the same way a single tap already overwrites whatever
+     * belt was underneath it. Only machines ever need a tunnel to get
+     * bridged; two belts crossing (or merging, or reversing into each
+     * other) never do.
      * @param {Vector} tile
-     * @param {number} incomingDirection Compass degrees (0/90/180/270) our
-     * own path travels through this tile.
-     * @param {import("../../belt_path").BeltPath=} exemptPath A belt
-     * already assigned to this connected chain is the one being
-     * grabbed/redirected, not a foreign crossing - see resolveBeltPath.
      */
-    isTileBlockedForBelt(tile, incomingDirection, exemptPath) {
+    isTileBlockedForBelt(tile) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         if (!contents) {
             return false;
         }
         const staticComp = contents.components.StaticMapEntity;
-        if (
-            !staticComp
-                .getMetaBuilding()
-                .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant())
-        ) {
-            return true;
-        }
-        // Replaceable and not a belt (e.g. a hub-adjacent marker, if such a
-        // thing exists) - nothing belt-specific to worry about, same as
-        // before this feature.
-        if (!contents.components.Belt) {
-            return false;
-        }
-        if (exemptPath && contents.components.Belt.assignedPath === exemptPath) {
-            return false;
-        }
-        return staticComp.rotation !== incomingDirection;
+        return !staticComp
+            .getMetaBuilding()
+            .getIsReplaceable(staticComp.getVariant(), staticComp.getRotationVariant());
     }
 
     /**
@@ -658,36 +651,25 @@ export class HUDMobileControls extends BaseHUDPart {
             return this.beltTilesToEntries(path);
         }
 
-        // The direction our own path travels through each tile - needed by
-        // isTileBlockedForBelt to tell "crosses an existing belt" apart from
-        // "continues one that already flows this way". Same convention
-        // beltTilesToEntries' "outgoing" uses: the tile's own onward
-        // direction, or its incoming one for the last tile.
+        // The direction our own path travels through each tile - used by
+        // curvedEntry below and by the straight-line check a bit further
+        // down (a tunnel bridging a real building can't turn a corner). Same
+        // convention beltTilesToEntries' "outgoing" uses: the tile's own
+        // onward direction, or its incoming one for the last tile.
         const directions = path.map((tile, idx) =>
             idx < path.length - 1
                 ? this.directionBetween(path[idx], path[idx + 1])
                 : this.directionBetween(path[idx - 1], path[idx])
         );
 
-        // path[0] is the tile the finger actually pressed down on - if
-        // there's already a belt there (lastBeltTile's own endpoint, or any
-        // other belt the drag happened to start on), that's never a foreign
-        // crossing to tunnel under, it's the belt being grabbed and
-        // continued/redirected from that exact spot, even facing a
-        // completely different way than it did before (belts are always
-        // replaceable - this is what lets a long drag off an existing belt
-        // double as "change its direction"). Its whole connected chain
-        // (BeltPath, tracked by the belt system's own assignedPath) gets the
-        // same exemption for every tile the path happens to travel over
-        // later on too - not just tile 0 - so dragging back over the entire
-        // stretch of belt just grabbed (e.g. reversing it outright) doesn't
-        // treat its own later tiles as a foreign crossing needing a tunnel.
-        // A belt entity genuinely unrelated to this one (a different,
-        // possibly parallel or crossing chain) still isn't exempt.
-        const startTileContent = this.root.map.getLayerContentXY(path[0].x, path[0].y, "regular");
-        const startBelt = startTileContent && startTileContent.components.Belt;
-        const skipFirstTileCrossingCheck = !!startBelt;
-        const exemptPath = startBelt ? startBelt.assignedPath : null;
+        // True continuation (path[0] is lastBeltTile itself, being extended
+        // by the same gesture that ended there) vs. grabbing some other,
+        // already-built belt tile fresh (a branch or a reversal) - only the
+        // former has a real incoming direction to curve from
+        // (lastBeltIncomingDirection); the latter deliberately gets none, so
+        // its own new direction always wins outright rather than curving to
+        // meet whatever it used to connect to.
+        const isTrueContinuation = !!this.lastBeltTile && path[0].equals(this.lastBeltTile);
 
         const resolvedEntries = [];
         let runStart = 0;
@@ -697,27 +679,30 @@ export class HUDMobileControls extends BaseHUDPart {
         // real incoming/outgoing direction, and a slice loses that entirely
         // for a run that's only one tile long (no neighbours left inside the
         // slice to compute a direction from at all - see curvedEntry's doc).
+        // Tile 0 specifically also loses its *real* incoming direction this
+        // way whenever it's lastBeltTile being physically overwritten by
+        // this same path - fall back to lastBeltIncomingDirection there so
+        // the reconnect curves the same way it did when this tile was first
+        // placed, instead of always drawing straight (found live: chained
+        // continuation taps stopped curving into their own previous corner).
         const flushRun = endExclusive => {
             for (let k = runStart; k < endExclusive; ++k) {
-                resolvedEntries.push(
-                    this.curvedEntry(path[k], directions[k], k > 0 ? directions[k - 1] : undefined)
-                );
+                const incoming =
+                    k > 0 ? directions[k - 1] : isTrueContinuation ? this.lastBeltIncomingDirection : undefined;
+                resolvedEntries.push(this.curvedEntry(path[k], directions[k], incoming));
             }
         };
 
-        let i = skipFirstTileCrossingCheck ? 1 : 0;
+        let i = 0;
         while (i < path.length) {
-            if (!this.isTileBlockedForBelt(path[i], directions[i], exemptPath)) {
+            if (!this.isTileBlockedForBelt(path[i])) {
                 i++;
                 continue;
             }
 
             // Found the start of a blocked run - find where it ends.
             let j = i;
-            while (
-                j + 1 < path.length &&
-                this.isTileBlockedForBelt(path[j + 1], directions[j + 1], exemptPath)
-            ) {
+            while (j + 1 < path.length && this.isTileBlockedForBelt(path[j + 1])) {
                 j++;
             }
 
@@ -813,10 +798,13 @@ export class HUDMobileControls extends BaseHUDPart {
         // along as transaction meta so undo/redo can roll it back/forward
         // in step with the map itself, see onUndoClicked/onRedoClicked.
         const beltTileBefore = this.lastBeltTile;
+        const beltIncomingBefore = this.lastBeltIncomingDirection;
         this.root.actionHistory.beginTransaction();
         const placed = this.placerLogic.tryPlaceCurrentBuildingAt(tile);
         this.root.actionHistory.endTransaction(
-            this.isBeltSelected ? { beltTileBefore, beltTileAfter: tile } : null
+            this.isBeltSelected
+                ? { beltTileBefore, beltTileAfter: tile, beltIncomingBefore, beltIncomingAfter: undefined }
+                : null
         );
         if (placed) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
@@ -828,6 +816,10 @@ export class HUDMobileControls extends BaseHUDPart {
             }
             if (this.isBeltSelected) {
                 this.lastBeltTile = tile;
+                // placeSingle only ever starts a fresh, unconnected belt (see
+                // placeBeltTapAt) - there's no real predecessor tile to have
+                // an incoming direction from.
+                this.lastBeltIncomingDirection = undefined;
             }
         }
     }
@@ -873,6 +865,7 @@ export class HUDMobileControls extends BaseHUDPart {
         }
 
         const beltTileBefore = this.lastBeltTile;
+        const beltIncomingBefore = this.lastBeltIncomingDirection;
         let anythingPlaced = false;
 
         // One transaction for the whole path (and any side effects it
@@ -928,14 +921,30 @@ export class HUDMobileControls extends BaseHUDPart {
                 }
             });
         });
+        // The direction the belt actually flowed into its own final tile -
+        // see lastBeltIncomingDirection's doc. entries[len-2] may be a
+        // tunnel sender several tiles away rather than a direct neighbour,
+        // but directionBetween still resolves to the right compass
+        // direction for any straight axis-aligned span, tunnel gap
+        // included.
+        const beltIncomingAfter =
+            entries.length >= 2
+                ? this.directionBetween(
+                      entries[entries.length - 2].tile,
+                      entries[entries.length - 1].tile
+                  )
+                : undefined;
         this.root.actionHistory.endTransaction({
             beltTileBefore,
             beltTileAfter: entries[entries.length - 1].tile,
+            beltIncomingBefore,
+            beltIncomingAfter,
         });
 
         if (anythingPlaced) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
             this.lastBeltTile = entries[entries.length - 1].tile;
+            this.lastBeltIncomingDirection = beltIncomingAfter;
         }
     }
 
