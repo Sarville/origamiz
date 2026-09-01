@@ -1,4 +1,3 @@
-import { IS_MOBILE } from "../../../core/config";
 import { drawRotatedSprite } from "../../../core/draw_utils";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { Loader } from "../../../core/loader";
@@ -106,10 +105,27 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
          */
         this.beltPathPlanner = new BeltPathPlanner(this.root);
 
-        // See update()'s own use - only actually consulted for mobile, desktop's
-        // separate mouse handlers (onMouseDown/onMouseMove/onMouseUp below) still
-        // block placement during map overview unconditionally, unchanged.
+        // See update()'s own use - gates whether placement (and, on
+        // overview zoom, belt tap-continuation via placeBeltTapAt below)
+        // keeps working while the map is zoomed out into map overview.
         this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
+
+        /**
+         * Overview-zoom belt click-continuation (mirrors mobile's own
+         * lastBeltTile/item 8): the tile the last belt segment ended at,
+         * kept across separate clicks - unlike beltDragStartTile, never
+         * cleared by abortDragging, only when the selection changes away
+         * from belt (see onSelectedMetaBuildingChanged). Only actually
+         * consulted from onMouseDown while zoomed into map overview - a
+         * precise drag isn't practical at that scale, so overview clicks
+         * are tap-continuation only, same as mobile. At normal zoom desktop
+         * keeps its existing real-time drag placement, untouched.
+         * @type {Vector}
+         */
+        this.lastBeltTile = null;
+
+        /** @type {number} */
+        this.lastBeltIncomingDirection = undefined;
 
         /**
          * Item 9 (desktop): the tile a belt drag started from - the anchor
@@ -347,6 +363,52 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
     }
 
     /**
+     * Overview-zoom belt click-continuation (mirrors mobile's own
+     * placeBeltTapAt/item 8): the first click just places one tile, same as
+     * any other building - every following click continues the belt from
+     * wherever it last ended to the newly clicked tile instead of placing a
+     * fresh disconnected one, laid out the same L-shaped-corner way a
+     * normal-zoom drag would. Only called from onMouseDown while zoomed
+     * into map overview - dragging precisely across a zoomed-out view isn't
+     * practical, so this is tap-only, same reasoning as mobile's item 8.
+     * @param {Vector} tile
+     */
+    placeBeltTapAt(tile) {
+        const metaBuilding = this.currentMetaBuilding.get();
+        if (this.lastBeltTile) {
+            const { path, resolved } = this.beltPathPlanner.findBeltPathToward(
+                this.lastBeltTile,
+                tile,
+                false,
+                this.lastBeltTile,
+                this.lastBeltIncomingDirection
+            );
+            if (!resolved) {
+                // Crosses an obstacle no unlocked tunnel can bridge - flash it
+                // red instead of placing a gapped/broken belt.
+                this.flashInvalidBelt(path);
+                return;
+            }
+            const result = this.beltPathPlanner.placePath(resolved, {
+                tile: this.lastBeltTile,
+                incoming: this.lastBeltIncomingDirection,
+            });
+            if (result.placed) {
+                this.lastBeltTile = result.lastTile;
+                this.lastBeltIncomingDirection = result.lastIncoming;
+            }
+        } else if (this.tryPlaceCurrentBuildingAt(tile)) {
+            this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
+            this.lastBeltTile = tile;
+            this.lastBeltIncomingDirection = this.root.map.getLayerContentXY(
+                tile.x,
+                tile.y,
+                "regular"
+            )?.components.StaticMapEntity.rotation;
+        }
+    }
+
+    /**
      * @see BaseHUDPart.update
      */
     update() {
@@ -366,15 +428,11 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             this.onMouseMove(mousePos);
         }
 
-        // Make sure we have nothing selected while in overview mode - except
-        // on mobile, where HUDMobileControls keeps placement (blueprint-
-        // follows-finger, belt tap-continuation) working through overview
-        // zoom (see OverviewBuildingPolicy's doc) and needs the selection to
-        // survive the zoom transition to do it. Desktop's own placement
-        // handlers still block overview entirely, unchanged, so leaving its
-        // selection would just be inert here - kept off anyway to avoid
-        // otherwise-unexercised UI states.
-        if (this.root.camera.getIsMapOverlayActive() && !(IS_MOBILE && this.overviewBuildingPolicy.isAllowed())) {
+        // Keep the current selection through overview zoom (both platforms -
+        // see OverviewBuildingPolicy's doc) instead of clearing it, so
+        // placement mode survives zooming out the same way it does on
+        // mobile.
+        if (this.root.camera.getIsMapOverlayActive() && !this.overviewBuildingPolicy.isAllowed()) {
             if (this.currentMetaBuilding.get()) {
                 this.currentMetaBuilding.set(null);
             }
@@ -559,16 +617,11 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      * @param {Vector} tile
      */
     tryPlaceCurrentBuildingAt(tile) {
-        // Dont allow placing in overview mode - except on mobile, where a
-        // belt's very first tap (before any continuation chain exists,
-        // placeSingle) and a blueprint's confirm both still route through
-        // here and need to keep working through overview zoom (see
-        // OverviewBuildingPolicy's doc). Desktop's own mouse handlers
-        // (onMouseDown/onMouseMove/onMouseUp below) all still bail before
-        // ever reaching this call during overview, so this never actually
-        // gets exercised from desktop at that zoom regardless of the check
-        // here - unchanged for it either way.
-        if (this.root.camera.getIsMapOverlayActive() && !(IS_MOBILE && this.overviewBuildingPolicy.isAllowed())) {
+        // Dont allow placing in overview mode unless the policy allows it
+        // (see OverviewBuildingPolicy's doc) - both platforms: desktop's own
+        // onMouseDown routes a click here directly at overview zoom now too
+        // (see placeBeltTapAt/its call site below).
+        if (this.root.camera.getIsMapOverlayActive() && !this.overviewBuildingPolicy.isAllowed()) {
             return;
         }
 
@@ -772,6 +825,12 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      */
     onSelectedMetaBuildingChanged(metaBuilding) {
         this.abortDragging();
+        if (!metaBuilding || metaBuilding.getId() !== "belt") {
+            // Leaving belt (or deselecting entirely) starts the next belt
+            // fresh, same as mobile's default (non-"new belt button") behavior.
+            this.lastBeltTile = null;
+            this.lastBeltIncomingDirection = undefined;
+        }
         this.root.hud.signals.selectedPlacementBuildingChanged.dispatch(metaBuilding);
         if (metaBuilding) {
             const availableVariants = metaBuilding.getAvailableVariants(this.root);
@@ -814,8 +873,21 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      */
     onMouseDown(pos, button) {
         if (this.root.camera.getIsMapOverlayActive()) {
-            // We do not allow dragging if the overlay is active
-            return;
+            // Placement keeps working zoomed out into map overview, same as
+            // mobile (see OverviewBuildingPolicy's doc) - but only as a
+            // discrete click, not a drag (see placeBeltTapAt's doc for why),
+            // and deletion/variant-cycling stay blocked exactly like before.
+            const metaBuilding = this.currentMetaBuilding.get();
+            if (button !== enumMouseButton.left || !metaBuilding || !this.overviewBuildingPolicy.isAllowed()) {
+                return;
+            }
+            const tile = this.root.camera.screenToWorld(pos).toTileSpace();
+            if (this.isBeltSelected) {
+                this.placeBeltTapAt(tile);
+            } else if (this.tryPlaceCurrentBuildingAt(tile)) {
+                this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
+            }
+            return STOP_PROPAGATION;
         }
 
         const metaBuilding = this.currentMetaBuilding.get();

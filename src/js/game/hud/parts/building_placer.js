@@ -1,6 +1,6 @@
 import { makeOffscreenBuffer } from "../../../core/buffer_utils";
 import { ClickDetector } from "../../../core/click_detector";
-import { globalConfig } from "../../../core/config";
+import { globalConfig, IS_MOBILE } from "../../../core/config";
 import { DrawParameters } from "../../../core/draw_parameters";
 import { clamp, makeDiv, removeAllChildren } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
@@ -120,7 +120,10 @@ export class HUDBuildingPlacer extends HUDBuildingPlacerLogic {
             rawBinding = KEYMAPPINGS.buildings[metaBuilding.getId()];
         }
 
-        if (rawBinding) {
+        // Hotkey text is meaningless on mobile - it shows through the info
+        // panel's own .mobileVisible re-attach (see building_placer.scss),
+        // not hidden along with the rest of the desktop-only UI.
+        if (rawBinding && !IS_MOBILE) {
             const binding = this.root.keyMapper.getBinding(rawBinding);
             this.buildingInfoElements.hotkey.innerHTML = T.ingame.buildingPlacement.hotkeyLabel.replace(
                 "<key>",

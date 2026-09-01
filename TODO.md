@@ -651,15 +651,12 @@ logs.
       instead of `false`. User-confirmed working on a real phone via `tailscale serve`.
       Files: `src/js/core/config.ts`, `src/css/common.scss`,
       `src/js/game/hud/parts/building_placer_logic.js`.
-- [ ] **Chunk 2b — Mobile control redesign.** Touch now *works* but is rough — found
-      during 2b testing, not yet fixed:
-      - Tapping an empty tile after a drag tries to build a path from the *previous*
-        drag's end tile to the new tap, instead of starting fresh. One bug fixed
-        already (`abortDragging` typo, see 2a) but that alone may not fully explain
-        it — needs live on-device touch-event tracing, not more blind code reading.
-        (Hypothesis worth checking first: `camera.js` `onTouchEnd` reads
-        `event.changedTouches[0]` without checking length, could throw and skip
-        `upPostHandler.dispatch()` — meaning drag state never resets — but unconfirmed.)
+- [ ] **Chunk 2b — Mobile control redesign.** Touch now *works* but is rough:
+      - [x] ~~Tapping an empty tile after a drag tries to build a path from the
+        *previous* drag's end tile to the new tap, instead of starting fresh.~~
+        **Reclassified 2026-09-01, per user: not a bug, this is now the desired
+        behavior** — it's the same tap-continuation model item 8/2c-4 formalized
+        on purpose (`lastBeltTile`), just observed here before that design existed.
       - [x] ~~No way to rotate or delete a building via touch — only keyboard R/Delete,
         no on-screen buttons at all.~~ **Done 2026-08-30** (`sessions/2026-08-30-2156-session.md`):
         on-screen mobile control panel added (`mobile_controls.js`/`.scss`) with
@@ -668,8 +665,12 @@ logs.
         blocked any tap/click on the building preview sprite. Placeholder
         (non-functional) undo/redo buttons added next to delete — no undo/redo
         history exists yet, wiring that up is separate future work.
-      - Keybindings settings screen is desktop-only, ~3 screens of key bindings —
-        meaningless on mobile as-is, needs a mobile-specific simplified UI.
+      - [x] ~~Keybindings settings screen is desktop-only, ~3 screens of key
+        bindings — meaningless on mobile as-is.~~ **Confirmed 2026-09-01, per
+        user: already handled** — the whole "Keybindings" settings button is
+        gated behind `this.app.platformWrapper.getSupportsKeyboard()`
+        (`src/js/states/settings.js:29`), false on mobile, so the screen was
+        already unreachable there. No mobile-specific UI needed.
       - **Interactive tutorial (11 hints, level 1-21) is desktop-only, not just
         visually — found 2026-08-25.** `src/js/game/hud/parts/interactive_tutorial.js:191-192`
         always loads `res/ui/interactive_tutorial.noinline/<hintId>.gif` with zero
@@ -687,15 +688,23 @@ logs.
         rotate/delete-via-touch gap above is fixed). Blocked on that same gap —
         can't record a "drag to rotate" touch GIF/text until there's a touch
         rotate gesture to record.
-      - **Minor, same family:** the building-info panel shows a keyboard hotkey
-        label ("Hotkey: Q") right next to the `building_tutorials/*.png` image —
-        `src/js/game/hud/parts/building_placer.js:132-137`
-        (`T.ingame.buildingPlacement.hotkeyLabel`). The `building_tutorials`
-        images themselves are fine as-is on mobile (checked 2026-08-25: none of
-        the 44 contain a mouse cursor or input-device imagery, and the building
-        description text next to them has no mouse/keyboard wording either — no
-        rebranding/mobile work needed there, see `REBRANDING_PLAN.md` §16). Just
-        this one hotkey text label needs to be hidden or replaced when `IS_MOBILE`.
+      - [x] ~~**Minor, same family:** the building-info panel shows a keyboard
+        hotkey label ("Hotkey: Q") right next to the `building_tutorials/*.png`
+        image.~~ **Done 2026-09-01.** `rerenderInfoDialog()` in
+        `building_placer.js` now skips setting the hotkey text under
+        `IS_MOBILE` (was leaking through because the whole info panel
+        re-attaches via its own `.mobileVisible` class per the
+        `alwaysShowBuildingInfo` setting, see `building_placer.scss` — the
+        panel itself was already correctly hidden by default, just not this
+        one child). Audited for other global keyboard-hint leaks on mobile at
+        the same time (user asked "globally across all windows"): the one
+        other candidate, `HUDKeybindingOverlay` (the bottom keybindings strip),
+        was already `!IS_MOBILE`-gated entirely in `modes/regular.js:352-356` —
+        nothing else found (`shapeViewer.copyKey`/`puzzleMetadata.shortKey` are
+        clipboard-code labels, not keyboard hints, despite the name). The
+        `building_tutorials` images themselves are fine as-is on mobile
+        (checked 2026-08-25, see `REBRANDING_PLAN.md` §16) — no rebrand work
+        needed there.
       Start this chunk with live device debugging via the existing `tailscale serve`
       link (see Infra notes below), not more code archaeology.
 - [ ] **Chunk 2c — Mobile placement/edit UX overhaul (9-item user request,
@@ -978,29 +987,111 @@ logs.
         down (in 2c-6's own history, since it directly extends 2c-6/item 8's
         tap-continuation) - new `hud/parts/overview_building.js` gates it,
         ready for the Chunk 4 monetization idea to hook into later.
-      - [ ] **2c-8 — Desktop belt click while zoomed out into map overview,
-        not started.** User request (2026-09-01): the same idea as 2c-7,
-        but for desktop's belt click. Desktop's own mouse handlers in
-        `building_placer_logic.js` (`onMouseDown`/`onMouseMove`/`onMouseUp`)
-        have their own separate, unconditional `getIsMapOverlayActive()`
-        blocks - 2c-7's `OverviewBuildingPolicy` was deliberately scoped to
-        `IS_MOBILE` only and never touched them, so desktop still can't
-        place anything while zoomed out at all. The actual routing/placement
-        engine needs no work either way - desktop drag already shares the
-        exact same `BeltPathPlanner` class (and therefore every fix from
-        this session: opportunistic acceptor/ejector bending, the
-        anti-stranding `forcedExitDirection` restriction) with mobile,
-        confirmed by inspection, just each HUD part holds its own instance.
-        Open design question before implementing: desktop has no
-        tap-continuation concept at all (unlike mobile's item 8) - a plain
-        click today always places one tile with no memory of the last one,
-        so "click while zoomed out" needs a decision first: extend a single
-        click into a full `findBeltPath` auto-route the same way mobile's
-        overview tap does (which means giving desktop some `lastBeltTile`-
-        style continuation state it doesn't have today, a bigger change),
-        or keep it a single-tile placement at overview zoom (smaller, but
-        arguably not that useful at a scale where precision doesn't matter
-        anyway) - needs to be settled with the user before starting.
+      - [x] **2c-8 — Desktop belt click while zoomed out into map overview,
+        done 2026-09-01.** User settled the open design question from below
+        explicitly: extend a click into tap-continuation (mirroring mobile's
+        item 8), scoped to overview zoom only - desktop's normal-zoom drag
+        placement is untouched. Two changes in `building_placer_logic.js`:
+        (1) `update()`'s and `tryPlaceCurrentBuildingAt()`'s overview guards
+        (previously `!(IS_MOBILE && overviewBuildingPolicy.isAllowed())`,
+        i.e. desktop always blocked) generalized to
+        `!overviewBuildingPolicy.isAllowed()` for both platforms - selection
+        no longer gets cleared when desktop zooms into overview either,
+        closing the other half of the user's request ("режим постройки не
+        сбрасывается при отдалении, как на мобиле"). (2) `onMouseDown`
+        gained an overview-specific branch (left click + a building
+        selected + policy allows it only - deletion/variant-cycling stay
+        blocked exactly as before): a belt click now goes through a new
+        `placeBeltTapAt(tile)`, which is desktop's own `lastBeltTile`/
+        `lastBeltIncomingDirection` (new fields, persist across separate
+        clicks, cleared only when the selection leaves belt) feeding the
+        same `BeltPathPlanner.findBeltPathToward`/`placePath` mobile's
+        `placeBeltTapAt` already uses - first click places one tile, every
+        later click continues from wherever the belt last ended. A
+        non-belt building just calls `tryPlaceCurrentBuildingAt` directly
+        (already generalized by (1), no extra code needed). `onMouseMove`/
+        `onMouseUp` still bail out at overview zoom unchanged - overview is
+        deliberately click-only on desktop too, not drag, same reasoning as
+        mobile's own item 8 doc ("dragging precisely across a zoomed-out
+        view isn't practical"). `IS_MOBILE` import removed from the file,
+        no longer used anywhere in it. Verified live via Playwright against
+        the dev server: selected belt, zoomed out into overview, clicked two
+        points - zooming back in showed one continuous connected belt run
+        (corner turn + straight span) between them, not two disconnected
+        tiles; the info panel still showed "КОНВЕЙЕР" (belt) selected
+        throughout the whole zoom-out/zoom-in round trip, confirming
+        placement mode survived the zoom. A separate normal-zoom drag
+        afterward placed its own correct L-shaped corner belt, confirming
+        no regression to desktop's existing (unrelated) drag flow. Zero
+        console/page errors throughout.
+      - [ ] **2c-9 — Desktop/mobile mechanic parity audit, done 2026-09-01
+        (not started, just catalogued - user asked to "cross-check what's
+        missing each direction").** Read every `KEYMAPPINGS` binding and
+        every mobile gesture/button to compare. Ranked by how much it
+        actually blocks something (not just cosmetic):
+        - **Biggest gap, desktop-only: mobile cannot reach the wires layer
+          at all.** `switchLayers` (key `E`, `wires_overlay.js:18-41`) is the
+          *only* way `root.currentLayer` ever becomes `"wires"` anywhere in
+          the codebase - no button, no gesture, nothing in
+          `mobile_controls.js`/`base_toolbar.js` sets it. `HUDWiresToolbar`'s
+          own `visibilityCondition` is `currentLayer === "wires"`
+          (`wires_toolbar.js:36-37`), so it's permanently invisible on
+          mobile too - meaning wire, lever, all 4 logic gates, both
+          transistors, comparator, analyzer, virtual processors, storage,
+          reader, filter, display are **entirely unplaceable on mobile
+          right now**, not just inconvenient to reach. Needs a real design
+          decision (a toolbar tab? a HUD button next to the pencil/edit
+          icon?) before it's implementable - flagging, not fixing.
+        - **Desktop-only: no undo/redo trigger at all.** `action_history.js`
+          records transactions from both platforms already (mass
+          delete/cut, blueprint paste, and now this session's belt overview
+          continuation all wrap unconditionally) - but
+          `grep -in "undo\|redo" key_action_mapper.js` returns nothing, and
+          there's no desktop button either. Mobile's undo/redo buttons
+          (2c-2) are the only way to call `root.actionHistory.undo()`/
+          `redo()` in the entire app. An easy, contained fix (one keybinding
+          each, wired straight to the existing `root.actionHistory` calls)
+          whenever it's prioritized.
+        - **Desktop-only: no pipette on mobile.** `KEYMAPPINGS.placement.pipette`
+          (`startPipette()`, free - "select this already-placed building's
+          type for further placement without touching the original") has no
+          mobile equivalent. `beginMoveExistingBuilding` reuses its
+          code/variant-extraction internals but for *moving* the building,
+          a different action (destructive to the original, no duplication).
+        - **Desktop-only: no free single-building "move" gesture.** Mobile's
+          long-press-to-move (2c-3 follow-ups) has no desktop counterpart -
+          moving a building on desktop today means delete + replace by hand.
+        - **Mobile-only: belt tap-continuation only applies at overview zoom
+          on desktop (this session's 2c-8), always on mobile regardless of
+          zoom.** A plain desktop click at normal zoom still places one
+          disconnected tile with no memory, same as before 2c-8 - the user's
+          request was scoped to "while zoomed out", so normal zoom was left
+          alone deliberately, not overlooked. Worth a decision later if full
+          parity (item 8 at any zoom) is wanted on desktop too.
+        - **Mobile-only: no keyboard equivalent of `pasteLastBlueprint`
+          (Ctrl+V-style "paste the last-used blueprint again").** Mobile's
+          own copy/confirm flow (2c-6 follow-up) re-stamps its *own* just-
+          copied blueprint repeatedly, but there's no mobile UI hook into
+          `HUDBlueprintPlacer.lastBlueprintUsed` the way desktop's keybinding
+          reaches it.
+        - **Mobile-only: no multi-selection "cut" (only single-building
+          move is free).** Desktop's `massSelectCut` (Ctrl+X a whole
+          selection, free re-paste) has no mobile equivalent - mobile's
+          select-mode only has eraser (paid-free delete)/broom (clear
+          belts)/copy (paid blueprint). Moving a multi-tile group on mobile
+          today costs shapes twice (copy + place) unlike desktop's cut.
+        - Checked and found to be **non-issues** (already equivalent or
+          intentionally different, not gaps): rotate (desktop keys +
+          wheel+shift vs. mobile's rotate button - equivalent), variant
+          cycling (shift+right-click vs. mobile's variant button w/ count
+          badge - equivalent), direction-lock/belt-planner modifier (no
+          mobile equivalent needed - mobile's own tap/drag routing already
+          auto-solves the path BeltPathPlanner would otherwise need a
+          manual corner-lock for), multiplace (desktop modifier key vs.
+          mobile's explicit toggle - equivalent), cancel/Esc (mobile cancel
+          button - equivalent), mass-select rubber-band (Ctrl+drag vs.
+          mobile's pencil mode drag - equivalent, already cross-shared per
+          2c-5/2c-6 follow-ups).
       - [x] **2c-6 — Auto-tunnel placement (item 9), mobile part done
         2026-08-31.** New `resolveBeltPath()` in `mobile_controls.js`: given a
         raw belt tile path (a drag or a tap-continuation), scans for runs of
