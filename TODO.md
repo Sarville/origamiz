@@ -1852,6 +1852,141 @@ logs.
         zooming into overview, while a desktop session still gets and shows
         it exactly as before.
 
+        **Twenty-first follow-up, done 2026-09-01 - a drag ending on a
+        multi-input building (e.g. a balancer) could route to the wrong
+        input: the occupied one, or the far one, instead of the one the
+        drag actually approached/landed on.** `BeltPathPlanner.findBeltPath`
+        tried a target building's `ItemAcceptor` slots in whatever fixed
+        order the component defines them, taking the first one *any* path
+        existed to - completely ignoring which tile the drag ended on or
+        which side it came from.
+
+        Fix has two parts, because the two balancer shapes need different
+        signals:
+        - A multi-tile building (the ordinary 2-wide balancer) has each
+          input slot living on its own distinct world tile - `to` (the
+          tile the drag actually ended on) already names the intended slot
+          unambiguously, so `buildingAcceptorFeeds` now also returns each
+          slot's own `slotTile`, and `findBeltPath` prefers whichever feed's
+          `slotTile` equals `to` before falling back to anything else. Full
+          deliberate control, matches the user's ask exactly: end the drag
+          on the wanted input's tile, even a farther or already-fed one.
+        - A single-tile building with several slots on the *same* tile
+          (the compact merger/balancer variant) has no tile left to
+          disambiguate with - discovered this is actually the *default*
+          balancer (hotkey 2) via live testing (see below), not an edge
+          case. New optional `approachTile` param (the tile the drag/tap
+          was over immediately before the current one - both
+          `building_placer_logic.js` (`oldPos`) and `mobile_controls.js`
+          (`dragPath`'s last tile) already tracked this locally, just
+          never passed it through) breaks the tie toward whichever slot's
+          feed tile the belt is physically walking into on its last step,
+          not just whichever is closer to the drag's overall start.
+          Genuine physical limit, not a remaining bug: you can't select a
+          same-tile input by approaching from the *other* one's side -
+          under the finger only resolves what's geometrically true.
+
+        Separately, same session: the search's own tie-break for *where* an
+        unavoidable bend lands used to just be `DIRECTIONS`' fixed
+        enumeration order, unrelated to where `to` actually was - a
+        diagonal target could get its bend right at its own doorstep
+        instead of right off the source. New `orderTowardGoal` helper sorts
+        candidate directions by progress toward `to` (both at the search's
+        seed and at every expansion step), ties broken toward turning over
+        continuing straight - an unavoidable bend now happens as early as
+        possible, so the belt approaches a diagonal input in a straight
+        perpendicular run instead of hugging the source's column all the
+        way up first.
+
+        Verified live, not just read - no `window.root`/debug hook exists,
+        so drove the actual running dev server
+        (`http://127.0.0.1:3005`, same process the tailnet URL proxies to)
+        with Playwright + headless Chromium (borrowed from an unrelated
+        project's `node_modules`, none added here): placed a real extractor
+        + balancer, dragged a real belt via `mouse.down`/`move`/`up`, read
+        the result off screenshots. Confirmed both: a diagonal target now
+        bends immediately off the source and enters the input in a clean
+        perpendicular line (matches what the user hand-drew as the wanted
+        shape); a column-aligned target still gets a plain straight
+        zero-bend belt (regression check). Temporarily flipped
+        `fastGameEnter`/`allBuildingsUnlocked`/etc. in the gitignored
+        `src/js/core/config.local.js` to reach gameplay fast - reverted to
+        all-commented-out before finishing.
+
+        **Twenty-second follow-up, done 2026-09-01 - mobile UI theming pass
+        (main menu, settings, all `.ingameDialog`-based modals, statistics,
+        upgrades/shop, scrollbars) plus a dark-theme palette warm-up,** all
+        from live screenshots the user sent back and forth on their phone
+        over `tailscale serve` this session:
+        - Main menu: settings gear icon now reuses the in-game pause menu's
+          cream/brown SVG gear instead of a flat white circle+PNG; gray
+          panel/card backgrounds → cream (`$dialogBgColor`, warm tints of
+          `$mainBgColor`); the delete/download/rename savegame icon buttons
+          were three near-identical rulesets with tiny (1-1.5rem) hitboxes -
+          unified into one circular cream-chip style, bumped to 1.9rem
+          (2.3rem on mobile); tapping the savegame *name* now also opens
+          rename (`main_menu.js`), not just the tiny pencil icon
+          (`consumeEvents: true` on the icon's own click so it doesn't
+          double-fire through the now-clickable parent).
+        - Settings: sidebar category buttons recolored off cool gray;
+          long labels (e.g. "Интервал автосохранения") were overflowing off
+          the left edge of the card - grid items don't shrink below their
+          content's min-width by default (same root cause hit before on the
+          sidebar buttons, see 2c's own history) - added `min-width: 0` +
+          `overflow-wrap`, plus a soft hyphen in the one worst-offending RU
+          string; renamed "Чувствительность зума" → "Зум"; hid 5
+          mouse/keyboard-only settings on mobile (`enableMousePan`,
+          `shapeTooltipAlwaysOn`, `alwaysMultiplace`, `zoomToCursor`,
+          `clearCursorOnDeleteWhilePlacing`) via `html.is-mobile
+          .setting:has([data-setting=...])` - zero JS changes, pure CSS.
+        - All `.ingameDialog` modals (rename/delete confirm, option
+          choosers, forms) share one base in `dialogs.scss` - recolored
+          once there instead of per-dialog: white → `$dialogBgColor`,
+          capped width/max-width so nothing can overflow a phone screen,
+          `kbd` (ESC/⏎) hints on buttons hidden under `html.is-mobile`
+          (no physical keys to hint at).
+        - **Root cause of "background still looks gray/settings page has no
+          bottom rounding, scroll runs to the raw edge, upgrades dialog
+          cuts off top+bottom":** `100vh` on mobile Chrome is the height
+          with the address bar collapsed, taller than what's actually
+          visible - a box sized off it (`.gameState.textualState`,
+          `.ingameDialog > .dialogInner`) sticks out past the real bottom
+          (or gets clipped both ends when centered), which is exactly what
+          "no radius/padding at the bottom" and "dialog top+bottom both cut
+          off" look like from a screenshot. Fixed everywhere it was used by
+          adding a `100dvh` declaration alongside the `100vh` one (browsers
+          without `dvh` just keep using the line above, no fallback logic
+          needed). Settings' own background separately made explicit
+          (`background: $mainBgColor !important` +
+          `DarkThemeOverride` counterpart) rather than trusting inheritance,
+          same belt-and-braces the main menu's own background already used.
+        - Statistics dialog: the 3 data-source tabs (Производится/
+          Доставляется/Хранится) sized to their own text overflowed the
+          screen, clipping the last one - made them an equal-width
+          segmented row instead (`flex: 1 1 0`) so they always fit
+          regardless of label length; recolored the dark `#44484a` active-
+          tab background and the gray row-card backgrounds.
+        - Upgrades/shop dialog: recolored the remaining gray `.upgrade`
+          card backgrounds, the `.amount` progress badges, and the disabled
+          (`:not(.buyable)`) grey "УЛУЧШИТЬ" button - explicitly told not
+          to touch the shape icons/their own (canvas-drawn, not CSS)
+          circular background, so those were left alone.
+        - Scrollbars: found `common.scss` already had a global
+          `::-webkit-scrollbar*` rule (`#cdd0d4` gray) - recolored that one
+          in place instead of adding a competing rule elsewhere; added
+          `scrollbar-color`/`scrollbar-width` alongside for Firefox.
+        - **Dark theme warmed to match**, since it turned out to still be
+          the original cool blue-gray palette underneath the (already-warm)
+          light theme - `$darkModeGameBackground` (drives nearly every dark
+          surface via `$darkModeControlsBackground`) re-derived from
+          `$mainBgColor`'s own hue instead of a separate cool hex, so
+          light/dark read as one brand; `$themeColor` (checkbox/slider
+          "active" fill) changed from navy-purple to the same warm brown
+          already used for the settings-menu gear icon's stroke color;
+          `src/js/game/themes/dark.json`'s map `background` and
+          `chunkOverview` (visible zoomed out) recolored to the same warm
+          family the light theme's `light.json` already used.
+
         **Item 9 (auto-tunnel/routing) outstanding debts as of 2026-08-31,
         consolidated from the follow-ups above so a future session can scan
         this in one place instead of re-reading all of them:**
@@ -1889,6 +2024,12 @@ logs.
           follow-up below. (16th follow-up.)
         - ~~Desktop's belt drag had no auto-tunnel support at all~~ - fixed
           2026-09-01, see the seventeenth follow-up below.
+        - ~~A drag ending on a multi-input building (a balancer) could
+          route to the wrong input - occupied, or the far one - instead of
+          the one actually approached/landed on~~ - fixed 2026-09-01, see
+          the twenty-first follow-up below. Same session also made an
+          unavoidable bend happen as early as possible instead of right at
+          the destination, so a diagonal target gets a perpendicular entry.
         - Encountered but *not* a bug, worth remembering if a similar
           report comes back: a stacker (or anything else with
           `ItemProcessor.inputsPerCharge > 1`) won't visibly consume
