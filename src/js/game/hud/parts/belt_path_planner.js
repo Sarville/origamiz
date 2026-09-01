@@ -98,12 +98,27 @@ export class BeltPathPlanner {
      * @param {boolean} allowReshape See findBeltPath.
      * @param {Vector=} continuationTile See findBeltPath.
      * @param {number=} continuationIncoming See findBeltPath.
+     * @param {Vector=} approachTile See findBeltPath.
      * @returns {{ path: Array<Vector>, resolved: Array<PathEntry>|null }}
      */
-    findBeltPathToward(from, to, allowReshape, continuationTile = null, continuationIncoming = undefined) {
+    findBeltPathToward(
+        from,
+        to,
+        allowReshape,
+        continuationTile = null,
+        continuationIncoming = undefined,
+        approachTile = null
+    ) {
         return {
             path: this.computeCornerPath(from, to),
-            resolved: this.findBeltPath(from, to, allowReshape, continuationTile, continuationIncoming),
+            resolved: this.findBeltPath(
+                from,
+                to,
+                allowReshape,
+                continuationTile,
+                continuationIncoming,
+                approachTile
+            ),
         };
     }
 
@@ -224,7 +239,7 @@ export class BeltPathPlanner {
      * need to eject in to do it. Mirrors GameLogic.getEjectorsAndAcceptorsAtTile's
      * own acceptor math exactly.
      * @param {Vector} tile
-     * @returns {Array<{ feedTile: Vector, direction: number }>}
+     * @returns {Array<{ slotTile: Vector, feedTile: Vector, direction: number }>}
      */
     buildingAcceptorFeeds(tile) {
         const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
@@ -237,6 +252,7 @@ export class BeltPathPlanner {
             const worldTile = staticComp.localTileToWorld(slot.pos);
             const towardFeedTile = enumDirectionToAngle[staticComp.localDirectionToWorld(slot.direction)];
             return {
+                slotTile: worldTile,
                 feedTile: worldTile.add(enumDirectionToVector[enumAngleToDirection[towardFeedTile]]),
                 direction: (towardFeedTile + 180) % 360,
             };
@@ -498,6 +514,36 @@ export class BeltPathPlanner {
         const DIRECTIONS = [0, 90, 180, 270];
         const stepFor = dir => enumDirectionToVector[enumAngleToDirection[dir]];
         const tileKey = tile => tile.x + "," + tile.y;
+        const manhattanToGoal = tile => Math.abs(tile.x - to.x) + Math.abs(tile.y - to.y);
+
+        // The search only guarantees the *fewest bends*, not *where* they
+        // land - among directions that make equal progress toward `to`,
+        // DIRECTIONS' fixed enumeration order used to decide the tie, which
+        // had nothing to do with the drag's actual shape (a far input could
+        // get a late bend right at its doorstep instead of an early one
+        // right off the source). `deprioritize`, when given, is tried last
+        // among ties instead: at the seed this is the forced ejector
+        // direction, so a genuine lateral option is preferred over
+        // continuing straight when both help equally (the mandatory turn
+        // still renders "for free" as a curve on the source tile itself);
+        // during expansion it's `current.dir`, so an unavoidable turn is
+        // taken as soon as it's no worse than continuing straight, instead
+        // of being deferred to the last possible tile.
+        const orderTowardGoal = (tile, dirs, deprioritize) =>
+            dirs.slice().sort((a, b) => {
+                const distA = manhattanToGoal(tile.add(stepFor(a)));
+                const distB = manhattanToGoal(tile.add(stepFor(b)));
+                if (distA !== distB) {
+                    return distA - distB;
+                }
+                if (a === deprioritize) {
+                    return 1;
+                }
+                if (b === deprioritize) {
+                    return -1;
+                }
+                return 0;
+            });
 
         /**
          * @typedef {{ tile: Vector, dir: number, bends: number, parentKey: string|null,
@@ -510,7 +556,10 @@ export class BeltPathPlanner {
 
         /** @type {Array<string>} */
         const deque = [];
-        const initialDirs = forcedStartDirection !== undefined ? [forcedStartDirection] : DIRECTIONS;
+        const initialDirs =
+            forcedStartDirection !== undefined
+                ? [forcedStartDirection]
+                : orderTowardGoal(from, DIRECTIONS, startIncomingDirection);
         for (const dir of initialDirs) {
             const k = key(from, dir);
             visited.set(k, {
@@ -563,7 +612,7 @@ export class BeltPathPlanner {
                     ? current.dir // continuing from an existing tunnel receiver at `from`
                     : undefined;
 
-            for (const dir of DIRECTIONS) {
+            for (const dir of orderTowardGoal(current.tile, DIRECTIONS, current.dir)) {
                 if (forcedExitDirection !== undefined && dir !== forcedExitDirection) {
                     continue;
                 }
@@ -784,9 +833,21 @@ export class BeltPathPlanner {
      * @param {boolean} allowReshape See findBeltPathSearch.
      * @param {Vector=} continuationTile See findBeltPathSearch.
      * @param {number=} continuationIncoming See findBeltPathSearch.
+     * @param {Vector=} approachTile The tile the drag/tap was over
+     * immediately before `to` - the caller's own previous move position, not
+     * anything this class tracks itself (stateless, see the class doc). Used
+     * only to break ties between a same-tile building's several acceptor
+     * slots (see the comment below); irrelevant otherwise.
      * @returns {Array<PathEntry>|null}
      */
-    findBeltPath(from, to, allowReshape, continuationTile = null, continuationIncoming = undefined) {
+    findBeltPath(
+        from,
+        to,
+        allowReshape,
+        continuationTile = null,
+        continuationIncoming = undefined,
+        approachTile = null
+    ) {
         if (from.equals(to)) {
             return this.beltTilesToEntries([from]);
         }
@@ -804,7 +865,42 @@ export class BeltPathPlanner {
         if (toIsFree) {
             const feeds = this.buildingAcceptorFeeds(to);
             if (feeds.length > 0) {
-                for (const feed of feeds) {
+                // A multi-input building (e.g. a balancer) has one feed per
+                // input slot, in whatever fixed order its component defines
+                // them - trying them in that order picked "first slot that
+                // has *any* valid path" regardless of which input the drag
+                // actually landed on, so a drag ending right on the near
+                // input's own tile could still be routed to the far one (or
+                // to one already fed by another belt) as long as *a* path to
+                // it existed. A multi-tile building (the ordinary 2-wide
+                // balancer) has each slot living on its own distinct world
+                // tile, so `to` - the exact tile the drag ended on - already
+                // names the intended slot unambiguously; prefer that one
+                // first. A single-tile building with several slots on the
+                // *same* tile (e.g. the compact merger variant, both its
+                // inputs living on the one tile the whole building
+                // occupies) has no such tile to disambiguate with -
+                // `approachTile` (the drag's actual previous position) is
+                // the next best signal: whichever slot the belt is
+                // physically walking straight into from there is the one
+                // under the finger, not just whichever happens to be closer
+                // to the drag's overall origin.
+                const orderedFeeds = feeds.slice().sort((a, b) => {
+                    const aOnTarget = a.slotTile.equals(to) ? 0 : 1;
+                    const bOnTarget = b.slotTile.equals(to) ? 0 : 1;
+                    if (aOnTarget !== bOnTarget) {
+                        return aOnTarget - bOnTarget;
+                    }
+                    if (approachTile) {
+                        const aApproached = a.feedTile.equals(approachTile) ? 0 : 1;
+                        const bApproached = b.feedTile.equals(approachTile) ? 0 : 1;
+                        if (aApproached !== bApproached) {
+                            return aApproached - bApproached;
+                        }
+                    }
+                    return a.feedTile.distanceSquare(effectiveFrom) - b.feedTile.distanceSquare(effectiveFrom);
+                });
+                for (const feed of orderedFeeds) {
                     const result = this.findBeltPathSearch(
                         effectiveFrom,
                         feed.feedTile,

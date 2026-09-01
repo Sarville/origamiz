@@ -906,7 +906,10 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                     const { path, resolved } = this.beltPathPlanner.findBeltPathToward(
                         this.beltDragStartTile,
                         newPos,
-                        true
+                        true,
+                        null,
+                        undefined,
+                        oldPos
                     );
                     this.beltDragPath = path;
                     this.beltDragPreviewEntries = resolved || [];

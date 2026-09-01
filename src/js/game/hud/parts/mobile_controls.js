@@ -753,15 +753,17 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {Vector} to
      * @param {boolean} allowReshape See BeltPathPlanner.findBeltPathSearch -
      * true for a drag, false for tap-continuation.
+     * @param {Vector=} approachTile See BeltPathPlanner.findBeltPath.
      * @returns {{ path: Array<Vector>, resolved: Array<PathEntry>|null }}
      */
-    findBeltPathToward(from, to, allowReshape) {
+    findBeltPathToward(from, to, allowReshape, approachTile = null) {
         return this.beltPathPlanner.findBeltPathToward(
             from,
             to,
             allowReshape,
             this.lastBeltTile,
-            this.lastBeltIncomingDirection
+            this.lastBeltIncomingDirection,
+            approachTile
         );
     }
 
@@ -1038,7 +1040,7 @@ export class HUDMobileControls extends BaseHUDPart {
                 // nothing here (draw() reads dragPreviewInvalid and tints
                 // dragPath red instead) so release-time feedback
                 // (flashInvalidBelt) isn't the only hint something's wrong.
-                const { path, resolved } = this.findBeltPathToward(this.dragStartTile, tile, true);
+                const { path, resolved } = this.findBeltPathToward(this.dragStartTile, tile, true, lastTile);
                 this.dragPath = path;
                 this.dragPreviewEntries = resolved || [];
                 this.dragPreviewInvalid = !resolved;
@@ -1177,6 +1179,7 @@ export class HUDMobileControls extends BaseHUDPart {
         staticComp.origin = this.blueprintTile;
         staticComp.rotation = rotation;
         metaBuilding.updateVariants(this.placerLogic.fakeEntity, rotationVariant, variant);
+        staticComp.code = getCodeFromBuildingData(metaBuilding, variant, rotationVariant);
 
         const canBuild = this.root.logic.checkCanPlaceEntity(this.placerLogic.fakeEntity, {});
         parameters.context.globalAlpha = canBuild ? 0.85 : 0.35;

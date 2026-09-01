@@ -1,6 +1,6 @@
 {
     "map": {
-        "background": "#3e3f47",
+        "background": "#3a3327",
         "gridRegular": "rgba(255, 255, 255, 0.02)",
         "gridPlacing": "rgba(255, 255, 255, 0.06)",
 
@@ -38,9 +38,9 @@
             "blue": "#5e7ca4"
         },
         "chunkOverview": {
-            "empty": "#444856",
-            "filled": "#646b7d",
-            "beltColor": "#9096a3"
+            "empty": "#4a4232",
+            "filled": "#6b5f45",
+            "beltColor": "#b08c52"
         },
 
         "wires": {
