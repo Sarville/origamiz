@@ -326,6 +326,16 @@ export class HUDMobileControls extends BaseHUDPart {
                 this.dragPreviewInvalid = false;
                 this.panning = false;
                 this.draggingBlueprint = false;
+                // A second finger joining mid rubber-band means this was
+                // actually the start of a pinch/pan, not a selection drag -
+                // abort without committing (never call massSelector's own
+                // onMouseUp here), otherwise it stays frozen on screen for
+                // the rest of the pinch and then wrongly selects whatever
+                // was under the first finger the moment fingers lift.
+                if (this.selectModeActive) {
+                    this.massSelector.currentSelectionStartWorld = null;
+                    this.massSelector.currentSelectionEnd = null;
+                }
             }
         };
         this.root.canvas.addEventListener("touchstart", this.cancelGestureOnSecondTouch);

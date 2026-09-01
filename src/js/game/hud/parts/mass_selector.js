@@ -251,6 +251,23 @@ export class HUDMassSelector extends BaseHUDPart {
             const realTileStart = tileStart.min(tileEnd);
             const realTileEnd = tileStart.max(tileEnd);
 
+            // A plain tap (not a drag) on a building already in the
+            // selection deselects it instead of re-adding it - lets you tap
+            // individual buildings back out of a selection one at a time.
+            if (realTileStart.equals(realTileEnd)) {
+                const tapped = this.root.map.getLayerContentXY(
+                    realTileStart.x,
+                    realTileStart.y,
+                    this.root.currentLayer
+                );
+                if (tapped && this.selectedUids.has(tapped.uid)) {
+                    this.selectedUids.delete(tapped.uid);
+                    this.currentSelectionStartWorld = null;
+                    this.currentSelectionEnd = null;
+                    return;
+                }
+            }
+
             for (let x = realTileStart.x; x <= realTileEnd.x; ++x) {
                 for (let y = realTileStart.y; y <= realTileEnd.y; ++y) {
                     const contents = this.root.map.getLayerContentXY(x, y, this.root.currentLayer);
