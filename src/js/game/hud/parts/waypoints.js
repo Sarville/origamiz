@@ -1,5 +1,5 @@
 import { makeOffscreenBuffer } from "../../../core/buffer_utils";
-import { globalConfig, THIRDPARTY_URLS } from "../../../core/config";
+import { globalConfig, IS_MOBILE, THIRDPARTY_URLS } from "../../../core/config";
 import { DrawParameters } from "../../../core/draw_parameters";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { Loader } from "../../../core/loader";
@@ -43,8 +43,11 @@ export class HUDWaypoints extends BaseHUDPart {
      * @param {HTMLElement} parent
      */
     createElements(parent) {
-        // Create the helper box on the lower right when zooming out
-        if (this.root.app.settings.getAllSettings().offerHints) {
+        // Create the helper box on the lower right when zooming out - not on
+        // mobile, where its content (mouse-button/keyboard instructions) doesn't
+        // apply and would just sit in the way of the overview-zoom building
+        // placement (see overview_building.js).
+        if (this.root.app.settings.getAllSettings().offerHints && !IS_MOBILE) {
             this.hintElement = makeDiv(
                 parent,
                 "ingame_HUD_Waypoints_Hint",

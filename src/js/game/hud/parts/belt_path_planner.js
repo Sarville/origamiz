@@ -194,6 +194,30 @@ export class BeltPathPlanner {
     }
 
     /**
+     * Item 9 (12th/15th follow-up fix): the real outgoing direction of the
+     * existing belt at `tile` - the exact inverse of curvedEntry's own
+     * incoming/rotation/rotationVariant math, so a search step that merely
+     * *passes through* a pre-existing belt (isTileBlockedForBelt waves a
+     * same-direction one through as harmless reuse) can be forced to leave
+     * it exactly the way it already does, instead of free to bend it onto a
+     * new outgoing and sever whatever it used to feed.
+     * @param {Vector} tile
+     * @returns {number}
+     */
+    existingBeltOutgoing(tile) {
+        const staticComp = this.root.map.getLayerContentXY(tile.x, tile.y, "regular").components.StaticMapEntity;
+        const rotation = staticComp.rotation;
+        switch (staticComp.getRotationVariant()) {
+            case 1:
+                return (rotation - 90 + 360) % 360;
+            case 2:
+                return (rotation + 90) % 360;
+            default:
+                return rotation;
+        }
+    }
+
+    /**
      * Item 9 (building endpoints): world-space feed info for every
      * ItemAcceptor slot of the real building at `tile` - the tile a belt
      * would need to occupy to feed each slot, and the compass direction it'd
@@ -220,25 +244,86 @@ export class BeltPathPlanner {
     }
 
     /**
+     * Item 9 (opportunistic connection): world-space launch info for
+     * *every* slot of the real building at `tile`'s ItemEjector, whatever
+     * the slot count - unlike buildingEjectorLaunch (below), which only
+     * resolves a single-slot ejector since starting a path directly off a
+     * multi-output building has no unambiguous "the" output tile to use, a
+     * neighbour lookup asks about one already-known tile and has no such
+     * ambiguity, so a multi-output building (e.g. the quad cutter) can still
+     * be opportunistically connected to.
+     * @param {Vector} tile
+     * @returns {Array<{ launchTile: Vector, direction: number }>}
+     */
+    buildingEjectorLaunches(tile) {
+        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+        const ejector = contents && contents.components.ItemEjector;
+        if (!ejector) {
+            return [];
+        }
+        const staticComp = contents.components.StaticMapEntity;
+        return ejector.slots.map(slot => {
+            const worldTile = staticComp.localTileToWorld(slot.pos);
+            const direction = enumDirectionToAngle[staticComp.localDirectionToWorld(slot.direction)];
+            return {
+                launchTile: worldTile.add(enumDirectionToVector[enumAngleToDirection[direction]]),
+                direction,
+            };
+        });
+    }
+
+    /**
      * Item 9 (building endpoints): world-space launch info for the real
-     * building at `tile`'s ItemEjector, only when it has exactly one slot.
+     * building at `tile`'s ItemEjector, only when it has exactly one slot -
+     * see buildingEjectorLaunches's doc for why multi-slot is refused here.
      * @param {Vector} tile
      * @returns {{ launchTile: Vector, direction: number }|null}
      */
     buildingEjectorLaunch(tile) {
-        const contents = this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
-        const ejector = contents && contents.components.ItemEjector;
-        if (!ejector || ejector.slots.length !== 1) {
-            return null;
+        const launches = this.buildingEjectorLaunches(tile);
+        return launches.length === 1 ? launches[0] : null;
+    }
+
+    /**
+     * Item 9 (opportunistic connection, 3rd outstanding debt): if a tile
+     * adjacent to `tile` has a building whose ItemAcceptor feed tile is
+     * exactly `tile`, the direction that acceptor needs fed in - null
+     * otherwise. Lets an ordinary belt endpoint that lands next to a
+     * building's input bend into it even when the drag/tap never explicitly
+     * targeted that building (buildingAcceptorFeeds only looks at the tile
+     * itself, not its neighbours).
+     * @param {Vector} tile
+     * @returns {number|null}
+     */
+    nearbyAcceptorDirection(tile) {
+        for (const dir of [0, 90, 180, 270]) {
+            const neighbor = tile.add(enumDirectionToVector[enumAngleToDirection[dir]]);
+            for (const feed of this.buildingAcceptorFeeds(neighbor)) {
+                if (feed.feedTile.equals(tile)) {
+                    return feed.direction;
+                }
+            }
         }
-        const staticComp = contents.components.StaticMapEntity;
-        const slot = ejector.slots[0];
-        const worldTile = staticComp.localTileToWorld(slot.pos);
-        const direction = enumDirectionToAngle[staticComp.localDirectionToWorld(slot.direction)];
-        return {
-            launchTile: worldTile.add(enumDirectionToVector[enumAngleToDirection[direction]]),
-            direction,
-        };
+        return null;
+    }
+
+    /**
+     * Item 9 (opportunistic connection): symmetric to
+     * nearbyAcceptorDirection, for a belt's *start* landing next to a
+     * building's output instead of its own tile.
+     * @param {Vector} tile
+     * @returns {number|null}
+     */
+    nearbyEjectorDirection(tile) {
+        for (const dir of [0, 90, 180, 270]) {
+            const neighbor = tile.add(enumDirectionToVector[enumAngleToDirection[dir]]);
+            for (const launch of this.buildingEjectorLaunches(neighbor)) {
+                if (launch.launchTile.equals(tile)) {
+                    return launch.direction;
+                }
+            }
+        }
+        return null;
     }
 
     /**
@@ -372,6 +457,16 @@ export class BeltPathPlanner {
         // tile.
         const isStrictlyClear = tile => !this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
         const isBlocked = (tile, dir) => this.isTileBlockedForBelt(tile, dir, anchorTiles);
+        // Distinct from (and deliberately narrower than) isTileBlockedForBelt's
+        // own touchesAnchor - that one waves through the whole radius-1
+        // neighbourhood around from/to (needed so the anchor's own re-curve
+        // isn't treated as blocked), but only the anchor tile *itself* is
+        // exempt from the forcedExitDirection restriction below - its
+        // neighbours are real pre-existing chain, and letting one of them
+        // re-bend just because it happens to sit next to the anchor is
+        // exactly the "hijack a nearby tile of my own chain" loophole this
+        // restriction exists to close (12th/15th follow-ups).
+        const isAnchorTile = tile => anchorTiles.some(anchor => anchor && anchor.equals(tile));
 
         const forcedStartDirection =
             startTunnel && startTunnel.mode === enumUndergroundBeltMode.receiver
@@ -406,7 +501,8 @@ export class BeltPathPlanner {
 
         /**
          * @typedef {{ tile: Vector, dir: number, bends: number, parentKey: string|null,
-         * viaTunnel: boolean, tunnelTier?: string, usedTiles: Set<string> }} SearchNode
+         * viaTunnel: boolean, tunnelTier?: string, usedTiles: Set<string>,
+         * forcedExitDirection?: number }} SearchNode
          */
         /** @type {Map<string, SearchNode>} */
         const visited = new Map();
@@ -447,12 +543,28 @@ export class BeltPathPlanner {
             // A tunnel receiver's ItemEjector is a single fixed slot facing
             // its own rotation - unlike a plain belt tile, it has no curve
             // variant and can never eject any other way. The very next step
-            // off a receiver therefore has to keep going straight.
-            const mustContinueStraight =
-                current.viaTunnel || (current.parentKey === null && forcedStartDirection !== undefined);
+            // off a receiver therefore has to keep going straight - same for
+            // a tile the path merely passed *through* because it was an
+            // existing belt already flowing the same way in
+            // (isTileBlockedForBelt waves those through as harmless reuse):
+            // it's forced to leave exactly the way that belt already does
+            // (forcedExitDirection, see existingBeltOutgoing), whether
+            // that's straight or an existing curve - bending it onto some
+            // *other* new outgoing would silently redirect it away from
+            // whatever it used to feed, stranding its old remainder as a
+            // disconnected dead path (see BeltPathPlanner's class doc /
+            // item 9's 12th and 15th follow-ups). A genuinely new
+            // (previously empty) tile has no such history and may still
+            // bend freely.
+            const forcedExitDirection =
+                current.forcedExitDirection !== undefined
+                    ? current.forcedExitDirection
+                    : current.parentKey === null && forcedStartDirection !== undefined
+                    ? current.dir // continuing from an existing tunnel receiver at `from`
+                    : undefined;
 
             for (const dir of DIRECTIONS) {
-                if (mustContinueStraight && dir !== current.dir) {
+                if (forcedExitDirection !== undefined && dir !== forcedExitDirection) {
                     continue;
                 }
                 const bendCost = dir === current.dir ? 0 : 1;
@@ -486,6 +598,15 @@ export class BeltPathPlanner {
                     if (!visited.has(k)) {
                         const usedTiles = new Set(current.usedTiles);
                         usedTiles.add(tileKey(nextTile));
+                        // Only reachable here (unblocked) for a pre-existing
+                        // belt when its own rotation already matches `dir` -
+                        // isTileBlockedForBelt only waves through an anchor-
+                        // adjacent tile (any direction) or a same-direction
+                        // one elsewhere. Force the latter's *next* step to
+                        // exactly the tile's own real outgoing (straight or
+                        // an existing curve alike) instead of leaving it free
+                        // to bend onto a new one.
+                        const throughExisting = !!this.beltAt(nextTile) && !isAnchorTile(nextTile);
                         visited.set(k, {
                             tile: nextTile,
                             dir,
@@ -493,6 +614,9 @@ export class BeltPathPlanner {
                             parentKey: currentKey,
                             viaTunnel: false,
                             usedTiles,
+                            forcedExitDirection: throughExisting
+                                ? this.existingBeltOutgoing(nextTile)
+                                : undefined,
                         });
                         if (bendCost === 0) {
                             deque.unshift(k);
@@ -561,6 +685,11 @@ export class BeltPathPlanner {
                                         viaTunnel: true,
                                         tunnelTier: tier,
                                         usedTiles,
+                                        // A tunnel receiver's ItemEjector is a
+                                        // single fixed slot facing its own
+                                        // rotation - it has no curve variant
+                                        // and can never eject any other way.
+                                        forcedExitDirection: dir,
                                     });
                                     deque.unshift(k);
                                 }
@@ -662,11 +791,17 @@ export class BeltPathPlanner {
             return this.beltTilesToEntries([from]);
         }
 
-        const launch = !this.beltAt(from) && !this.tunnelAt(from) ? this.buildingEjectorLaunch(from) : null;
+        const fromIsFree = !this.beltAt(from) && !this.tunnelAt(from);
+        const launch = fromIsFree ? this.buildingEjectorLaunch(from) : null;
         const effectiveFrom = launch ? launch.launchTile : from;
-        const forcedStartIncoming = launch ? launch.direction : undefined;
+        const forcedStartIncoming = launch
+            ? launch.direction
+            : fromIsFree
+            ? this.nearbyEjectorDirection(from) ?? undefined
+            : undefined;
 
-        if (!this.beltAt(to) && !this.tunnelAt(to)) {
+        const toIsFree = !this.beltAt(to) && !this.tunnelAt(to);
+        if (toIsFree) {
             const feeds = this.buildingAcceptorFeeds(to);
             if (feeds.length > 0) {
                 for (const feed of feeds) {
@@ -692,7 +827,7 @@ export class BeltPathPlanner {
             to,
             allowReshape,
             forcedStartIncoming,
-            undefined,
+            toIsFree ? this.nearbyAcceptorDirection(to) ?? undefined : undefined,
             continuationTile,
             continuationIncoming
         );

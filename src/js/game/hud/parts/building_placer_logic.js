@@ -1,3 +1,4 @@
+import { IS_MOBILE } from "../../../core/config";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { Signal, STOP_PROPAGATION } from "../../../core/signal";
 import { TrackedState } from "../../../core/tracked_state";
@@ -15,6 +16,7 @@ import { defaultBuildingVariant, MetaBuilding } from "../../meta_building";
 import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
 import { BeltPathPlanner } from "./belt_path_planner";
+import { OverviewBuildingPolicy } from "./overview_building";
 
 /**
  * Contains all logic for the building placer - this doesn't include the rendering
@@ -95,6 +97,11 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
          * @type {BeltPathPlanner}
          */
         this.beltPathPlanner = new BeltPathPlanner(this.root);
+
+        // See update()'s own use - only actually consulted for mobile, desktop's
+        // separate mouse handlers (onMouseDown/onMouseMove/onMouseUp below) still
+        // block placement during map overview unconditionally, unchanged.
+        this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
 
         /**
          * Item 9 (desktop): the tile a belt drag started from - the anchor
@@ -351,8 +358,15 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             this.onMouseMove(mousePos);
         }
 
-        // Make sure we have nothing selected while in overview mode
-        if (this.root.camera.getIsMapOverlayActive()) {
+        // Make sure we have nothing selected while in overview mode - except
+        // on mobile, where HUDMobileControls keeps placement (blueprint-
+        // follows-finger, belt tap-continuation) working through overview
+        // zoom (see OverviewBuildingPolicy's doc) and needs the selection to
+        // survive the zoom transition to do it. Desktop's own placement
+        // handlers still block overview entirely, unchanged, so leaving its
+        // selection would just be inert here - kept off anyway to avoid
+        // otherwise-unexercised UI states.
+        if (this.root.camera.getIsMapOverlayActive() && !(IS_MOBILE && this.overviewBuildingPolicy.isAllowed())) {
             if (this.currentMetaBuilding.get()) {
                 this.currentMetaBuilding.set(null);
             }
@@ -537,8 +551,16 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      * @param {Vector} tile
      */
     tryPlaceCurrentBuildingAt(tile) {
-        if (this.root.camera.getIsMapOverlayActive()) {
-            // Dont allow placing in overview mode
+        // Dont allow placing in overview mode - except on mobile, where a
+        // belt's very first tap (before any continuation chain exists,
+        // placeSingle) and a blueprint's confirm both still route through
+        // here and need to keep working through overview zoom (see
+        // OverviewBuildingPolicy's doc). Desktop's own mouse handlers
+        // (onMouseDown/onMouseMove/onMouseUp below) all still bail before
+        // ever reaching this call during overview, so this never actually
+        // gets exercised from desktop at that zoom regardless of the check
+        // here - unchanged for it either way.
+        if (this.root.camera.getIsMapOverlayActive() && !(IS_MOBILE && this.overviewBuildingPolicy.isAllowed())) {
             return;
         }
 

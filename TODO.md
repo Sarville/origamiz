@@ -773,13 +773,42 @@ logs.
         in sequence connect with a proper corner curve; belt selection and
         `lastBeltTile` both survive a zoom-level change (tested a jump to
         0.95, just above the 0.9 map-overview threshold - below that,
-        `getIsMapOverlayActive()` already blocks placement entirely and
-        deselects, pre-existing/unrelated behavior, not a regression).
+        `getIsMapOverlayActive()` blocked placement entirely and deselected
+        at the time, out of scope for this round - fixed later, see 2c-7
+        below).
       - [ ] **2c-5 — Edit/selection mode (item 2).** New pencil-icon mode:
         tap-to-select, long-press to enter + select what's under the finger,
         drag to rubber-band-select an area. New center icon row while active:
         eraser (delete selected, via 2c-2's history), broom (clear belt contents
         for any belt with a selected segment), cancel.
+      - [x] **2c-7 — Mobile building placement while zoomed out into map
+        overview, done 2026-09-01.** See the twentieth follow-up further
+        down (in 2c-6's own history, since it directly extends 2c-6/item 8's
+        tap-continuation) - new `hud/parts/overview_building.js` gates it,
+        ready for the Chunk 4 monetization idea to hook into later.
+      - [ ] **2c-8 — Desktop belt click while zoomed out into map overview,
+        not started.** User request (2026-09-01): the same idea as 2c-7,
+        but for desktop's belt click. Desktop's own mouse handlers in
+        `building_placer_logic.js` (`onMouseDown`/`onMouseMove`/`onMouseUp`)
+        have their own separate, unconditional `getIsMapOverlayActive()`
+        blocks - 2c-7's `OverviewBuildingPolicy` was deliberately scoped to
+        `IS_MOBILE` only and never touched them, so desktop still can't
+        place anything while zoomed out at all. The actual routing/placement
+        engine needs no work either way - desktop drag already shares the
+        exact same `BeltPathPlanner` class (and therefore every fix from
+        this session: opportunistic acceptor/ejector bending, the
+        anti-stranding `forcedExitDirection` restriction) with mobile,
+        confirmed by inspection, just each HUD part holds its own instance.
+        Open design question before implementing: desktop has no
+        tap-continuation concept at all (unlike mobile's item 8) - a plain
+        click today always places one tile with no memory of the last one,
+        so "click while zoomed out" needs a decision first: extend a single
+        click into a full `findBeltPath` auto-route the same way mobile's
+        overview tap does (which means giving desktop some `lastBeltTile`-
+        style continuation state it doesn't have today, a bigger change),
+        or keep it a single-tile placement at overview zoom (smaller, but
+        arguably not that useful at a scale where precision doesn't matter
+        anyway) - needs to be settled with the user before starting.
       - [x] **2c-6 — Auto-tunnel placement (item 9), mobile part done
         2026-08-31.** New `resolveBeltPath()` in `mobile_controls.js`: given a
         raw belt tile path (a drag or a tap-continuation), scans for runs of
@@ -1433,31 +1462,292 @@ logs.
         identical sender/obstacle-untouched/receiver pattern as desktop,
         confirming the extraction didn't change mobile's behavior either.
 
+        **Eighteenth follow-up, done 2026-09-01 - opportunistic connection to
+        a nearby building's input/output.** Closed the 3rd outstanding debt
+        from the 2026-08-31 consolidation below: an ordinary belt
+        drag/tap whose endpoint doesn't explicitly target a building (i.e.
+        `to`/`from` isn't the building's own tile, so `buildingAcceptorFeeds`/
+        `buildingEjectorLaunch` never got a look at it) but happens to land
+        on the exact tile next to one's input or output previously just
+        continued straight through - the acceptor/ejector's own fixed
+        direction was never consulted, so the resulting belt frequently
+        pointed the wrong way and silently fed nothing.
+
+        Added two small helpers to `BeltPathPlanner`, `nearbyAcceptorDirection`/
+        `nearbyEjectorDirection`, each scanning a tile's four neighbours with
+        the *existing* `buildingAcceptorFeeds`/`buildingEjectorLaunch` (unchanged
+        - they already computed the right feed/launch tile and direction, they
+        just were only ever called on the tile a building actually occupies)
+        and returning the required direction if one of them turns out to be
+        the tile in question. `findBeltPath` now calls these for `to`/`from`
+        whenever that end isn't already a belt/tunnel/explicit building
+        target, threading the result through as `forcedEndOutgoing`/
+        `forcedStartIncoming` - the exact same parameters the explicit-target
+        path already used, so `findBeltPathSearch`/`curvedEntry`'s
+        battle-tested bend/conflict handling (e.g. refusing to force a
+        physically-impossible U-turn) applies identically without any new
+        logic there.
+
+        Verified live via CDP (real `Input.dispatchMouseEvent`s at actual
+        canvas coordinates): placed a cutter, then dragged a plain belt from
+        four tiles away, in a straight line perpendicular to the cutter's
+        acceptor, ending exactly on the acceptor's feed tile without ever
+        targeting the cutter itself. Inspected the live drag-preview entries
+        before releasing (`buildingPlacer.beltDragPreviewEntries`) - the final
+        tile came back curved (`rotationVariant: 1`) with its outgoing
+        direction facing the cutter, instead of the straight
+        continuation (`rotationVariant: 0`, facing away) the same drag would
+        have produced before this change - confirmed by hand-tracing
+        `curvedEntry`'s existing branch logic with the old
+        (`forcedEndOutgoing: undefined`) vs. new (`forcedEndOutgoing: 0`)
+        inputs. Mid-session gotcha: the game's bottom building-toolbar and
+        left tutorial-hint panel overlay the canvas and silently swallow
+        `Input.dispatchMouseEvent`s aimed at them (`elementFromPoint`
+        confirmed `icon`/`ingame_HUD_InteractiveTutorial` elements, not the
+        canvas, at those coordinates) - picking drag coordinates away from
+        both regions fixed it. Also re-learned the project's `config.local.js`
+        debug flags (`fastGameEnter`/`rewardsInstant`/`allBuildingsUnlocked`)
+        are baked into the one dev-server bundle gulp serves, so toggling
+        them for CDP testing live-reloads and resets *every* tab pointed at
+        `localhost:3005`, including the user's own - reverted immediately
+        after the user noticed and flagged it live; a future session should
+        prefer navigating the real menu (or a disposable savegame) over
+        touching `config.local.js` while the user might have the dev server
+        open elsewhere.
+
+        **Two real bugs the user then found live on their own phone**,
+        both traced back to gaps this same follow-up's opportunistic
+        connection exposed (neither is in the lines added above - both are
+        pre-existing code the new feature just made reachable/visible):
+        - `buildingEjectorLaunch` deliberately only resolves a *single*-slot
+          ejector (starting a path directly off a multi-output building has
+          no unambiguous "the" output tile) - but `nearbyEjectorDirection`
+          reused it for a *neighbour* lookup, where there's no such
+          ambiguity (the specific tile is already known). Any multi-output
+          building (the quad cutter, the icon the user was actually testing
+          with) therefore never got opportunistically connected on its
+          output side at all - the belt just went straight through. Verified
+          live (Android UA + real `Input.dispatchTouchEvent`-equivalent
+          mouse events + a long-press drag off a live quad cutter's output)
+          that the drag preview stayed straight (`rotationVariant: 0`)
+          before the fix and curved (`rotationVariant: 1`) after. Fixed by
+          splitting out `buildingEjectorLaunches` (plural, all slots, mirrors
+          `buildingAcceptorFeeds`'s existing no-restriction design) and
+          having both `buildingEjectorLaunch` (single-slot only, unchanged
+          external behavior) and `nearbyEjectorDirection` (now unrestricted)
+          reuse it.
+        - Separately, item 8's tap-continuation had a latent bug that
+          predates this follow-up entirely, just never surfaced until a
+          first tap could land somewhere that genuinely needed a curve:
+          `HUDMobileControls.placeSingle` (the very first tap of a new belt
+          chain) hardcoded `lastBeltIncomingDirection = undefined` on the
+          reasoning that a fresh tile has no real predecessor to curve from
+          - true only when the ordinary engine auto-rotation didn't already
+          curve that first tile toward a neighbour (a building's output, or
+          another belt). A second tap extending the chain re-derives that
+          first tile's own curve from `lastBeltIncomingDirection`, so the
+          cached `undefined` flattened an already-correct curve back to a
+          straight line, silently disconnecting it from whatever fed it -
+          exactly the screenshot the user sent (a cutter's output flattened
+          to a straight belt after a second tap). Fixed by reading the real
+          rotation back off the just-placed tile instead (a belt's own
+          `rotation` always equals its true incoming direction, curved or
+          not - see `curvedEntry`), verified live the same way: tap-placed a
+          belt next to the quad cutter's output (correctly curved,
+          `rotationVariant: 2`, by the pre-existing engine auto-rotation,
+          unrelated to either bug), then a second tap extending it east -
+          before the fix this flattened tile 1 to `rotationVariant: 0`;
+          after, tile 1 stayed `rotationVariant: 2` and tile 2 came out
+          `rotationVariant: 0` (a plain straight extension), matching what a
+          human would expect.
+        - Testing gotcha for next time: `Emulation.setUserAgentOverride`
+          (needed for `IS_MOBILE`, computed once from `navigator.userAgent`
+          at module load) only sticks for the lifetime of the CDP
+          WebSocket session that set it - a fresh connection (e.g. a
+          separate `cdp_eval.mjs` invocation) sees the real desktop UA
+          again. Every mobile-mode action (unlock rewards, place buildings,
+          dispatch input) has to run over one continuous connection from
+          before `Page.navigate` onward.
+
+        **Nineteenth follow-up, done 2026-09-01 - stop the search from
+        silently redirecting a tile of an existing chain mid-route.** User
+        request: fix debt #2 below "as fully as possible without breaking
+        anything", explicitly wanting *no* dangling/orphaned tiles left
+        behind by a route the search itself chooses (as opposed to a
+        deliberate drag/tap endpoint landing on an existing chain, which the
+        user explicitly confirmed is fine to leave as-is - see below).
+
+        Root cause, found by direct CDP reproduction matching a real
+        screenshot the user sent (a tap into a loop's enclosed interior left
+        a short powerless stub cutting into the loop's own wall, splitting
+        off a chunk of the loop into a disconnected dead path): `isTileBlockedForBelt`
+        already waves a same-direction existing belt tile through as
+        harmless reuse (needed so a path can run alongside/through one
+        without being blocked) - but *nothing* stopped the search from then
+        choosing to **bend** at that reused tile, onto a brand new outgoing
+        direction. Since a belt tile can only have one real incoming side,
+        redirecting it that way silently disconnects whatever it used to
+        feed, and the base game's own entity-replace + `BeltPath` split
+        machinery (already correct and safe - see below) then dutifully
+        splits the now-orphaned remainder into its own valid-but-powerless
+        path. Confirmed live this happens for both an arbitrary tile deep in
+        the chain *and* the tile immediately next to the drag/tap anchor
+        (the anchor's own radius-1 "unblocked regardless of direction"
+        exemption from the 15th follow-up turned out to be a second copy of
+        the same loophole, one tile removed).
+
+        Before writing any fix, verified structurally (via `BeltSystem.beltPaths`/
+        `entityPath` inspection, not just rotation values) that the actual
+        *split itself* is not the bug - `deleteEntityFromPath`'s
+        `deleteEntityOnPathSplitIntoTwo` is pre-existing, always-on base-game
+        logic that already handles a removed middle tile correctly for a
+        chain of any length, no item-9 involvement needed. The bug is purely
+        that item 9's search was willing to *trigger* that split as a side
+        effect of a bend it didn't need to take.
+
+        Fix: `findBeltPathSearch` now tracks, per search node, a
+        `forcedExitDirection` - set to the tile's own real existing outgoing
+        (derived via a new `existingBeltOutgoing`, the exact algebraic
+        inverse of `curvedEntry`'s rotation/rotationVariant math, so it's
+        correct whether the reused tile is straight *or* itself a curve) for
+        any node that stepped onto a pre-existing belt neither `from` nor
+        `to` sits on exactly (`isAnchorTile`, deliberately narrower than
+        `isTileBlockedForBelt`'s own anchor exemption - only the anchor tile
+        itself is exempt now, not its radius-1 neighbours, closing the
+        second copy of the loophole too). The *next* step from such a node
+        is restricted to that one direction, generalizing the exact
+        mechanism `mustContinueStraight` already used for tunnel receivers
+        (renamed to `forcedExitDirection` throughout to fit both). A
+        genuinely new (previously empty) tile has no such history and can
+        still bend freely, and the deliberate "drag/tap endpoint lands
+        directly on an existing chain" merge (`to` itself) is untouched -
+        confirmed live with the user this one case may still strand
+        whatever fed that endpoint before, since there is no other way to
+        satisfy a single-acceptor belt's one real input; refusing it too
+        was explicitly declined as unnecessarily restrictive for a
+        deliberate, explicit merge.
+
+        Verified live via CDP (Android UA + real touch/mouse dispatch): the
+        exact reported case (a rectangular loop, tap-continuing into its
+        enclosed interior) now either finds a genuinely clean detour or
+        correctly refuses ("no route", red flash) with the loop provably
+        100% unchanged (re-read every tile's rotation/rotationVariant
+        after) - reproduced the bug first (confirmed old behavior hijacked
+        a wall tile and split off a chunk of the loop), then confirmed the
+        fix closes it, then confirmed narrowing the anchor exemption closes
+        the second copy of the same loophole one tile over. Re-ran every
+        regression check built earlier this session (opportunistic
+        acceptor/ejector bending, tap-continuation curve preservation) plus
+        a plain open-space multi-tap L-bend and a deliberate drag-onto-
+        existing-chain merge - all unchanged, confirming the new restriction
+        only fires for the specific "search chose to bend a tile it didn't
+        create" case.
+
+        **Twentieth follow-up, done 2026-09-01 - mobile building placement
+        (belt tap-routing and blueprint positioning) now keeps working
+        zoomed all the way out into map overview.** Previously called out
+        as future work at the end of 2c-6's own history ("below [0.9],
+        `getIsMapOverlayActive()` already blocks placement entirely and
+        deselects, pre-existing/unrelated behavior, not a regression") -
+        this follow-up is exactly that: the user explicitly asked to finish
+        it, wanting a belt tap while zoomed out to lay a full auto-route
+        (same as ordinary tap-continuation) rather than a single tile, and
+        every other building's existing mobile "blueprint follows your
+        finger, confirm/rotate/cancel row" flow to keep working too - select
+        a building, zoom out, tap to drop the blueprint at that spot, zoom
+        back in to fine-tune rotation/position and confirm.
+
+        Investigation found the *placement logic itself*
+        (`HUDMobileControls`' blueprint-follows-finger and belt tap-
+        continuation, `HUDBuildingPlacerLogic.tryPlaceCurrentBuildingAt`) has
+        no zoom-dependence at all - map overview only ever blocked it via
+        three separate, independent flat `getIsMapOverlayActive()` checks:
+        `HUDMobileControls.onMouseDown`'s entry guard, `tryPlaceCurrentBuildingAt`
+        itself (also reachable from `placeSingle`, used by both the belt's
+        first tap and every blueprint's confirm button), and
+        `HUDBuildingPlacerLogic.update()`'s "deselect while in overview"
+        housekeeping (found second, by noticing a selection survived one
+        `ev()` round-trip but not a slightly slower one - it's cleared on
+        every single update tick, so anything that raced past the first
+        check would just get deselected a frame later anyway). All three
+        needed the same relaxation to actually unblock the feature end to
+        end.
+
+        New module `hud/parts/overview_building.js`, exactly as the user
+        asked for ("so monetization can be hooked in later") -
+        `OverviewBuildingPolicy.isAllowed()`, a single decision point all
+        three call sites now consult instead of the bare zoom check,
+        unconditionally `true` for now. No monetization logic built this
+        round (see the Chunk 4 idea below) - this only opens the seam.
+        Deliberately mobile-only: each relaxed check is guarded by
+        `IS_MOBILE` (already true implicitly for `HUDMobileControls`, added
+        explicitly for the two call sites shared with desktop) - desktop's
+        own separate mouse handlers in `building_placer_logic.js` still
+        have their own unconditional overview blocks, completely untouched,
+        so desktop's zoomed-out behavior is bit-for-bit unchanged.
+
+        Verified live via CDP (Android UA + real touch/mouse dispatch):
+        selected belt, zoomed out to 0.3 (well past the 0.9 threshold),
+        confirmed the selection survived the zoom: a tap laid a single
+        tile, a second tap 30 tiles away laid one continuous 31-tile
+        `BeltPath` through `findBeltPath` exactly like normal tap-
+        continuation. Separately selected a miner, confirmed it also
+        survived zooming out, tapped to move its blueprint tile while
+        zoomed out, zoomed back in, called the confirm button - the miner
+        was actually placed at the tapped tile. Regression-checked desktop
+        twice: selecting a building then zooming out still deselects it
+        (unchanged), and clicking on the map while zoomed out still places
+        nothing (unchanged) - `hasMobileControls` confirmed false on that
+        session throughout, so none of the relaxed paths were even reachable
+        from it.
+
+        **Immediate follow-up, same session:** the map-overview waypoints
+        hint box (`HUDWaypoints`' `hintElement`, "ЛКМ по маркеру... ПКМ...
+        Нажмите M") covers part of the screen on zooming out and is
+        entirely mouse/keyboard-worded (left/right click, a keybinding) -
+        meaningless on mobile and now just in the way of actually placing
+        something during overview. Never created at all when `IS_MOBILE`
+        (one line in `HUDWaypoints.createElements`); desktop unaffected -
+        verified live both ways: the DOM element and the `hintElement`
+        field itself are simply absent on a mobile UA session even after
+        zooming into overview, while a desktop session still gets and shows
+        it exactly as before.
+
         **Item 9 (auto-tunnel/routing) outstanding debts as of 2026-08-31,
         consolidated from the follow-ups above so a future session can scan
         this in one place instead of re-reading all of them:**
-        - Merging into an existing chain from an angle that's merely
-          *incompatible* rather than exactly opposite (e.g. only reachable
-          via a curve whose acceptor ends up facing away from that chain's
-          own unmodified remainder) can still silently strand tiles further
-          back in that remainder - only the hard, visible dead-end at the
-          merge point itself is prevented. Fixing it properly means
-          cascading a reshape through an arbitrary-length existing chain, a
-          much larger change than item 9 asked for. (12th follow-up.)
-        - Tap-continuation reaching into a pocket that's only accessible by
-          crossing the tap's *own* chain, with no valid bent detour within
-          `MAX_BENDS`/the padded bounding box, correctly reports "no route"
-          (flashes red) rather than building something broken - but it
-          doesn't try to find the kind of bent detour a human would build by
-          hand (see the "build a bend to make room" screenshot in the 15th
-          follow-up). Same root cause as the point above: no cascading
-          reshape of an existing chain. (15th follow-up.)
-        - Belts don't opportunistically curve toward a *nearby* building
+        - ~~Merging into an existing chain from an angle that's merely
+          *incompatible* rather than exactly opposite... can still silently
+          strand tiles further back in that remainder~~ - fixed 2026-09-01
+          for any tile the search itself chooses mid-route, see the
+          nineteenth follow-up below. A drag/tap whose *own* endpoint
+          deliberately lands on an existing chain may still strand whatever
+          fed that exact tile before - confirmed acceptable, see the same
+          follow-up. (12th follow-up.)
+          - **Idea from the user (2026-09-01), not started:** for that
+            remaining deliberate-endpoint case, instead of leaving the old
+            feeder as a dead stub, auto-place a balancer/merger building at
+            the merge tile and end the current tap-continuation there
+            (reset `lastBeltTile`/`lastBeltIncomingDirection`, same as the
+            "N"/new-belt button) - the old feeder and the new path both
+            legitimately terminate into the merger instead of one of them
+            going nowhere. Not designed or scoped yet: needs figuring out
+            which merger variant/rotation fits both inputs, and whether this
+            should be automatic or offered as a choice when the search
+            detects this exact situation.
+        - ~~Tap-continuation reaching into a pocket that's only accessible by
+          crossing the tap's *own* chain... doesn't try to find the kind of
+          bent detour a human would build by hand~~ - the *silent breakage*
+          part is fixed 2026-09-01 (see the nineteenth follow-up): such a
+          tap now either finds a genuine detour or correctly refuses, never
+          hijacks the enclosing chain. Still doesn't go out of its way to
+          find a "build a bend to make room" style detour beyond what the
+          existing bend/bounding-box budget already covers on its own - not
+          reattempted, out of scope for what was asked. (15th follow-up.)
+        - ~~Belts don't opportunistically curve toward a *nearby* building
           input/output unless the drag/tap's own endpoint explicitly lands
-          on that building - an ordinary belt segment built elsewhere that
-          happens to end up adjacent to one won't bend into it on its own.
-          Explicitly flagged live by the user as a separate, broader ask
-          from endpoint-targeted routing. Not started. (16th follow-up.)
+          on that building~~ - fixed 2026-09-01, see the eighteenth
+          follow-up below. (16th follow-up.)
         - ~~Desktop's belt drag had no auto-tunnel support at all~~ - fixed
           2026-09-01, see the seventeenth follow-up below.
         - Encountered but *not* a bug, worth remembering if a similar
@@ -1476,6 +1766,16 @@ logs.
       `<script src="https://yandex.ru/games/sdk/v2">` in the web HTML template.
       TBD: verify IndexedDB works from inside Yandex's cross-origin iframe context
       (storage partitioning risk, not yet tested).
+      - **Monetization idea from the user (2026-09-01), not started/not
+        designed:** smart-routing conveniences like item 9's auto-tunnel and
+        opportunistic building connections could be gated as unlockable
+        upgrades (rather than always-on from the start), and upgrade
+        unlocks/timers sped up via Yandex Games rewarded video ads
+        (`ysdk.adv.showRewardedVideo`). Needs its own design pass before
+        implementation: which specific behaviors would be worth gating,
+        whether that fits this project's non-monetized-by-default CE
+        identity, and how it interacts with the existing hub-goals/reward
+        unlock system already in `hub_goals.js`.
 
 - [ ] **Chunk 5 — Puzzle mode as a standalone mini-game (separate build/ship).**
       Confirmed 2026-08-25: puzzle creation + local playtesting already works with

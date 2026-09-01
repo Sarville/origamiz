@@ -11,6 +11,7 @@ import { Entity } from "../../entity";
 import { defaultBuildingVariant } from "../../meta_building";
 import { BaseHUDPart } from "../base_hud_part";
 import { BeltPathPlanner } from "./belt_path_planner";
+import { OverviewBuildingPolicy } from "./overview_building";
 
 // How long a finger has to stay down before it counts as "hold" (start laying a
 // belt path) instead of "move" (pan the map) or "tap" (place a single tile).
@@ -141,6 +142,7 @@ export class HUDMobileControls extends BaseHUDPart {
         this.lastToolbarOffsetCheck = 0;
 
         this.beltPathPlanner = new BeltPathPlanner(this.root);
+        this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
 
         this.deleteModeActive = false;
 
@@ -477,10 +479,20 @@ export class HUDMobileControls extends BaseHUDPart {
         const beltIncomingBefore = this.lastBeltIncomingDirection;
         this.root.actionHistory.beginTransaction();
         const placed = this.placerLogic.tryPlaceCurrentBuildingAt(tile);
+        // A "fresh, unconnected" first tile still ends up with a real
+        // incoming direction whenever the ordinary engine auto-rotation
+        // (tryPlaceCurrentBuildingAt, same as any other building) curved it
+        // toward a neighbour - a belt's own rotation always equals its
+        // incoming direction, curved or not (see curvedEntry). Reading it
+        // back off the map instead of assuming undefined is what lets a
+        // later continuation tap preserve that curve instead of flattening
+        // it back to a straight line.
+        const beltIncomingAfter =
+            placed && this.isBeltSelected
+                ? this.root.map.getLayerContentXY(tile.x, tile.y, "regular").components.StaticMapEntity.rotation
+                : undefined;
         this.root.actionHistory.endTransaction(
-            this.isBeltSelected
-                ? { beltTileBefore, beltTileAfter: tile, beltIncomingBefore, beltIncomingAfter: undefined }
-                : null
+            this.isBeltSelected ? { beltTileBefore, beltTileAfter: tile, beltIncomingBefore, beltIncomingAfter } : null
         );
         if (placed) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
@@ -492,10 +504,7 @@ export class HUDMobileControls extends BaseHUDPart {
             }
             if (this.isBeltSelected) {
                 this.lastBeltTile = tile;
-                // placeSingle only ever starts a fresh, unconnected belt (see
-                // placeBeltTapAt) - there's no real predecessor tile to have
-                // an incoming direction from.
-                this.lastBeltIncomingDirection = undefined;
+                this.lastBeltIncomingDirection = beltIncomingAfter;
             }
         }
     }
@@ -578,8 +587,20 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {enumMouseButton} button
      */
     onMouseDown(pos, button) {
-        if (button !== enumMouseButton.left || this.root.camera.getIsMapOverlayActive()) {
+        if (button !== enumMouseButton.left) {
             return;
+        }
+
+        if (this.root.camera.getIsMapOverlayActive()) {
+            // Building placement (blueprint-follows-finger, belt tap-
+            // continuation) is allowed to keep working zoomed out into map
+            // overview - see OverviewBuildingPolicy's doc. Everything else
+            // (deletion, panning with nothing selected) stays blocked here
+            // exactly like before.
+            const metaBuilding = this.placerLogic.currentMetaBuilding.get();
+            if (this.deleteModeActive || !metaBuilding || !this.overviewBuildingPolicy.isAllowed()) {
+                return;
+            }
         }
 
         if (this.deleteModeActive) {
