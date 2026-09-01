@@ -83,6 +83,63 @@ export class HUDMobileControls extends BaseHUDPart {
         this.element.appendChild(this.redoButton);
         this.trackClicks(this.redoButton, this.onRedoClicked);
 
+        // Enters select mode (2c-5, item 2) - tap/drag on the map then
+        // selects buildings (via the shared HUDMassSelector, see
+        // onMouseDown/onMouseUp) instead of placing or panning.
+        this.selectButton = document.createElement("button");
+        this.selectButton.classList.add("select");
+        this.element.appendChild(this.selectButton);
+        this.trackClicks(this.selectButton, this.onSelectClicked);
+
+        // Select mode's own control row (eraser/broom/cancel), shown instead
+        // of the idle row while selectModeActive - see the "selecting" class
+        // toggle in update().
+        this.selectPanel = makeDiv(this.element, null, ["selectPanel"]);
+
+        // Bundles the selection into a blueprint (reuses
+        // HUDMassSelector.startCopy - same "blueprints not unlocked" dialog
+        // desktop's own copy/cut already shows) and switches into
+        // blueprintPanel below to place it - see onCopyClicked.
+        this.copyButton = document.createElement("button");
+        this.copyButton.classList.add("copy");
+        this.selectPanel.appendChild(this.copyButton);
+        this.trackClicks(this.copyButton, this.onCopyClicked);
+
+        this.eraserButton = document.createElement("button");
+        this.eraserButton.classList.add("eraser");
+        this.selectPanel.appendChild(this.eraserButton);
+        this.trackClicks(this.eraserButton, this.onEraserClicked);
+
+        this.broomButton = document.createElement("button");
+        this.broomButton.classList.add("broom");
+        this.selectPanel.appendChild(this.broomButton);
+        this.trackClicks(this.broomButton, this.onBroomClicked);
+
+        this.selectCancelButton = document.createElement("button");
+        this.selectCancelButton.classList.add("cancel");
+        this.selectPanel.appendChild(this.selectCancelButton);
+        this.trackClicks(this.selectCancelButton, this.onSelectCancelClicked);
+
+        // Copied-blueprint placement row (confirm/rotate/cancel), shown
+        // instead of every other row while blueprintPlacer.currentBlueprint
+        // is set - see onCopyClicked/update().
+        this.blueprintPanel = makeDiv(this.element, null, ["blueprintPanel"]);
+
+        this.blueprintConfirmButton = document.createElement("button");
+        this.blueprintConfirmButton.classList.add("confirm");
+        this.blueprintPanel.appendChild(this.blueprintConfirmButton);
+        this.trackClicks(this.blueprintConfirmButton, this.onBlueprintConfirmClicked);
+
+        this.blueprintRotateButton = document.createElement("button");
+        this.blueprintRotateButton.classList.add("rotate");
+        this.blueprintPanel.appendChild(this.blueprintRotateButton);
+        this.trackClicks(this.blueprintRotateButton, this.onBlueprintRotateClicked);
+
+        this.blueprintCancelButton = document.createElement("button");
+        this.blueprintCancelButton.classList.add("cancel");
+        this.blueprintPanel.appendChild(this.blueprintCancelButton);
+        this.trackClicks(this.blueprintCancelButton, this.onBlueprintCancelClicked);
+
         // Active state: a flat row of square control icons, shown above the
         // toolbar while a building is selected - which icons depend on the
         // "blueprintMode" class (see onPlacementBuildingChanged). Belt places
@@ -145,6 +202,39 @@ export class HUDMobileControls extends BaseHUDPart {
         this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
 
         this.deleteModeActive = false;
+
+        // 2c-5 (item 2): tap-to-select / drag-to-rubber-band-select, driven
+        // directly through the desktop HUDMassSelector's own state/rendering
+        // (see the massSelector getter and onMouseDown/onMouseMove/onMouseUp
+        // below) - only its onMouseDown is gated behind a held-key binding
+        // mobile has no equivalent of, so mobile drives
+        // currentSelectionStartWorld/currentSelectionEnd itself and calls
+        // its already-ungated onMouseUp() directly to commit.
+        this.selectModeActive = false;
+
+        // Long-press-to-select shortcut (2c-5 follow-up): a stationary hold
+        // on the map in view mode (nothing selected/deleting/selecting)
+        // enters select mode and selects whatever's under the finger, same
+        // as tapping the pencil icon then tapping that tile - lets you start
+        // selecting without detouring through the icon first. Deliberately
+        // never stops propagation on the way here (see onMouseDown/
+        // onMouseMove/onMouseUp) so it can't break a lever/waypoint tap or
+        // the camera's own default pan - belt's build-mode hold (beginDrag)
+        // is a fully separate mechanism gated on a building being selected,
+        // so the two never run at the same time.
+        this.idleHoldPos = null;
+        this.idleHoldTimer = null;
+
+        // Copied-blueprint placement (2c-5 follow-up, item 2's "copy" icon):
+        // the tile the finger-follow ghost currently rests at, once
+        // blueprintPlacer.currentBlueprint is set via onCopyClicked - mirrors
+        // blueprintTile above but for a pasted Blueprint object instead of a
+        // MetaBuilding (desktop's HUDBlueprintPlacer only wires up real
+        // mouse handlers, nothing touch-based, so mobile drives its
+        // currentBlueprint/tryPlace/rotateCw/abortPlacement directly instead
+        // of duplicating any of that).
+        /** @type {Vector} */
+        this.copiedBlueprintTile = null;
 
         // Persists across building selections, not per-building - a player
         // preference for how placing works, not a building property.
@@ -229,6 +319,7 @@ export class HUDMobileControls extends BaseHUDPart {
         this.cancelGestureOnSecondTouch = event => {
             if (event.touches && event.touches.length >= 2) {
                 this.clearPendingHold();
+                this.clearIdleHold();
                 this.dragging = false;
                 this.dragPath = [];
                 this.dragPreviewEntries = [];
@@ -244,6 +335,9 @@ export class HUDMobileControls extends BaseHUDPart {
         if (metaBuilding) {
             this.deleteModeActive = false;
             this.deleteButton.classList.remove("active");
+            this.exitSelectMode();
+            this.exitCopiedBlueprintMode();
+            this.clearIdleHold();
             // No manual toggle for this on mobile (no room for one more button) -
             // it just always shows unless the player turned it off in settings.
             // Still a CSS class toggle rather than a Dialog: HUDBuildingPlacerLogic
@@ -285,6 +379,14 @@ export class HUDMobileControls extends BaseHUDPart {
 
     get placerLogic() {
         return this.root.hud.parts.buildingPlacer;
+    }
+
+    get massSelector() {
+        return this.root.hud.parts.massSelector;
+    }
+
+    get blueprintPlacer() {
+        return this.root.hud.parts.blueprintPlacer;
     }
 
     /**
@@ -350,6 +452,134 @@ export class HUDMobileControls extends BaseHUDPart {
 
     onCancelClicked() {
         this.placerLogic.currentMetaBuilding.set(null);
+    }
+
+    /**
+     * Toggles select mode (2c-5, item 2) on/off - see onMouseDown/onMouseUp
+     * for the actual tap/drag-to-select handling.
+     */
+    onSelectClicked() {
+        if (this.selectModeActive) {
+            this.exitSelectMode();
+            return;
+        }
+        this.deleteModeActive = false;
+        this.deleteButton.classList.remove("active");
+        this.placerLogic.currentMetaBuilding.set(null);
+        this.selectModeActive = true;
+        this.selectButton.classList.add("active");
+    }
+
+    exitSelectMode() {
+        this.selectModeActive = false;
+        this.selectButton.classList.remove("active");
+        if (this.massSelector) {
+            this.massSelector.clearSelection();
+        }
+    }
+
+    onSelectCancelClicked() {
+        this.exitSelectMode();
+    }
+
+    clearIdleHold() {
+        if (this.idleHoldTimer) {
+            clearTimeout(this.idleHoldTimer);
+            this.idleHoldTimer = null;
+        }
+        this.idleHoldPos = null;
+    }
+
+    /**
+     * Fired after a stationary hold on the map in view mode - see
+     * idleHoldPos's doc in initialize(). Enters select mode and selects
+     * whatever's under the finger via the same HUDMassSelector.onMouseUp
+     * every other selection gesture commits through.
+     */
+    beginIdleLongPressSelect() {
+        this.idleHoldTimer = null;
+        if (!this.idleHoldPos) {
+            return;
+        }
+        this.selectModeActive = true;
+        this.selectButton.classList.add("active");
+        this.massSelector.currentSelectionStartWorld = this.root.camera.screenToWorld(this.idleHoldPos);
+        this.massSelector.currentSelectionEnd = this.idleHoldPos.copy();
+        this.massSelector.onMouseUp();
+        this.idleHoldPos = null;
+    }
+
+    /**
+     * Deletes everything currently selected, same confirm-dialog-past-100
+     * behavior as desktop's mass delete - see HUDMassSelector.confirmDelete.
+     */
+    onEraserClicked() {
+        this.massSelector.confirmDelete();
+    }
+
+    /**
+     * Clears the item contents of every selected belt - see
+     * HUDMassSelector.clearBelts.
+     */
+    onBroomClicked() {
+        this.massSelector.clearBelts();
+    }
+
+    /**
+     * Bundles the current selection into a blueprint (HUDMassSelector.
+     * startCopy - shows the same "blueprints not unlocked" dialog or empty-
+     * selection error sound desktop's own copy/cut already has) and, if that
+     * actually produced one, switches from select mode into placing it.
+     */
+    onCopyClicked() {
+        this.massSelector.startCopy();
+        const blueprint = this.blueprintPlacer.currentBlueprint.get();
+        if (!blueprint) {
+            // Nothing selected, or blueprints not unlocked yet (dialog
+            // already shown by startCopy) - stay in select mode.
+            return;
+        }
+        this.selectModeActive = false;
+        this.selectButton.classList.remove("active");
+        this.copiedBlueprintTile = this.root.camera.center.toTileSpace();
+    }
+
+    exitCopiedBlueprintMode() {
+        if (this.copiedBlueprintTile) {
+            this.blueprintPlacer.abortPlacement();
+        }
+        this.copiedBlueprintTile = null;
+    }
+
+    onBlueprintCancelClicked() {
+        this.exitCopiedBlueprintMode();
+    }
+
+    onBlueprintRotateClicked() {
+        const blueprint = this.blueprintPlacer.currentBlueprint.get();
+        if (blueprint) {
+            blueprint.rotateCw();
+        }
+    }
+
+    /**
+     * Places the copied blueprint at its current ghost tile - stays in
+     * placement mode afterward (matches desktop: a pasted blueprint is
+     * never consumed, see HUDBlueprintPlacer.onMouseDown), so confirm can be
+     * tapped again to re-stamp it wherever the ghost has since moved to.
+     */
+    onBlueprintConfirmClicked() {
+        const blueprint = this.blueprintPlacer.currentBlueprint.get();
+        if (!blueprint || !this.copiedBlueprintTile) {
+            return;
+        }
+        if (!blueprint.canAfford(this.root)) {
+            this.root.soundProxy.playUiError();
+            return;
+        }
+        if (blueprint.tryPlace(this.root, this.copiedBlueprintTile)) {
+            this.root.soundProxy.playUi(SOUNDS.placeBuilding);
+        }
     }
 
     /**
@@ -598,9 +828,32 @@ export class HUDMobileControls extends BaseHUDPart {
             // (deletion, panning with nothing selected) stays blocked here
             // exactly like before.
             const metaBuilding = this.placerLogic.currentMetaBuilding.get();
-            if (this.deleteModeActive || !metaBuilding || !this.overviewBuildingPolicy.isAllowed()) {
+            if (
+                this.deleteModeActive ||
+                this.selectModeActive ||
+                !metaBuilding ||
+                !this.overviewBuildingPolicy.isAllowed()
+            ) {
                 return;
             }
+        }
+
+        if (this.copiedBlueprintTile) {
+            // Same finger-follow interaction as the MetaBuilding blueprint
+            // mode below (draggingBlueprint/blueprintTile), just against the
+            // copied Blueprint object instead - see onCopyClicked's doc.
+            this.copiedBlueprintTile = this.root.camera.screenToWorld(pos).toTileSpace();
+            return STOP_PROPAGATION;
+        }
+
+        if (this.selectModeActive) {
+            // Drives the shared HUDMassSelector's own state directly (see the
+            // massSelector getter's doc) - a plain tap (start === end at
+            // release) selects whatever's under the finger, a drag rubber-
+            // bands an area, both handled uniformly by its own onMouseUp.
+            this.massSelector.currentSelectionStartWorld = this.root.camera.screenToWorld(pos.copy());
+            this.massSelector.currentSelectionEnd = pos.copy();
+            return STOP_PROPAGATION;
         }
 
         if (this.deleteModeActive) {
@@ -622,6 +875,12 @@ export class HUDMobileControls extends BaseHUDPart {
 
         const metaBuilding = this.placerLogic.currentMetaBuilding.get();
         if (!metaBuilding) {
+            // View mode: nothing placing/deleting/selecting - start the
+            // long-press-to-select timer (see idleHoldPos's doc), but never
+            // stop propagation here, so a real lever/waypoint tap or the
+            // camera's own default pan both keep working exactly as before.
+            this.idleHoldPos = pos.copy();
+            this.idleHoldTimer = setTimeout(() => this.beginIdleLongPressSelect(), LONG_PRESS_MS);
             return;
         }
 
@@ -650,6 +909,25 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {Vector} pos
      */
     onMouseMove(pos) {
+        if (this.idleHoldPos) {
+            // Not stopping propagation - a real pan or another idle handler
+            // (lever, waypoints) must keep receiving this move exactly as
+            // before; only cancel our own hold once it's clearly a pan.
+            if (pos.sub(this.idleHoldPos).length() > MAX_MOVE_DISTANCE_PX) {
+                this.clearIdleHold();
+            }
+        }
+
+        if (this.copiedBlueprintTile) {
+            this.copiedBlueprintTile = this.root.camera.screenToWorld(pos).toTileSpace();
+            return STOP_PROPAGATION;
+        }
+
+        if (this.selectModeActive && this.massSelector.currentSelectionStartWorld) {
+            this.massSelector.currentSelectionEnd = pos.copy();
+            return STOP_PROPAGATION;
+        }
+
         if (this.draggingBlueprint) {
             this.blueprintTile = this.root.camera.screenToWorld(pos).toTileSpace();
             return STOP_PROPAGATION;
@@ -701,6 +979,18 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     onMouseUp() {
+        if (this.idleHoldPos) {
+            // Released before the hold fired - a plain idle tap, nothing to
+            // do (matches the pre-existing behavior: idle taps have never
+            // triggered anything of mobile_controls's own on release).
+            this.clearIdleHold();
+        }
+
+        if (this.selectModeActive && this.massSelector.currentSelectionStartWorld) {
+            this.massSelector.onMouseUp();
+            return;
+        }
+
         if (this.draggingBlueprint) {
             this.draggingBlueprint = false;
             return;
@@ -814,6 +1104,13 @@ export class HUDMobileControls extends BaseHUDPart {
             this.drawBlueprintGhost(parameters);
         }
 
+        if (this.copiedBlueprintTile) {
+            const blueprint = this.blueprintPlacer.currentBlueprint.get();
+            if (blueprint) {
+                blueprint.draw(parameters, this.copiedBlueprintTile);
+            }
+        }
+
         // Item 9: a completed-but-rejected belt (a tap or a released drag
         // findBeltPath couldn't make contiguous) blinks red for a moment
         // instead of anything being placed.
@@ -916,6 +1213,16 @@ export class HUDMobileControls extends BaseHUDPart {
             this.invalidBeltFlash = null;
         }
 
+        // If the blueprint got aborted through some other path (e.g. desktop's
+        // own Escape keybinding, still registered regardless of platform),
+        // fall back out of copied-blueprint mode instead of leaving its row
+        // stuck up with nothing left to act on.
+        if (this.copiedBlueprintTile && !this.blueprintPlacer.currentBlueprint.get()) {
+            this.copiedBlueprintTile = null;
+        }
+
         this.element.classList.toggle("placing", !!this.placerLogic.currentMetaBuilding.get());
+        this.element.classList.toggle("selecting", this.selectModeActive);
+        this.element.classList.toggle("copyingBlueprint", !!this.copiedBlueprintTile);
     }
 }

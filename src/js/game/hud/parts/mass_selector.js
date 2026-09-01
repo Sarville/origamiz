@@ -103,6 +103,10 @@ export class HUDMassSelector extends BaseHUDPart {
         const mapUidToEntity = this.root.entityMgr.getFrozenUidSearchMap();
 
         let count = 0;
+        // One transaction for the whole mass-delete, same as any other
+        // single user action (see ActionHistory's class doc) - so undo
+        // restores every deleted building at once, not just the last one.
+        this.root.actionHistory.beginTransaction();
         this.root.logic.performBulkOperation(() => {
             for (let i = 0; i < entityUids.length; ++i) {
                 const uid = entityUids[i];
@@ -119,6 +123,7 @@ export class HUDMassSelector extends BaseHUDPart {
                 }
             }
         });
+        this.root.actionHistory.endTransaction();
 
         // Clear uids later
         this.selectedUids = new Set();

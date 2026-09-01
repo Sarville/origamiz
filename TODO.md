@@ -776,11 +776,89 @@ logs.
         `getIsMapOverlayActive()` blocked placement entirely and deselected
         at the time, out of scope for this round - fixed later, see 2c-7
         below).
-      - [ ] **2c-5 — Edit/selection mode (item 2).** New pencil-icon mode:
-        tap-to-select, long-press to enter + select what's under the finger,
-        drag to rubber-band-select an area. New center icon row while active:
-        eraser (delete selected, via 2c-2's history), broom (clear belt contents
-        for any belt with a selected segment), cancel.
+      - [x] **2c-5 — Edit/selection mode (item 2), done 2026-09-01.** New
+        pencil-icon mode (`mobile_controls.js`): tap-to-select, drag to
+        rubber-band-select an area. New center icon row while active: eraser
+        (bulk-delete the selection), broom (clear belt contents for any
+        selected belt), cancel. Reuses desktop's existing `HUDMassSelector`
+        entirely rather than reimplementing selection - its own
+        `onMouseDown` is gated behind a held-key binding mobile has no
+        equivalent of, so mobile drives `currentSelectionStartWorld`/
+        `currentSelectionEnd` directly and calls its already-ungated
+        `onMouseUp()` to commit; both a plain tap (0-size rect) and a real
+        drag are handled by that one method, and its own `draw()` (already
+        registered as a HUD part) renders the selection rectangle/highlight
+        for free. Also fixed a real gap found along the way: `doDelete()`
+        never wrapped its deletions in an `actionHistory` transaction, so
+        mass delete (desktop's Ctrl-drag + Delete, and this new mobile
+        eraser alike) was silently invisible to undo/redo - now wrapped,
+        verified live that undo restores every deleted entity from one mass
+        delete at once, on both platforms. Verified live via CDP throughout:
+        pencil toggles the panel and hides the idle row; a rubber-band drag
+        over two belt tiles highlights and selects exactly those two; a
+        plain tap selects the single tile under it; eraser deletes the
+        selection and undo brings both back; broom clears a selected belt's
+        contents without deleting it; cancel exits back to the idle row;
+        desktop's own Ctrl-drag-select + Delete-key flow (and its undo)
+        unaffected.
+
+        **Follow-up, same day - long-press shortcut + copy/rotate.** User
+        asked for the previously-skipped long-press entry point, clarifying
+        it can't conflict with belt's own long-press (belt's only fires in
+        build mode, i.e. a building selected - this is view mode, nothing
+        selected). New `idleHoldPos`/`idleHoldTimer` in `mobile_controls.js`:
+        a stationary hold on the map while nothing is placing/deleting/
+        selecting starts a timer that, if the finger doesn't move past
+        `MAX_MOVE_DISTANCE_PX` before it fires, enters select mode and
+        selects whatever's under the finger (same `massSelector.onMouseUp()`
+        every other selection gesture commits through). Deliberately never
+        stops propagation on the way there, unlike every other gesture this
+        file intercepts - a real lever toggle or waypoint tap
+        (`HUDLeverToggle`/`HUDWaypoints`, both plain `.add()`ed downstream of
+        this `.addToTop()`ed part) and the camera's own default touch-pan
+        both still need to see the same mousedown/mousemove, since a
+        stationary hold has no visible pan effect either way. Verified live:
+        a long hold on a belt tile selects it; a fast drag still pans the
+        camera normally (verified the center actually moves) and never
+        enters select mode.
+
+        Also added the "copy" icon into select mode's row (new `.copy`
+        button, leftmost) - bundles the selection into a blueprint via the
+        existing `HUDMassSelector.startCopy()` (same "blueprints not
+        unlocked" dialog/empty-selection error sound desktop's own copy/cut
+        already has) and switches into a new `blueprintPanel`
+        (confirm/rotate/cancel) to place it. Desktop's own blueprint
+        paste (`HUDBlueprintPlacer`) only ever wired up real mouse handlers
+        (`onMouseDown`/`onMouseMove`, both real-mouse-only, plus a
+        keyboard-only rotate binding) - nothing touch-based existed for it
+        at all before this. Mobile drives `HUDBlueprintPlacer.currentBlueprint`/
+        `Blueprint.tryPlace`/`rotateCw`/`abortPlacement` directly instead of
+        duplicating any of that; the existing cost-display HUD part
+        (`HUDBlueprintPlacer`'s own `costDisplayParent`) already runs
+        regardless of platform, so the "СТОИМОСТЬ" cost readout showed up
+        for free with no new code. A placed blueprint is never consumed
+        (matches desktop), so confirm can be tapped again to re-stamp it
+        wherever the ghost has since moved to. Verified live via CDP: copy
+        with 2 selected belts opens the ghost + cost UI; tapping elsewhere on
+        the map moves the ghost there (confirmed by direct canvas pixel
+        sampling at the target tile, before/after - `Page.captureScreenshot`
+        itself had an unrelated capture quirk under this touch+device-scale
+        emulation setup that made a couple of screenshots misleadingly look
+        unchanged, so pixel-level readback was used to settle it definitively);
+        rotate visibly changes the ghost's shape; confirm places both
+        entities at the moved/rotated position when affordable, and correctly
+        no-ops with an error sound when the player's shape stockpile is
+        short (matches desktop's own `canAfford` gate) - not a bug, verified
+        by checking `hubGoals.getShapesStoredByKey` directly; cancel exits
+        back to the idle row.
+
+        **User idea, not designed:** a blueprint library - save a copied
+        blueprint under a name and reuse it later (beyond the current
+        single-slot "last blueprint used" desktop already has via
+        `HUDBlueprintPlacer.lastBlueprintUsed`/Ctrl+V) - needs its own
+        storage (localStorage or savegame-embedded), a save/name UI, and a
+        browse/pick UI; would slot in next to the new "copy" icon once
+        designed.
       - [x] **2c-7 — Mobile building placement while zoomed out into map
         overview, done 2026-09-01.** See the twentieth follow-up further
         down (in 2c-6's own history, since it directly extends 2c-6/item 8's
