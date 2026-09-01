@@ -1,9 +1,17 @@
 import { IS_MOBILE } from "../../../core/config";
+import { drawRotatedSprite } from "../../../core/draw_utils";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
+import { Loader } from "../../../core/loader";
 import { Signal, STOP_PROPAGATION } from "../../../core/signal";
 import { TrackedState } from "../../../core/tracked_state";
 import { safeModulo } from "../../../core/utils";
-import { Vector } from "../../../core/vector";
+import {
+    Vector,
+    enumDirection,
+    enumDirectionToAngle,
+    enumDirectionToVector,
+    enumInvertedDirections,
+} from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
 import { getBuildingDataFromCode, getCodeFromBuildingData } from "../../building_codes";
 import { MetaHubBuilding } from "../../buildings/hub";
@@ -1018,5 +1026,175 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         }
 
         this.abortDragging();
+    }
+
+    /**
+     * Draws green/red arrows over the ghost's input and output slots showing
+     * which will connect to a neighbor once placed - shared by desktop
+     * (HUDBuildingPlacer.drawRegularPlacement) and mobile
+     * (HUDMobileControls.drawBlueprintGhost) so both ghosts show the same
+     * per-slot feedback, not just overall placeability.
+     * @param {import("../../../core/draw_parameters").DrawParameters} parameters
+     */
+    drawMatchingAcceptorsAndEjectors(parameters) {
+        const acceptorComp = this.fakeEntity.components.ItemAcceptor;
+        const ejectorComp = this.fakeEntity.components.ItemEjector;
+        const staticComp = this.fakeEntity.components.StaticMapEntity;
+        const beltComp = this.fakeEntity.components.Belt;
+        const minerComp = this.fakeEntity.components.Miner;
+
+        const goodArrowSprite = Loader.getSprite("sprites/misc/slot_good_arrow.png");
+        const badArrowSprite = Loader.getSprite("sprites/misc/slot_bad_arrow.png");
+
+        // Just ignore the following code please ... thanks!
+
+        const offsetShift = 10;
+
+        /**
+         * @type {Array<import("../../components/item_acceptor").ItemAcceptorSlot>}
+         */
+        let acceptorSlots = [];
+        /**
+         * @type {Array<import("../../components/item_ejector").ItemEjectorSlot>}
+         */
+        let ejectorSlots = [];
+
+        if (ejectorComp) {
+            ejectorSlots = ejectorComp.slots.slice();
+        }
+
+        if (acceptorComp) {
+            acceptorSlots = acceptorComp.slots.slice();
+        }
+
+        if (beltComp) {
+            const fakeEjectorSlot = beltComp.getFakeEjectorSlot();
+            const fakeAcceptorSlot = beltComp.getFakeAcceptorSlot();
+            ejectorSlots.push(fakeEjectorSlot);
+            acceptorSlots.push(fakeAcceptorSlot);
+        }
+
+        // Go over all slots
+        for (let i = 0; i < acceptorSlots.length; ++i) {
+            const slot = acceptorSlots[i];
+
+            const acceptorSlotWsTile = staticComp.localTileToWorld(slot.pos);
+            const acceptorSlotWsPos = acceptorSlotWsTile.toWorldSpaceCenterOfTile();
+
+            const direction = slot.direction;
+            const worldDirection = staticComp.localDirectionToWorld(direction);
+
+            // Figure out which tile ejects to this slot
+            const sourceTile = acceptorSlotWsTile.add(enumDirectionToVector[worldDirection]);
+
+            let isBlocked = false;
+            let isConnected = false;
+
+            // Find entity which is on that tile
+            const sourceEntity = this.root.map.getLayerContentXY(
+                sourceTile.x,
+                sourceTile.y,
+                this.fakeEntity.layer
+            );
+
+            // Check for the entity:
+            if (sourceEntity) {
+                const sourceEjector = sourceEntity.components.ItemEjector;
+                const sourceBeltComp = sourceEntity.components.Belt;
+                const sourceStaticComp = sourceEntity.components.StaticMapEntity;
+                const ejectorAcceptLocalTile = sourceStaticComp.worldToLocalTile(acceptorSlotWsTile);
+
+                // If this entity is on the same layer as the slot - if so, it can either be
+                // connected, or it can not be connected and thus block the input
+                if (sourceEjector && sourceEjector.anySlotEjectsToLocalTile(ejectorAcceptLocalTile)) {
+                    // This one is connected, all good
+                    isConnected = true;
+                } else if (
+                    sourceBeltComp &&
+                    sourceStaticComp.localDirectionToWorld(sourceBeltComp.direction) ===
+                        enumInvertedDirections[worldDirection]
+                ) {
+                    // Belt connected
+                    isConnected = true;
+                } else {
+                    // This one is blocked
+                    isBlocked = true;
+                }
+            }
+
+            const alpha = isConnected || isBlocked ? 1.0 : 0.3;
+            const sprite = isBlocked ? badArrowSprite : goodArrowSprite;
+
+            parameters.context.globalAlpha = alpha;
+            drawRotatedSprite({
+                parameters,
+                sprite,
+                x: acceptorSlotWsPos.x,
+                y: acceptorSlotWsPos.y,
+                angle: Math.radians(enumDirectionToAngle[enumInvertedDirections[worldDirection]]),
+                size: 13,
+                offsetY: offsetShift + 13,
+            });
+            parameters.context.globalAlpha = 1;
+        }
+
+        // Go over all slots
+        for (let ejectorSlotIndex = 0; ejectorSlotIndex < ejectorSlots.length; ++ejectorSlotIndex) {
+            const slot = ejectorSlots[ejectorSlotIndex];
+
+            const ejectorSlotLocalTile = slot.pos.add(enumDirectionToVector[slot.direction]);
+            const ejectorSlotWsTile = staticComp.localTileToWorld(ejectorSlotLocalTile);
+
+            const ejectorSLotWsPos = ejectorSlotWsTile.toWorldSpaceCenterOfTile();
+            const ejectorSlotWsDirection = staticComp.localDirectionToWorld(slot.direction);
+
+            let isBlocked = false;
+            let isConnected = false;
+
+            // Find entity which is on that tile
+            const destEntity = this.root.map.getLayerContentXY(
+                ejectorSlotWsTile.x,
+                ejectorSlotWsTile.y,
+                this.fakeEntity.layer
+            );
+
+            // Check for the entity:
+            if (destEntity) {
+                const destAcceptor = destEntity.components.ItemAcceptor;
+                const destStaticComp = destEntity.components.StaticMapEntity;
+                const destMiner = destEntity.components.Miner;
+
+                const destLocalTile = destStaticComp.worldToLocalTile(ejectorSlotWsTile);
+                const destLocalDir = destStaticComp.worldDirectionToLocal(ejectorSlotWsDirection);
+                if (destAcceptor && destAcceptor.findMatchingSlot(destLocalTile, destLocalDir)) {
+                    // This one is connected, all good
+                    isConnected = true;
+                } else if (destEntity.components.Belt && destLocalDir === enumDirection.top) {
+                    // Connected to a belt
+                    isConnected = true;
+                } else if (minerComp && minerComp.chainable && destMiner && destMiner.chainable) {
+                    // Chainable miners connected to eachother
+                    isConnected = true;
+                } else {
+                    // This one is blocked
+                    isBlocked = true;
+                }
+            }
+
+            const alpha = isConnected || isBlocked ? 1.0 : 0.3;
+            const sprite = isBlocked ? badArrowSprite : goodArrowSprite;
+
+            parameters.context.globalAlpha = alpha;
+            drawRotatedSprite({
+                parameters,
+                sprite,
+                x: ejectorSLotWsPos.x,
+                y: ejectorSLotWsPos.y,
+                angle: Math.radians(enumDirectionToAngle[ejectorSlotWsDirection]),
+                size: 13,
+                offsetY: offsetShift,
+            });
+            parameters.context.globalAlpha = 1;
+        }
     }
 }

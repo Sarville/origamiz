@@ -139,6 +139,34 @@ export class ActionHistory {
     }
 
     /**
+     * Collapses the two most recent undo entries into a single one - e.g.
+     * mobile_controls.js's long-press "move a building" picks it up as a
+     * delete (its own transaction, pushed immediately when picked up) then,
+     * once confirmed, places it elsewhere (a second, separate transaction).
+     * Without this, undoing a confirmed move takes two presses - one to
+     * remove the new placement, another to restore the original - instead
+     * of going straight back to where it was picked up from in one.
+     */
+    combineLastTwo() {
+        if (this.undoStack.length < 2) {
+            return;
+        }
+        const second = this.undoStack.pop();
+        const first = this.undoStack.pop();
+        this.push({
+            undo: () => {
+                second.undo();
+                first.undo();
+            },
+            redo: () => {
+                first.redo();
+                second.redo();
+            },
+            meta: second.meta,
+        });
+    }
+
+    /**
      * @param {HistoryCommand} command
      */
     push(command) {

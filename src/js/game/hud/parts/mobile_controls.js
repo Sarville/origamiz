@@ -4,8 +4,7 @@ import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
-import { Blueprint } from "../../blueprint";
-import { getCodeFromBuildingData } from "../../building_codes";
+import { getBuildingDataFromCode, getCodeFromBuildingData } from "../../building_codes";
 import { enumMouseButton } from "../../camera";
 import { StaticMapEntityComponent } from "../../components/static_map_entity";
 import { Entity } from "../../entity";
@@ -220,7 +219,8 @@ export class HUDMobileControls extends BaseHUDPart {
         //  - a belt tile -> belt build mode, picking up right where that
         //    tile left off (same as tapping the belt icon then tapping this
         //    tile - see placeBeltTapAt/lastBeltTile).
-        //  - any other building -> pick it up as a movable blueprint (see
+        //  - any other building -> pick it up into the normal toolbar-select
+        //    placement flow, same as tapping its icon (see
         //    beginMoveExistingBuilding).
         // Deliberately never stops propagation on the way here (see
         // onMouseDown/onMouseMove/onMouseUp) so it can't break a lever/
@@ -231,25 +231,24 @@ export class HUDMobileControls extends BaseHUDPart {
         this.idleHoldPos = null;
         this.idleHoldTimer = null;
 
-        // Copied/moved-building blueprint placement: the tile the finger-
-        // follow ghost currently rests at, once blueprintPlacer.
-        // currentBlueprint is set via onCopyClicked or
-        // beginMoveExistingBuilding - mirrors blueprintTile above but for a
-        // Blueprint object instead of a MetaBuilding (desktop's
-        // HUDBlueprintPlacer only wires up real mouse handlers, nothing
-        // touch-based, so mobile drives its currentBlueprint/tryPlace/
-        // rotateCw/abortPlacement directly instead of duplicating any of
-        // that).
+        // Copied-blueprint placement (multi-selection copy only, see
+        // onCopyClicked): the tile the finger-follow ghost currently rests
+        // at, once blueprintPlacer.currentBlueprint is set - mirrors
+        // blueprintTile above but for a Blueprint object instead of a
+        // MetaBuilding (desktop's HUDBlueprintPlacer only wires up real
+        // mouse handlers, nothing touch-based, so mobile drives its
+        // currentBlueprint/tryPlace/rotateCw/abortPlacement directly instead
+        // of duplicating any of that).
         /** @type {Vector} */
         this.copiedBlueprintTile = null;
 
-        // True while copiedBlueprintTile holds a building picked up via
-        // long-press (beginMoveExistingBuilding already deleted the
-        // original) rather than a multi-selection "copy" - lets
-        // exitCopiedBlueprintMode restore the original on cancel ("отмена -
-        // возврат к первоначальному состоянию"). Cleared the moment a
-        // confirm actually places somewhere, since at that point the move
-        // is a deliberate choice, not something left to revert.
+        // True while currentMetaBuilding stands in for a real building
+        // long-pressed and picked up (beginMoveExistingBuilding already
+        // deleted it), so cancelling the placement (onCancelClicked) should
+        // restore the original with a plain undo() instead of just losing
+        // it. Cleared the moment a confirm actually places somewhere, since
+        // at that point the move is a deliberate choice, not something left
+        // to revert.
         this.movedBuildingCut = false;
 
         // Persists across building selections, not per-building - a player
@@ -476,7 +475,17 @@ export class HUDMobileControls extends BaseHUDPart {
         }
     }
 
+    /**
+     * Cancels the current toolbar-select placement - if it was started by
+     * picking up an existing building via long-press (beginMoveExisting
+     * Building already deleted the original), restores it instead of just
+     * losing it.
+     */
     onCancelClicked() {
+        if (this.movedBuildingCut && this.root.actionHistory.canUndo) {
+            this.root.actionHistory.undo();
+        }
+        this.movedBuildingCut = false;
         this.placerLogic.currentMetaBuilding.set(null);
     }
 
@@ -520,7 +529,8 @@ export class HUDMobileControls extends BaseHUDPart {
      * Fired after a stationary hold on the map in view mode - see
      * idleHoldPos's doc in initialize(). Branches on what's under the
      * finger: an empty tile enters select mode, a belt continues it, any
-     * other building gets picked up as a movable blueprint.
+     * other building gets picked up into the normal placement flow (see
+     * beginMoveExistingBuilding).
      */
     beginIdleLongPress() {
         this.idleHoldTimer = null;
@@ -556,13 +566,17 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Picks up an existing building as a movable blueprint (long-press on a
-     * non-belt building in view mode) - same underlying mechanism as
-     * onCopyClicked (a Blueprint object placed via the confirm/rotate/
-     * cancel row), except free (this.root's own building, not a new copy -
-     * mirrors how desktop's Ctrl+X cut sets isNextPasteFree) and the
-     * original is deleted immediately rather than only on confirm, so
-     * exitCopiedBlueprintMode can restore it with a plain undo() on cancel.
+     * Picks up an existing (non-belt) building via long-press and re-enters
+     * it into the same toolbar-select placement flow a fresh building from
+     * the toolbar uses (ghost preview with green/red slot arrows,
+     * confirm/rotate/variant/cancel row - see onPlacementBuildingChanged/
+     * drawBlueprintGhost) instead of the separate copied-blueprint
+     * mechanism, which only makes sense for an actual multi-selection copy
+     * (it shows a cost tag and a paste-many confirm loop, both wrong for
+     * "move this one building"). Mirrors HUDBuildingPlacerLogic.
+     * startPipette's code/variant extraction, but also deletes the
+     * original - movedBuildingCut lets onCancelClicked restore it with a
+     * plain undo() if the pickup is cancelled instead of confirmed.
      * @param {Entity} entity
      */
     beginMoveExistingBuilding(entity) {
@@ -570,10 +584,15 @@ export class HUDMobileControls extends BaseHUDPart {
             // e.g. the hub - nothing to pick up.
             return;
         }
-        const originTile = entity.components.StaticMapEntity.origin.copy();
-        const blueprint = Blueprint.fromUids(this.root, [entity.uid]);
-        blueprint.isNextPasteFree = true;
+        const staticComp = entity.components.StaticMapEntity;
+        const extracted = getBuildingDataFromCode(staticComp.code);
+        const originTile = staticComp.origin.copy();
+        const originRotation = staticComp.rotation;
 
+        // tryDeleteBuilding only reports to actionHistory.noteEntityWillBeDeleted
+        // (making it undoable) while a transaction is open - see ActionHistory's
+        // class doc - so onCancelClicked's undo() needs this wrap to have
+        // anything to restore.
         this.root.actionHistory.beginTransaction();
         const deleted = this.root.logic.tryDeleteBuilding(entity);
         this.root.actionHistory.endTransaction();
@@ -581,9 +600,15 @@ export class HUDMobileControls extends BaseHUDPart {
             return;
         }
 
-        this.blueprintPlacer.currentBlueprint.set(blueprint);
         this.movedBuildingCut = true;
-        this.copiedBlueprintTile = originTile;
+        this.placerLogic.currentMetaBuilding.set(extracted.metaInstance);
+        this.placerLogic.currentVariant.set(extracted.variant);
+        this.placerLogic.currentBaseRotation = originRotation;
+        // onPlacementBuildingChanged (fired synchronously by the .set()
+        // above) defaults blueprintTile to the camera center, since a
+        // toolbar tap has no tile under it yet - override it to where the
+        // building actually was so the ghost appears there instead.
+        this.blueprintTile = originTile;
     }
 
     /**
@@ -619,22 +644,13 @@ export class HUDMobileControls extends BaseHUDPart {
         this.selectModeActive = false;
         this.selectButton.classList.remove("active");
         this.copiedBlueprintTile = this.root.camera.center.toTileSpace();
-        this.movedBuildingCut = false;
     }
 
     exitCopiedBlueprintMode() {
         if (this.copiedBlueprintTile) {
-            if (this.movedBuildingCut && this.root.actionHistory.canUndo) {
-                // Restores the building beginMoveExistingBuilding deleted -
-                // safe to assume it's still the top of the stack, since
-                // this whole mode blocks every other action that could push
-                // onto it (see onMouseDown's copiedBlueprintTile branch).
-                this.root.actionHistory.undo();
-            }
             this.blueprintPlacer.abortPlacement();
         }
         this.copiedBlueprintTile = null;
-        this.movedBuildingCut = false;
     }
 
     onBlueprintCancelClicked() {
@@ -768,11 +784,13 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Item 9: momentarily tints the given (unplaceable) path red instead of
-     * placing anything - feedback for "a continuous belt isn't possible
-     * here" (the gap is too long for any unlocked tunnel tier, tunnels
-     * aren't unlocked, or the blocked run isn't a straight enough line for a
-     * tunnel to bridge at all). Cleared automatically in update().
+     * Item 9: momentarily tints the given (unplaceable) tiles red instead of
+     * placing anything - originally belt-only feedback for "a continuous
+     * belt isn't possible here" (the gap is too long for any unlocked
+     * tunnel tier, tunnels aren't unlocked, or the blocked run isn't a
+     * straight enough line for a tunnel to bridge at all), reused by
+     * placeSingle for "can't build here" on any other building's confirm
+     * tap. Cleared automatically in update().
      * @param {Array<Vector>} path
      */
     flashInvalidBelt(path) {
@@ -820,6 +838,15 @@ export class HUDMobileControls extends BaseHUDPart {
         );
         if (placed) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
+            // A confirmed placement is a deliberate choice, not something
+            // left to revert any more - see beginMoveExistingBuilding/
+            // onCancelClicked. Collapse the pickup's delete and this
+            // placement into a single undo step, so one undo press goes
+            // straight back to where it was picked up from.
+            if (this.movedBuildingCut) {
+                this.root.actionHistory.combineLastTwo();
+            }
+            this.movedBuildingCut = false;
             // Most buildings deselect themselves after one placement (unless they
             // "stay in placement mode", like belts always do) - multiplace mode
             // means "keep going", so reselect if that just happened.
@@ -830,6 +857,12 @@ export class HUDMobileControls extends BaseHUDPart {
                 this.lastBeltTile = tile;
                 this.lastBeltIncomingDirection = beltIncomingAfter;
             }
+        } else {
+            // Can't build here (obstructed, out of reach, etc) - same red
+            // flash confirming a blocked belt drag already uses, so the
+            // ghost's dimmed alpha isn't the only feedback something's wrong.
+            this.root.soundProxy.playUiError();
+            this.flashInvalidBelt([tile]);
         }
     }
 
@@ -1156,9 +1189,10 @@ export class HUDMobileControls extends BaseHUDPart {
      * whether it could actually be placed there right now - mirrors
      * HUDBuildingPlacer.drawRegularPlacement's desktop ghost (same
      * computeOptimalDirectionAndRotationVariantAtTile call, so the preview's
-     * rotation matches what confirming will actually place) without the
-     * bounding-box outline/ejector-arrow polish, which isn't needed at this
-     * icon-sized scale.
+     * rotation matches what confirming will actually place), including the
+     * green/red accepted-slot arrows (drawMatchingAcceptorsAndEjectors,
+     * shared with desktop via HUDBuildingPlacerLogic) but without the
+     * bounding-box outline, which isn't needed at this icon-sized scale.
      * @param {import("../../../core/draw_parameters").DrawParameters} parameters
      */
     drawBlueprintGhost(parameters) {
@@ -1175,6 +1209,7 @@ export class HUDMobileControls extends BaseHUDPart {
             layer: metaBuilding.getLayer(),
         });
 
+        this.placerLogic.fakeEntity.layer = metaBuilding.getLayer();
         const staticComp = this.placerLogic.fakeEntity.components.StaticMapEntity;
         staticComp.origin = this.blueprintTile;
         staticComp.rotation = rotation;
@@ -1188,6 +1223,10 @@ export class HUDMobileControls extends BaseHUDPart {
             metaBuilding.getBlueprintSprite(rotationVariant, variant)
         );
         parameters.context.globalAlpha = 1;
+
+        if (canBuild) {
+            this.placerLogic.drawMatchingAcceptorsAndEjectors(parameters);
+        }
     }
 
     /**

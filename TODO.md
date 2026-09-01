@@ -761,6 +761,59 @@ logs.
         at the dragged tile, rotate, cancel, undo of a blueprint-mode
         placement, belt's drag-to-lay pixel-identical to before, and the
         final 2-icon belt panel.
+        - **Follow-up, 2026-09-01 - slot arrows + long-press-move fixes,
+          user-reported from a real device.** User asked for the same
+          green/red per-slot accept/reject arrows desktop's ghost preview
+          draws (`HUDBuildingPlacer.drawMatchingAcceptorsAndEjectors`,
+          `sprites/misc/slot_good_arrow.png`/`slot_bad_arrow.png` - the
+          "bad" sprite is actually a red cross, not a red arrow), which
+          mobile's `drawBlueprintGhost` never had (only the ghost's own
+          overall alpha dimmed for can't-place). Moved that method onto the
+          shared `HUDBuildingPlacerLogic` base class (`building_placer_logic.js`)
+          instead of duplicating it, so both `HUDBuildingPlacer` (desktop)
+          and `HUDMobileControls.drawBlueprintGhost` (mobile) call the same
+          code - mobile's ghost now also sets `fakeEntity.layer` first
+          (needed for the wires layer, previously never set there since
+          nothing read it before this).
+          - **Then, testing on a real phone, found long-press-to-move an
+            existing building was badly broken**: it entered a *different*
+            mechanism than the toolbar-select ghost above -
+            `beginMoveExistingBuilding` reused the copied-blueprint flow
+            (`blueprintPlacer.currentBlueprint`/`copiedBlueprintTile`,
+            `onBlueprintConfirmClicked`) meant for a multi-selection copy,
+            which (a) shows a cost tag and (b) - critically - never exits
+            placement mode after a successful confirm (correct for
+            "paste the same clipboard blueprint again", wrong for "move
+            this one building"), so confirming a move left the *same*
+            now-costed ghost sitting redrawn on top of the just-placed
+            building, looking exactly like a duplicate had appeared.
+            Rewrote `beginMoveExistingBuilding` to instead pick the
+            building up into the *same* toolbar-select flow as 2c-3 above
+            (`currentMetaBuilding`/`blueprintTile`, extracting variant via
+            `getBuildingDataFromCode` same as `startPipette`) at its own
+            tile instead of the toolbar's usual camera-center spawn point,
+            so confirm/rotate/cancel and the new slot arrows all just work
+            identically to picking it from the toolbar. Confirming places it
+            via the existing `placeSingle` (which now also flashes the
+            existing belt-only invalid-placement red-tile effect,
+            generalized, on any building's failed confirm tap - previously
+            silent). Cancelling restores the deleted original via
+            `actionHistory.undo()`.
+          - **Two more real-device round-trips fixing that undo restore
+            itself:** first found cancel didn't restore the building at
+            all - `tryDeleteBuilding` only reports to
+            `actionHistory.noteEntityWillBeDeleted` (undoable) inside an
+            open transaction (see `ActionHistory`'s own class doc), and the
+            rewrite above had dropped the `beginTransaction`/`endTransaction`
+            wrap the old code had around the pickup's delete. Restored it.
+            Second: user asked that *confirming* a move collapse the
+            pickup's delete and the new placement (two separate undo
+            entries as written) into one, so a single global undo after a
+            completed move goes straight back to the original tile instead
+            of first removing the new placement and needing a second undo
+            for the delete. Added `ActionHistory.combineLastTwo()`
+            (`action_history.js`) and call it from `placeSingle` right
+            after a `movedBuildingCut` placement succeeds.
       - [x] **2c-4 — Continuous belt placement across taps + across zoom (item
         8).** Done 2026-08-31. New `lastBeltTile`/`placeBeltTapAt()` in
         `mobile_controls.js`: the first tap after selecting belt still places
