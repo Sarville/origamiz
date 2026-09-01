@@ -109,28 +109,6 @@
                     transform: none !important;
                 }
             }
-
-            .versionbar {
-                margin-top: 1rem;
-
-                @include SuperSmallText;
-                display: grid;
-                align-items: center;
-                grid-template-columns: 1fr auto;
-                .buildVersion {
-                    display: flex;
-                    flex-direction: column;
-                    color: #aaadaf;
-                }
-
-                // Must come last: an @media block sandwiched between plain declarations
-                // of the same selector gets emitted as its own rule, and any plain
-                // declaration written *after* it (like the ones above) would otherwise
-                // override it regardless of viewport width.
-                @include StyleBelowWidth($layoutBreak) {
-                    display: none;
-                }
-            }
         }
 
         .categoryContainer {

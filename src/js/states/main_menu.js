@@ -11,7 +11,6 @@ import {
     makeDiv,
     makeDivElement,
     removeAllChildren,
-    waitNextFrame,
 } from "../core/utils";
 import { HUDModalDialogs } from "../game/hud/parts/modal_dialogs";
 import { MODS } from "../mods/modloader";
@@ -20,7 +19,6 @@ import { T } from "../translations";
 
 /**
  * @typedef {import("../savegame/savegame_typedefs").SavegameMetadata} SavegameMetadata
- * @typedef {import("../profile/setting_types").EnumSetting} EnumSetting
  */
 
 export class MainMenuState extends GameState {
@@ -33,8 +31,6 @@ export class MainMenuState extends GameState {
 
         return `
             <div class="topButtons">
-                <button aria-label="Choose Language" class="languageChoose" data-languageicon="${this.app.settings.getLanguage()}"></button>
-
                 <button class="settingsButton" aria-label="Settings"></button>
                 ${
                     this.app.platformWrapper.getSupportsAppExit()
@@ -54,25 +50,16 @@ export class MainMenuState extends GameState {
                 >
             </div>
 
-            <div class="mainWrapper" data-columns="2">
+            <div class="mainWrapper" data-columns="${hasMods ? 2 : 1}">
                 <div class="mainContainer">
                     <div class="buttons"></div>
                     <div class="savegamesMount"></div>
                 </div>
 
-                <div class="sideContainer">
-                ${
-                    !hasMods
-                        ? `
-                    <div class="puzzleContainer owned">
-                        <button class="styledButton puzzleDlcPlayButton">${T.mainMenu.play}</button>
-                    </div>`
-                        : ""
-                }
-
                 ${
                     hasMods
                         ? `
+                <div class="sideContainer">
                         <div class="modsOverview">
                             <div class="header">
                                 <h3>${T.mods.title}</h3>
@@ -89,10 +76,10 @@ export class MainMenuState extends GameState {
                                 ${T.mainMenu.mods.warningPuzzleDLC}
                             </div>
                         </div>
+                </div>
                         `
                         : ""
                 }
-                </div>
             </div>
 
             <div class="footer">
@@ -129,50 +116,12 @@ export class MainMenuState extends GameState {
                     }
                 </div>
 
-                <div class="footerGrow">
-                    <a class="changelog">${T.changelog.title}</a>
-                    <a class="helpTranslate">${T.mainMenu.helpTranslate}</a>
-                </div>
-
                 <div class="brandMark">
                     <span class="name">${BRAND_AUTHOR}</span>
                     <span class="sub">Games</span>
                 </div>
             </div>
         `;
-    }
-
-    /**
-     * Asks the user to import a savegame
-     */
-    async requestImportSavegame() {
-        const closeLoader = this.dialogs.showLoadingDialog();
-        await waitNextFrame();
-
-        try {
-            const data = await this.app.storage.requestOpenFile("bin");
-            if (data === undefined) {
-                // User canceled the request
-                closeLoader();
-                return;
-            }
-
-            await this.app.savegameMgr.importSavegame(data);
-            closeLoader();
-            this.dialogs.showWarning(
-                T.dialogs.importSavegameSuccess.title,
-                T.dialogs.importSavegameSuccess.text
-            );
-
-            this.renderMainMenu();
-            this.renderSavegames();
-        } catch (err) {
-            closeLoader();
-            this.dialogs.showWarning(
-                T.dialogs.importSavegameError.title,
-                T.dialogs.importSavegameError.text + ":<br><br>" + err
-            );
-        }
     }
 
     onBackButton() {
@@ -220,11 +169,8 @@ export class MainMenuState extends GameState {
 
         const clickHandling = {
             ".settingsButton": this.onSettingsButtonClicked,
-            ".languageChoose": this.onLanguageChooseClicked,
             ".redditLink": this.onRedditClicked,
             ".patreonLink": this.onPatreonLinkClicked,
-            ".changelog": this.onChangelogClicked,
-            ".helpTranslate": this.onTranslationHelpLinkClicked,
             ".exitAppButton": this.onExitAppButtonClicked,
             ".discordLink": () => {
                 this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.discord);
@@ -232,7 +178,6 @@ export class MainMenuState extends GameState {
             ".githubLink": () => {
                 this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.github);
             },
-            ".puzzleDlcPlayButton": this.onPuzzleModeButtonClicked,
             ".editMods": this.onModsClicked,
         };
 
@@ -254,28 +199,42 @@ export class MainMenuState extends GameState {
 
         const outerDiv = makeDivElement(null, ["outer"], null);
 
-        // Import button
-        this.trackClicks(
-            makeButton(outerDiv, ["importButton", "styledButton"], T.mainMenu.importSavegame),
-            this.requestImportSavegame
-        );
-
         if (this.savedGames.length > 0) {
-            // Continue game
+            // Continue game - card style, subtitle shows the most recently
+            // played savegame's level (same "latest by lastUpdate" pick
+            // onContinueButtonClicked itself resumes).
+            const latest = this.latestSavegameMeta;
+            const levelText = latest && latest.level
+                ? T.mainMenu.savegameLevel.replace("<x>", "" + latest.level)
+                : T.mainMenu.savegameLevelUnknown;
             this.trackClicks(
-                makeButton(buttonContainer, ["continueButton", "styledButton"], T.mainMenu.continue),
+                makeButton(buttonContainer, ["continueButton", "styledButton", "menu-button", "continue-button"], `
+                    <span class="title">${T.mainMenu.continue}</span>
+                    <span class="subtitle">${levelText}</span>
+                    <svg class="play-icon" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>
+                `),
                 this.onContinueButtonClicked
             );
 
             // New game
             this.trackClicks(
-                makeButton(outerDiv, ["newGameButton", "styledButton"], T.mainMenu.newGame),
+                makeButton(
+                    outerDiv,
+                    ["newGameButton", "styledButton", "menu-button", "new-game-button"],
+                    `<span class="title">${T.mainMenu.newGame}</span>`
+                ),
                 this.onPlayButtonClicked
             );
         } else {
-            // New game
+            // New game - primary CTA when there's nothing to continue, so it
+            // gets the same orange treatment as New Game rather than Continue's
+            // neutral paper one.
             this.trackClicks(
-                makeButton(buttonContainer, ["playButton", "styledButton"], T.mainMenu.play),
+                makeButton(
+                    buttonContainer,
+                    ["playButton", "styledButton", "menu-button", "new-game-button"],
+                    `<span class="title">${T.mainMenu.play}</span>`
+                ),
                 this.onPlayButtonClicked
             );
         }
@@ -284,13 +243,9 @@ export class MainMenuState extends GameState {
             .querySelector(".mainContainer")
             .setAttribute("data-savegames", String(this.savedGames.length));
 
-        // Mods
-        this.trackClicks(
-            makeButton(outerDiv, ["modsButton", "styledButton"], T.mods.title),
-            this.onModsClicked
-        );
-
-        buttonContainer.appendChild(outerDiv);
+        if (outerDiv.childElementCount > 0) {
+            buttonContainer.appendChild(outerDiv);
+        }
     }
 
     onPuzzleModeButtonClicked(force = false) {
@@ -319,10 +274,6 @@ export class MainMenuState extends GameState {
         this.app.platformWrapper.exitApp();
     }
 
-    onChangelogClicked() {
-        this.moveToState("ChangelogState");
-    }
-
     onRedditClicked() {
         this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.reddit);
     }
@@ -331,45 +282,23 @@ export class MainMenuState extends GameState {
         this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.patreon);
     }
 
-    onLanguageChooseClicked() {
-        const setting = /** @type {EnumSetting} */ (this.app.settings.getSettingHandleById("language"));
-
-        const { optionSelected } = this.dialogs.showOptionChooser(T.settings.labels.language.title, {
-            active: this.app.settings.getLanguage(),
-            options: setting.options.map(option => ({
-                value: setting.valueGetter(option),
-                text: setting.textGetter(option),
-                desc: setting.descGetter(option),
-                iconPrefix: setting.iconPrefix,
-            })),
-        });
-
-        optionSelected.add(value => {
-            this.app.settings.updateLanguage(value).then(() => {
-                if (setting.restartRequired) {
-                    if (this.app.platformWrapper.getSupportsRestart()) {
-                        this.app.platformWrapper.performRestart();
-                    } else {
-                        this.dialogs.showInfo(
-                            T.dialogs.restartRequired.title,
-                            T.dialogs.restartRequired.text,
-                            ["ok:good"]
-                        );
-                    }
-                }
-
-                if (setting.changeCb) {
-                    setting.changeCb(this.app, value);
-                }
-            });
-
-            // Update current icon
-            this.htmlElement.querySelector("button.languageChoose").setAttribute("data-languageIcon", value);
-        }, this);
-    }
-
     get savedGames() {
         return this.app.savegameMgr.getSavegamesMetaData();
+    }
+
+    /**
+     * The most recently played savegame's metadata - same pick
+     * onContinueButtonClicked itself resumes - or null if there are none.
+     * @returns {SavegameMetadata}
+     */
+    get latestSavegameMeta() {
+        let latest = null;
+        for (const meta of this.savedGames) {
+            if (!latest || meta.lastUpdate > latest.lastUpdate) {
+                latest = meta;
+            }
+        }
+        return latest;
     }
 
     renderSavegames() {
@@ -434,6 +363,8 @@ export class MainMenuState extends GameState {
                 const resumeButton = document.createElement("button");
                 resumeButton.classList.add("styledButton", "resumeGame");
                 resumeButton.setAttribute("aria-label", "Resumee");
+                resumeButton.innerHTML =
+                    '<svg class="play-icon" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>';
                 elem.appendChild(resumeButton);
 
                 this.trackClicks(deleteButton, () => this.deleteGame(games[i]));
@@ -558,11 +489,19 @@ export class MainMenuState extends GameState {
      * @param {SavegameMetadata} game
      */
     deleteGame(game) {
+        const levelText = game.level
+            ? T.mainMenu.savegameLevel.replace("<x>", "" + game.level)
+            : T.mainMenu.savegameLevelUnknown;
         const signals = this.dialogs.showWarning(
             T.dialogs.confirmSavegameDelete.title,
-            T.dialogs.confirmSavegameDelete.text
-                .replace("<savegameName>", game.name || T.mainMenu.savegameUnnamed)
-                .replace("<savegameLevel>", String(game.level)),
+            `
+                <p>${T.dialogs.confirmSavegameDelete.desc}</p>
+                <div class="saveInfo">
+                    <svg class="saveInfoIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/></svg>
+                    <span class="saveInfoText">&laquo;${game.name || T.mainMenu.savegameUnnamed}&raquo; &bull; ${levelText}</span>
+                </div>
+                <div class="warningNote">${T.dialogs.confirmSavegameDelete.warningNote}</div>
+            `,
             ["cancel:good", "delete:bad:timeout"]
         );
 
@@ -595,10 +534,6 @@ export class MainMenuState extends GameState {
 
     onSettingsButtonClicked() {
         this.moveToState("SettingsState");
-    }
-
-    onTranslationHelpLinkClicked() {
-        this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.github + "/blob/master/translations");
     }
 
     onPlayButtonClicked() {

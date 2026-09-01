@@ -4,6 +4,43 @@
 
 @use "sass:color";
 
+// Warm-paper dialog palette, matched against a real-device reference
+// (origamiz-modal-windows.css) - replaces the old flat $dialogBgColor/
+// $colorGreenBright/$colorRedBright look for every dialog in the game, since
+// they all route through this one shared Dialog class (modal_dialog_elements.ts).
+$modalPaperLight: #fffaf0;
+$modalPaper: #f8f1e2;
+$modalPaperDeep: #f3e9d6;
+$modalTextMain: #454644;
+$modalTextSecondary: #817b70;
+$modalTextMuted: #9c927f;
+$modalLineSoft: rgba(153, 132, 99, 0.18);
+$modalWarning: #c66f61;
+
+$modalSage: #95a77d;
+$modalSageDark: #7f9169;
+$modalSageLight: #a8b88f;
+$modalCoral: #df6f61;
+$modalCoralDark: #ca5c50;
+$modalCoralLight: #eb8172;
+
+// Dark-theme variants - kept muted/desaturated rather than a straight
+// lightness bump, so they read as "warm paper under low light" instead of
+// clashing neon against the dark control background.
+$modalPaperLightDark: #2f2b24;
+$modalPaperDark: #292520;
+$modalPaperDeepDark: #221f1a;
+$modalTextMainDark: #ece6d8;
+$modalTextSecondaryDark: #b6ab96;
+$modalTextMutedDark: #8f8574;
+$modalLineSoftDark: rgba(0, 0, 0, 0.3);
+$modalSageDarkTheme: #7e9169;
+$modalSageDarkThemeDark: #6a7d57;
+$modalSageDarkThemeLight: #91a37c;
+$modalCoralDarkTheme: #c05f52;
+$modalCoralDarkThemeDark: #a94e43;
+$modalCoralDarkThemeLight: #d17164;
+
 .ingameDialog {
     position: absolute;
     top: 0;
@@ -97,24 +134,110 @@
     }
 
     > .dialogInner {
-        background: $dialogBgColor;
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(145deg, $modalPaperLight 0%, $modalPaper 55%, $modalPaperDeep 100%);
+        border: 0.1rem solid rgba(255, 255, 255, 0.65);
         // See the height comment in textual_game_state.scss - same viewport
         // trick, so a tall dialog (e.g. the upgrades/shop list) doesn't grow
         // past the real screen and get clipped top+bottom by centering.
         max-height: calc(100vh - 4rem);
         max-height: calc(100dvh - 4rem);
         max-width: calc(100vw - 2rem);
-        border-radius: $globalBorderRadius;
+        border-radius: 2rem;
         display: flex;
         flex-direction: column;
-        padding: 1.2rem;
+        padding: 1.8rem;
         box-sizing: border-box;
 
-        box-shadow: 0 0.5rem 1.5rem rgba(#000, 0.1);
+        box-shadow:
+            0 1.8rem 4.5rem rgba(65, 53, 36, 0.28),
+            0 0.4rem 1rem rgba(65, 53, 36, 0.14),
+            inset 0 0.1rem 0 rgba(255, 255, 255, 0.9);
         pointer-events: all;
 
+        // Same folded-paper corner accent as the main menu's cards - a
+        // subtler, semi-transparent version since it sits on top of dialog
+        // content rather than a solid card.
+        &::after {
+            content: "";
+            position: absolute;
+            right: 0;
+            bottom: 0;
+            width: 5rem;
+            height: 5rem;
+            pointer-events: none;
+            background: linear-gradient(
+                135deg,
+                transparent 0 49%,
+                rgba(222, 207, 179, 0.55) 50% 72%,
+                rgba(255, 250, 239, 0.55) 73%
+            );
+            opacity: 0.55;
+        }
+
         @include DarkThemeOverride {
-            background: color.adjust($darkModeControlsBackground, $lightness: -5%, $space: hsl);
+            background: linear-gradient(
+                145deg,
+                $modalPaperLightDark 0%,
+                $modalPaperDark 55%,
+                $modalPaperDeepDark 100%
+            );
+            border-color: rgba(255, 255, 255, 0.06);
+
+            &::after {
+                background: linear-gradient(
+                    135deg,
+                    transparent 0 49%,
+                    rgba(0, 0, 0, 0.4) 50% 72%,
+                    rgba(255, 255, 255, 0.04) 73%
+                );
+            }
+        }
+
+        // Warning-type dialogs (showWarning() - delete confirmations, mass
+        // delete/cut, mod differences, ...) get a "!" icon ahead of the
+        // title and a divider under it; DialogWithForm/showInfo (type
+        // "info", e.g. rename) don't, matching the reference where only the
+        // delete-style dialog carries them.
+        &.warning > .title {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+
+            &::before {
+                content: "!";
+                flex: 0 0 auto;
+                width: 3.6rem;
+                height: 3.6rem;
+                border-radius: 50%;
+                background: rgba($modalWarning, 0.1);
+                color: $modalWarning;
+                display: grid;
+                place-items: center;
+                font-size: 2rem;
+                font-weight: bold;
+                text-transform: none;
+            }
+        }
+
+        &.warning {
+            > .title {
+                border-bottom: 0.1rem solid $modalLineSoft;
+                padding-bottom: 1.2rem;
+            }
+
+            > .buttons {
+                border-top: 0.1rem solid $modalLineSoft;
+                padding-top: 1.5rem;
+            }
+
+            @include DarkThemeOverride {
+                > .title,
+                > .buttons {
+                    border-color: $modalLineSoftDark;
+                }
+            }
         }
 
         &.optionChooserDialog {
@@ -147,15 +270,20 @@
         }
 
         > .title {
-            @include Heading;
+            @include SuperHeading;
             margin: 0;
             text-transform: uppercase;
+            font-weight: bold;
             display: grid;
             align-items: center;
             grid-template-columns: 1fr auto;
             margin-bottom: 1rem;
+            color: $modalTextMain;
 
-            @include DarkThemeInvert();
+            @include DarkThemeOverride {
+                color: $modalTextMainDark;
+            }
+
             > .closeButton {
                 opacity: 0.7;
                 width: 2rem;
@@ -173,15 +301,16 @@
         }
 
         > .content {
-            @include PlainText;
+            @include Text;
             overflow-y: auto;
             pointer-events: all;
             width: 35rem;
             max-width: 100%;
             box-sizing: border-box;
+            color: $modalTextMain;
 
             @include DarkThemeOverride {
-                color: #aaa;
+                color: $modalTextSecondaryDark;
             }
 
             a {
@@ -206,13 +335,93 @@
                 margin-top: 1rem;
             }
 
+            // The "«name» • Level N" card shown inside the savegame delete
+            // confirmation - see MainMenuState.deleteGame.
+            .saveInfo {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                margin-top: 1.2rem;
+                padding: 1rem 1.2rem;
+                border: 0.1rem solid $modalLineSoft;
+                border-radius: 1rem;
+                background: linear-gradient(145deg, rgba(255, 251, 242, 0.72), rgba(243, 233, 214, 0.7));
+                box-shadow: inset 0 0.1rem 0 rgba(255, 255, 255, 0.65);
+
+                @include DarkThemeOverride {
+                    border-color: $modalLineSoftDark;
+                    background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.12));
+                }
+            }
+
+            .saveInfoIcon {
+                flex: 0 0 auto;
+                color: #b8a47f;
+            }
+
+            .saveInfoText {
+                @include Text;
+            }
+
+            // The "this can't be undone" line, with its own small red dot -
+            // see MainMenuState.deleteGame.
+            .warningNote {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                margin-top: 1rem;
+                @include SuperSmallText;
+                color: $modalTextMuted;
+
+                @include DarkThemeOverride {
+                    color: $modalTextMutedDark;
+                }
+
+                &::before {
+                    content: "";
+                    width: 0.6rem;
+                    height: 0.6rem;
+                    flex: 0 0 auto;
+                    border-radius: 50%;
+                    background: $modalCoral;
+                }
+            }
+
             input {
-                background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
-                color: #333438;
+                min-height: 4.4rem;
+                margin-top: 1.2rem;
+                padding: 0 1.2rem;
+                border: 0.1rem solid rgba(160, 137, 102, 0.35);
+                border-radius: 1.4rem;
+                outline: none;
+                background: linear-gradient(145deg, #fffaf0 0%, #f7eddc 100%);
+                color: $modalTextMain;
                 width: 100%;
+                box-sizing: border-box;
+                box-shadow: inset 0 0.1rem 0.3rem rgba(112, 92, 59, 0.05), 0 0.1rem 0 rgba(255, 255, 255, 0.8);
+                transition: border-color 0.14s ease-in-out, box-shadow 0.14s ease-in-out;
+
+                &:focus {
+                    border-color: rgba(165, 140, 95, 0.62);
+                    box-shadow: 0 0 0 0.3rem rgba(199, 173, 124, 0.12), inset 0 0.1rem 0.3rem rgba(112, 92, 59, 0.05);
+                }
+
+                &::placeholder {
+                    color: #aaa092;
+                }
+
+                @include DarkThemeOverride {
+                    background: linear-gradient(145deg, #3a352b 0%, #2c2822 100%);
+                    color: $modalTextMainDark;
+                    border-color: rgba(0, 0, 0, 0.4);
+
+                    &::placeholder {
+                        color: $modalTextMutedDark;
+                    }
+                }
 
                 &.errored {
-                    background-color: rgb(250, 206, 206);
+                    background: rgb(250, 206, 206);
 
                     &::placeholder {
                         color: #fff;
@@ -269,27 +478,72 @@
 
         > .buttons {
             margin-top: 1.5rem;
-            display: flex;
-            justify-content: flex-end;
+            display: grid;
+            grid-auto-flow: column;
+            grid-auto-columns: 1fr;
+            gap: 1.4rem;
             > button {
-                margin-left: 0.8rem;
+                margin-left: 0;
                 @include Text;
                 min-width: 6rem;
-                padding: 0.5rem 1.5rem;
+                min-height: 5.2rem;
+                padding: 0 1.5rem;
+                border: 0.1rem solid rgba(110, 90, 65, 0.18);
+                border-radius: 1.4rem;
+                font-weight: 500;
+                text-transform: uppercase;
+                color: #fff9ef;
 
-                transition: opacity 0.12s ease-in-out;
+                box-shadow:
+                    0 0.5rem 1rem rgba(71, 57, 39, 0.16),
+                    0 0.1rem 0.2rem rgba(71, 57, 39, 0.12),
+                    inset 0 0.1rem 0 rgba(255, 255, 255, 0.22);
+
+                transition:
+                    transform 0.1s ease-in-out,
+                    box-shadow 0.1s ease-in-out,
+                    filter 0.1s ease-in-out;
+
                 &:hover {
-                    opacity: 0.9;
+                    opacity: 1;
+                    filter: brightness(1.03);
+                }
+
+                &:active {
+                    transform: translateY(0.15rem) scale(0.99);
+                    box-shadow:
+                        0 0.2rem 0.5rem rgba(71, 57, 39, 0.15),
+                        inset 0 0.2rem 0.4rem rgba(72, 55, 37, 0.1);
                 }
 
                 &.good {
-                    background-color: $colorGreenBright;
-                    color: #fff;
+                    background: linear-gradient(145deg, $modalSageLight 0%, $modalSage 62%, $modalSageDark 100%);
+
+                    @include DarkThemeOverride {
+                        background: linear-gradient(
+                            145deg,
+                            $modalSageDarkThemeLight 0%,
+                            $modalSageDarkTheme 62%,
+                            $modalSageDarkThemeDark 100%
+                        );
+                    }
                 }
 
                 &.bad {
-                    background-color: $colorRedBright;
-                    color: #fff;
+                    background: linear-gradient(145deg, $modalCoralLight 0%, $modalCoral 62%, $modalCoralDark 100%);
+                    box-shadow:
+                        0 0.6rem 1.2rem rgba(169, 75, 64, 0.22),
+                        0 0.1rem 0.2rem rgba(88, 48, 39, 0.12),
+                        inset 0 0.1rem 0 rgba(255, 255, 255, 0.24);
+
+                    @include DarkThemeOverride {
+                        background: linear-gradient(
+                            145deg,
+                            $modalCoralDarkThemeLight 0%,
+                            $modalCoralDarkTheme 62%,
+                            $modalCoralDarkThemeDark 100%
+                        );
+                    }
                 }
 
                 &.timedButton {

@@ -69,6 +69,12 @@ global:
         shift: SHIFT
         space: SPACE
 
+preload:
+    initializingSounds: Initializing sounds
+    initializingSavegames: Initializing savegames
+    checkingChangelog: Checking changelog
+    launching: Launching
+
 mainMenu:
     play: Play
     continue: Continue
@@ -187,6 +193,8 @@ dialogs:
             Are you sure you want to delete the following game?<br><br>
             '<savegameName>' at level <savegameLevel><br><br>
             This can not be undone!
+        desc: Are you sure you want to delete this savegame?
+        warningNote: This action cannot be undone.
 
     savegameDeletionError:
         title: Failed to delete
@@ -404,8 +412,11 @@ ingame:
         clearBelts: Clear belts
         clearSelection: Clear selection
         pipette: Pipette
+        moveBuilding: Transform
         switchLayers: Switch layers
         selectVariant: Select variant
+        undo: Undo
+        redo: Redo
 
     # Names of the colors, used for the color blind mode
     colors:
@@ -1276,6 +1287,8 @@ keybindings:
         toggleHud: Toggle HUD
         toggleFPSInfo: Toggle FPS and Debug Info
         switchLayers: Switch layers
+        undo: Undo
+        redo: Redo
         exportScreenshot: Export whole Base as Image
 
         # --- Do not translate the values in this section
@@ -1309,6 +1322,7 @@ keybindings:
         # ---
 
         pipette: Pipette
+        moveBuilding: Transform Building
         rotateWhilePlacing: Rotate
         rotateInverseModifier: >-
             Modifier: Rotate CCW instead

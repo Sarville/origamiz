@@ -31,6 +31,11 @@ global:
         space: ПРОБЕЛ
     loggingIn: Вход
     loadingResources: Скачивание дополнительных ресурсов (<percentage> %)
+preload:
+    initializingSounds: Инициализация звука
+    initializingSavegames: Инициализация сохранений
+    checkingChangelog: Проверка списка изменений
+    launching: Запуск
 mainMenu:
     play: Играть
     continue: Продолжить
@@ -72,6 +77,8 @@ dialogs:
         title: Подтвердите удаление.
         text: Вы уверены, что хотите удалить это сохранение?<br><br> '<savegameName>' на
             уровне <savegameLevel><br><br> Оно будет удалено безвозвратно!
+        desc: Вы действительно хотите удалить это сохранение?
+        warningNote: Это действие нельзя отменить.
     savegameDeletionError:
         title: Ошибка удаления
         text: Не удалось удалить сохранение игры.
@@ -246,9 +253,12 @@ ingame:
         copySelection: Копировать
         clearSelection: Отменить
         pipette: Пипетка
+        moveBuilding: Трансформация
         switchLayers: Переключить слои
         clearBelts: Очистить конвейеры
         selectVariant: Выбрать вариант
+        undo: Отменить
+        redo: Повторить
     colors:
         red: Красный
         green: Зеленый
@@ -1012,6 +1022,8 @@ keybindings:
         toggleHud: Включить/выключить интерфейс
         toggleFPSInfo: Включить/выключить FPS и информацию отладки
         switchLayers: Переключить слои
+        undo: Отменить действие
+        redo: Повторить действие
         exportScreenshot: Экспорт всей базы в виде изображения
         belt: Конвейер
         balancer: Балансировщик
@@ -1038,6 +1050,7 @@ keybindings:
         comparator: Сравнитель
         item_producer: Генератор ресурсов (песочница)
         pipette: Пипетка
+        moveBuilding: Трансформация постройки
         rotateWhilePlacing: Вращать
         rotateInverseModifier: "Модификатор: Вращать против часовой стрелки"
         rotateToUp: "Повернуть: направление вверх"

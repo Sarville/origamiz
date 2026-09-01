@@ -4,7 +4,6 @@ import { THIRDPARTY_URLS } from "../core/config";
 // Origamiz has its own. See config.ts.
 const SHOW_PRIVACY_LINK = false;
 import { TextualGameState } from "../core/textual_game_state";
-import { formatSecondsToTimeAgo } from "../core/utils";
 import { enumCategories } from "../profile/application_settings";
 import { T } from "../translations";
 
@@ -42,9 +41,6 @@ export class SettingsState extends TextualGameState {
             <div class="other">
                 <button class="styledButton about">${T.about.title}</button>
                 ${SHOW_PRIVACY_LINK ? `<button class="styledButton privacy">Privacy Policy</button>` : ""}
-                <div class="versionbar">
-                    <div class="buildVersion">${T.global.loading} ...</div>
-                </div>
             </div>
         </div>
 
@@ -91,28 +87,7 @@ export class SettingsState extends TextualGameState {
             .join("");
     }
 
-    renderBuildText() {
-        const labelVersion = this.htmlElement.querySelector(".buildVersion");
-        if (!labelVersion) {
-            return;
-        }
-        const lastBuildMs = new Date().getTime() - G_BUILD_TIME;
-        const lastBuildText = formatSecondsToTimeAgo(lastBuildMs / 1000.0);
-
-        const version = T.settings.versionBadges[G_APP_ENVIRONMENT];
-
-        labelVersion.innerHTML = `
-            <span class='version'>
-                ${G_BUILD_VERSION} @ ${version} @ ${G_BUILD_COMMIT_HASH}
-            </span>
-            <span class='buildTime'>
-                ${T.settings.buildDate.replace("<at-date>", lastBuildText)}<br />
-            </span>`;
-    }
-
     onEnter(payload) {
-        this.renderBuildText();
-
         this.trackClicks(this.htmlElement.querySelector(".about"), this.onAboutClicked, {
             preventDefault: false,
         });

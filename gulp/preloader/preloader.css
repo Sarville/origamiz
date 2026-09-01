@@ -55,7 +55,11 @@ body {
     justify-content: center;
     place-items: center;
     background: #e0d6bd;
-    grid-template-rows: 1fr 200px;
+    /* minmax(...) instead of a flat 200px - a long hint wrapping to 2-3
+       lines on a narrow phone needs more room than one line does, and a
+       hard-capped track let it overflow into the progress bar/status text
+       below instead of pushing them down. */
+    grid-template-rows: 1fr minmax(200px, auto);
     grid-gap: 40px;
     padding: 20px;
     font-size: 14px;
@@ -77,9 +81,13 @@ body {
     text-align: center;
     color: #777a7f;
     font-family: "GameFont", Arial, sans-serif;
-    font-size: 24px;
-    height: 30px;
-    line-height: 1.2;
+    /* Was a flat 24px - too large on narrow phones, where a long hint wraps
+       to 2-3 lines; clamp() shrinks it there instead of overflowing past
+       the fixed height below into the progress bar/status text. */
+    font-size: clamp(14px, 4vw, 22px);
+    min-height: 30px;
+    line-height: 1.25;
+    max-width: 90vw;
 }
 
 #ll_progressbar {
@@ -138,7 +146,11 @@ body {
     transform: translate(-50%, -50%);
     z-index: 100;
     opacity: 1 !important;
-    font-size: 18px;
+    /* Was a flat 18px - reduced and made responsive alongside .ll_text
+       above, same reasoning (long "Downloading resources (X %)" status
+       wrapping on narrow phones). */
+    font-size: clamp(11px, 3vw, 16px);
+    max-width: 90vw;
     color: rgba(0, 10, 20, 0.5);
 
     font-family: "GameFont", Arial, sans-serif;

@@ -28,6 +28,8 @@ export const KEYMAPPINGS = {
         toggleFPSInfo: { keyCode: KEYCODES.F4 },
 
         switchLayers: { keyCode: keyToKeyCode("E") },
+        undo: { keyCode: keyToKeyCode("Z"), modifiers: { ctrl: true } },
+        redo: { keyCode: keyToKeyCode("X"), modifiers: { ctrl: true } },
 
         showShapeTooltip: { keyCode: KEYCODES.Alt },
     },
@@ -86,6 +88,7 @@ export const KEYMAPPINGS = {
 
     placement: {
         pipette: { keyCode: keyToKeyCode("Q") },
+        moveBuilding: { keyCode: keyToKeyCode("T") },
         rotateWhilePlacing: { keyCode: keyToKeyCode("R") },
         rotateInverseModifier: { keyCode: KEYCODES.Shift },
         rotateToUp: { keyCode: KEYCODES.ArrowUp },

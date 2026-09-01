@@ -172,6 +172,20 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
 
 
             {
+                // Undo
+                label: T.ingame.keybindingsOverlay.undo,
+                keys: [k.massSelect.massSelectStart, ADDER_TOKEN, k.ingame.undo],
+                condition: () => this.root.actionHistory.canUndo,
+            },
+
+            {
+                // Redo
+                label: T.ingame.keybindingsOverlay.redo,
+                keys: [k.massSelect.massSelectStart, ADDER_TOKEN, k.ingame.redo],
+                condition: () => this.root.actionHistory.canRedo,
+            },
+
+            {
                 // [OVERVIEW] Create marker with right click
                 label: T.ingame.keybindingsOverlay.createMarker,
                 keys: [KEYCODE_RMB],
@@ -198,6 +212,13 @@ export class HUDKeybindingOverlay extends BaseHUDPart {
                 label: T.ingame.keybindingsOverlay.pipette,
                 keys: [k.placement.pipette],
                 condition: () => !this.mapOverviewActive && !this.blueprintPlacementActive,
+            },
+
+            {
+                // Transform (item 4): pick up the building under the cursor
+                label: T.ingame.keybindingsOverlay.moveBuilding,
+                keys: [k.placement.moveBuilding],
+                condition: () => !this.mapOverviewActive && !this.anyPlacementActive,
             },
 
             {

@@ -164,6 +164,11 @@ export class HUDMassSelector extends BaseHUDPart {
     }
 
     confirmCut() {
+        if (this.root.keyMapper.getBinding(KEYMAPPINGS.massSelect.massSelectStart).pressed) {
+            // Ctrl held - this is the new Ctrl+X redo binding, which shares
+            // this plain-X binding's key. Don't also cut the selection.
+            return;
+        }
         if (!this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_blueprints)) {
             this.showBlueprintsNotUnlocked();
         } else if (

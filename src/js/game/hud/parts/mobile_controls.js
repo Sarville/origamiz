@@ -9,6 +9,7 @@ import { enumMouseButton } from "../../camera";
 import { StaticMapEntityComponent } from "../../components/static_map_entity";
 import { Entity } from "../../entity";
 import { defaultBuildingVariant } from "../../meta_building";
+import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
 import { BeltPathPlanner } from "./belt_path_planner";
 import { OverviewBuildingPolicy } from "./overview_building";
@@ -73,6 +74,14 @@ export class HUDMobileControls extends BaseHUDPart {
         this.element.appendChild(this.deleteButton);
         this.trackClicks(this.deleteButton, this.onDeleteClicked);
 
+        // Item 3: tap to enter pipette mode, then tap a placed building to
+        // pick up its type (without touching the original) - see
+        // onPipetteClicked/onMouseDown.
+        this.pipetteButton = document.createElement("button");
+        this.pipetteButton.classList.add("pipette");
+        this.element.appendChild(this.pipetteButton);
+        this.trackClicks(this.pipetteButton, this.onPipetteClicked);
+
         this.undoButton = document.createElement("button");
         this.undoButton.classList.add("undo", "disabled");
         this.element.appendChild(this.undoButton);
@@ -82,6 +91,14 @@ export class HUDMobileControls extends BaseHUDPart {
         this.redoButton.classList.add("redo", "disabled");
         this.element.appendChild(this.redoButton);
         this.trackClicks(this.redoButton, this.onRedoClicked);
+
+        // Item 1: toggles between the regular and wires layers - hidden
+        // until wires are unlocked (see update()), same reward gate
+        // switchLayers itself uses on desktop.
+        this.layersButton = document.createElement("button");
+        this.layersButton.classList.add("layers");
+        this.element.appendChild(this.layersButton);
+        this.trackClicks(this.layersButton, this.onLayersClicked);
 
         // Enters select mode (2c-5, item 2) - tap/drag on the map then
         // selects buildings (via the shared HUDMassSelector, see
@@ -202,6 +219,11 @@ export class HUDMobileControls extends BaseHUDPart {
         this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
 
         this.deleteModeActive = false;
+
+        // Item 3: true after tapping the pipette icon, until the next map
+        // tap (which picks up whatever's there, or nothing) - see
+        // onPipetteClicked/onMouseDown.
+        this.pipetteModeActive = false;
 
         // 2c-5 (item 2): tap-to-select / drag-to-rubber-band-select, driven
         // directly through the desktop HUDMassSelector's own state/rendering
@@ -361,6 +383,7 @@ export class HUDMobileControls extends BaseHUDPart {
             this.deleteModeActive = false;
             this.deleteButton.classList.remove("active");
             this.exitSelectMode();
+            this.exitPipetteMode();
             this.exitCopiedBlueprintMode();
             this.clearIdleHold();
             // No manual toggle for this on mobile (no room for one more button) -
@@ -471,7 +494,43 @@ export class HUDMobileControls extends BaseHUDPart {
         this.deleteModeActive = !this.deleteModeActive;
         this.deleteButton.classList.toggle("active", this.deleteModeActive);
         if (this.deleteModeActive) {
+            this.exitPipetteMode();
             this.placerLogic.currentMetaBuilding.set(null);
+        }
+    }
+
+    /**
+     * Item 3: toggles pipette mode - the next map tap picks up whatever
+     * building is there (via HUDBuildingPlacerLogic.pipetteAt, shared with
+     * desktop's Q-key pipette) instead of placing/deleting/selecting.
+     */
+    onPipetteClicked() {
+        if (this.pipetteModeActive) {
+            this.exitPipetteMode();
+            return;
+        }
+        this.deleteModeActive = false;
+        this.deleteButton.classList.remove("active");
+        this.exitSelectMode();
+        this.placerLogic.currentMetaBuilding.set(null);
+        this.pipetteModeActive = true;
+        this.pipetteButton.classList.add("active");
+    }
+
+    exitPipetteMode() {
+        this.pipetteModeActive = false;
+        this.pipetteButton.classList.remove("active");
+    }
+
+    /**
+     * Item 1: toggles between the regular and wires layers - thin wrapper
+     * over HUDWiresOverlay.switchLayers (shared with desktop's "E" key), so
+     * the unlock check/editModeChanged dispatch only lives in one place.
+     */
+    onLayersClicked() {
+        const wiresOverlay = this.root.hud.parts.wiresOverlay;
+        if (wiresOverlay) {
+            wiresOverlay.switchLayers();
         }
     }
 
@@ -500,6 +559,7 @@ export class HUDMobileControls extends BaseHUDPart {
         }
         this.deleteModeActive = false;
         this.deleteButton.classList.remove("active");
+        this.exitPipetteMode();
         this.placerLogic.currentMetaBuilding.set(null);
         this.selectModeActive = true;
         this.selectButton.classList.add("active");
@@ -958,6 +1018,7 @@ export class HUDMobileControls extends BaseHUDPart {
             if (
                 this.deleteModeActive ||
                 this.selectModeActive ||
+                this.pipetteModeActive ||
                 !metaBuilding ||
                 !this.overviewBuildingPolicy.isAllowed()
             ) {
@@ -980,6 +1041,15 @@ export class HUDMobileControls extends BaseHUDPart {
             // bands an area, both handled uniformly by its own onMouseUp.
             this.massSelector.currentSelectionStartWorld = this.root.camera.screenToWorld(pos.copy());
             this.massSelector.currentSelectionEnd = pos.copy();
+            return STOP_PROPAGATION;
+        }
+
+        if (this.pipetteModeActive) {
+            // Item 3: picks up whatever's at the tapped tile (or nothing) via
+            // the same logic desktop's Q key uses - see pipetteAt's doc.
+            const tile = this.root.camera.screenToWorld(pos).toTileSpace();
+            this.placerLogic.pipetteAt(tile);
+            this.exitPipetteMode();
             return STOP_PROPAGATION;
         }
 
@@ -1342,6 +1412,16 @@ export class HUDMobileControls extends BaseHUDPart {
         // unrelated history it could otherwise undo into.
         this.beltUndoButton.classList.toggle("disabled", !this.lastBeltTile);
         this.redoButton.classList.toggle("disabled", !this.root.actionHistory.canRedo);
+
+        // Item 1: only shown once wires are unlocked - same gate
+        // HUDWiresOverlay.switchLayers itself checks before actually
+        // switching.
+        const layersAvailable =
+            this.root.gameMode.getSupportsWires() &&
+            (this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_wires_painter_and_levers) ||
+                (G_IS_DEV && globalConfig.debug.allBuildingsUnlocked));
+        this.layersButton.hidden = !layersAvailable;
+        this.layersButton.classList.toggle("active", this.root.currentLayer === "wires");
 
         if (this.invalidBeltFlash && this.root.time.realtimeNow() - this.invalidBeltFlash.startedAt > 0.6) {
             this.invalidBeltFlash = null;

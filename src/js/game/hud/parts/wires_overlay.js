@@ -78,6 +78,12 @@ export class HUDWiresOverlay extends BaseHUDPart {
             return;
         }
 
+        if (this.root.keyMapper.getBinding(KEYMAPPINGS.massSelect.massSelectStart).pressed) {
+            // Ctrl held - this is the new Ctrl+Z undo binding, which shares
+            // this plain-Z binding's key. Don't also copy the wire value.
+            return;
+        }
+
         const mousePos = this.root.app.mousePosition;
         if (!mousePos) {
             return;

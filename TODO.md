@@ -1024,9 +1024,9 @@ logs.
         afterward placed its own correct L-shaped corner belt, confirming
         no regression to desktop's existing (unrelated) drag flow. Zero
         console/page errors throughout.
-      - [ ] **2c-9 — Desktop/mobile mechanic parity audit, done 2026-09-01
-        (not started, just catalogued - user asked to "cross-check what's
-        missing each direction").** Read every `KEYMAPPINGS` binding and
+      - [x] **2c-9 — Desktop/mobile mechanic parity audit, catalogued
+        2026-09-01, five of the gaps below closed the same day per an
+        explicit follow-up user request.** Read every `KEYMAPPINGS` binding and
         every mobile gesture/button to compare. Ranked by how much it
         actually blocks something (not just cosmetic):
         - **Biggest gap, desktop-only: mobile cannot reach the wires layer
@@ -1092,6 +1092,134 @@ logs.
           button - equivalent), mass-select rubber-band (Ctrl+drag vs.
           mobile's pencil mode drag - equivalent, already cross-shared per
           2c-5/2c-6 follow-ups).
+
+        **Follow-up, same day - five of the gaps above closed per explicit
+        user request.**
+        1. **Mobile layers toggle.** New idle-row icon (hand-drawn "stacked
+           rhombus + two chevrons" glyph, `mobile_controls.scss`'s `.layers`)
+           right below undo/redo, hidden via the native `hidden` DOM property
+           (toggled every frame in `update()` against the same
+           `reward_wires_painter_and_levers` unlock `HUDWiresOverlay.
+           switchLayers` itself checks) until wires are unlocked - had to add
+           an explicit `> .layers[hidden] { display: none; }` rule, since the
+           `[hidden]` UA-stylesheet default loses the cascade to the
+           `MobileHudButton` mixin's own `display: inline-flex` otherwise
+           (author CSS always beats UA CSS regardless of specificity).
+           `onLayersClicked` just calls the existing
+           `root.hud.parts.wiresOverlay.switchLayers()` - no new logic
+           duplicated, matches desktop's "E" key exactly, wires
+           toolbar/rendering already reacts to `currentLayer` on its own.
+           Still doesn't close the underlying "wire/gate/lever buildings
+           needed a toolbar page for the wires layer" gap noted above - that
+           was already fixed for mobile once this toggle exists, since
+           `HUDWiresToolbar`'s visibility already just keys off
+           `currentLayer`.
+        2. **Desktop undo/redo, Ctrl+Z/Ctrl+X.** New `KEYMAPPINGS.ingame.undo`/
+           `.redo` (`modifiers: { ctrl: true }`), handlers in
+           `HUDBuildingPlacerLogic` mirroring mobile's
+           `onUndoClicked`/`onRedoClicked` (including rolling
+           `lastBeltTile`/`lastBeltIncomingDirection` back/forward off the
+           undo/redo transaction's own `meta`). The *real* work here wasn't
+           the keybinding - it was discovered that desktop placements/
+           deletions were **never wrapped in an `actionHistory` transaction
+           at all** (only mass-select cut/copy, blueprint paste, and the
+           belt-path-planner's own `placePath` self-wrap were), so undo would
+           have silently done nothing for ordinary building placement. Fixed
+           at the root: `tryPlaceCurrentBuildingAt` (the single call site
+           every placement path already routes through - a click, a
+           Bresenham-drag tile, a direction-locked placement, an
+           overview-zoom tap) now wraps its own `tryPlaceBuilding` call in a
+           tight begin/end transaction, and the two raw `tryDeleteBuilding`
+           call sites (`deleteBelowCursor`, the Bresenham drag's own deletion
+           branch) got the same tight wrap. Deliberately *not* one transaction
+           spanning a whole mouse-down-to-mouse-up drag (would risk a
+           permanently-stuck open transaction if a dialog interrupts mid-drag,
+           since `beginTransaction()` unconditionally overwrites without
+           checking for one already open) - each tile of a fast drag is its
+           own undo step instead, a known, accepted granularity tradeoff, not
+           a bug. `key_action_mapper.js`'s Ctrl+Z/Ctrl+X collide at the raw
+           keyCode level with two pre-existing plain-key bindings
+           (`placement.copyWireValue` on Z, `massSelect.massSelectCut` on X -
+           neither had an actual Ctrl requirement before, they just never
+           mattered on their own) - both handlers (`wires_overlay.js`
+           `copyWireValue`, `mass_selector.js` `confirmCut`) now bail early
+           when Ctrl (`massSelectStart`'s own binding) is held, so the new
+           chords don't also fire the old action. Both keys plus new
+           `keybinding_overlay.js` entries (right after the "Move map" line,
+           confirmed live to be the visible "second line") wired up
+           automatically via the existing generic `KeybindingsState`/
+           `T.keybindings.mappings` machinery - no new settings-screen code
+           needed.
+        3. **Mobile pipette.** New `pipetteAt(tile)` on
+           `HUDBuildingPlacerLogic`, refactored out of `startPipette` (which
+           now just resolves the mouse-position tile and calls it) so mobile
+           shares the exact same extraction/miner-on-patch logic instead of
+           reimplementing it. New idle-row icon (hand-drawn eyedropper -
+           bulb ring + diagonal body + a solid drop, `.pipette` in
+           `mobile_controls.scss`) right below the trash icon; tapping it
+           enters a one-shot `pipetteModeActive` mode (mutually exclusive
+           with delete/select mode, same pattern those already use) - the
+           next map tap calls `pipetteAt` and exits the mode.
+        4. **Desktop transform/move, "T".** New `startTransform()` on
+           `HUDBuildingPlacerLogic`, mirroring mobile's own
+           `beginMoveExistingBuilding` almost line for line: picks up the
+           building under the mouse (deleting the original inside its own
+           transaction), sets `movedBuildingCut`, then reuses the *ordinary*
+           placement flow desktop already has for everything else - left
+           click confirms (`tryPlaceCurrentBuildingAt`, already bound),
+           rotate is the existing "R" binding, no new mouse handling needed
+           at all. Only two things had to change in already-existing code:
+           `abortPlacement()` now restores the picked-up original via
+           `actionHistory.undo()` when `movedBuildingCut` is set (and the
+           right-click "cancel placement" branch in `onMouseDown` now calls
+           `abortPlacement()` instead of nulling `currentMetaBuilding`
+           directly, so Escape and right-click both restore correctly); a
+           successful `tryPlaceCurrentBuildingAt` calls
+           `actionHistory.combineLastTwo()` when `movedBuildingCut`, so one
+           undo after a confirmed move goes straight back to the original
+           tile (matches mobile's own merge). A no-op while something's
+           already selected for placement, so "T" still means
+           `cycleBuildingVariants` in that context exactly as before (two
+           bindings sharing one physical key, same pattern already used by
+           "R" for `rotateWhilePlacing`/`switchDirectionLockSide`). New
+           `keybinding_overlay.js`/`keybindings.mappings` entries, labeled
+           "Transform"/"Трансформация" per the user's own wording, placed
+           right after the existing Pipette line.
+        5. **Desktop belt continuation across zoom.** Root cause: `lastBeltTile`/
+           `lastBeltIncomingDirection` (2c-8's own overview-continuation
+           state) were *only* ever written by the overview-zoom code path
+           (`placeBeltTapAt`) - a normal-zoom click or drag never touched
+           them, so zooming out and clicking always started a fresh,
+           disconnected segment instead of continuing whatever was just
+           built at normal zoom. Fixed at both normal-zoom write sites:
+           `onMouseDown`'s belt anchor-tile placement now also captures
+           `lastBeltTile`/`lastBeltIncomingDirection` off the just-placed
+           tile (mirrors `placeBeltTapAt`'s own single-tile branch);
+           `onMouseUp`'s drag-commit now passes a `continuationBefore` to
+           `BeltPathPlanner.placePath` (previously omitted, unlike mobile's
+           own call) and reads `lastTile`/`lastIncoming` back off the result -
+           this also fixed the transaction `meta` for that commit, which
+           `onUndo`/`onRedo` (new in item 2) need to keep `lastBeltTile` in
+           sync across undo/redo of a belt drag, same as mobile.
+        - Verified live via Playwright against the dev server throughout:
+          undo/redo round-tripped a belt placement exactly (2 tiles → undo →
+          undo → both gone → redo ×2 → both back, keybinding-overlay hints
+          appearing/disappearing with `canUndo`/`canRedo` at each step); "T"
+          picked up a placed belt tile, moved it, and confirmed with no
+          duplicate left behind, a single Ctrl+Z afterward restored the
+          *original* tile in one step (`combineLastTwo` confirmed), and a
+          separate run confirmed right-click cancel restores the original
+          with no ghost/ duplicate either; a belt placed with a single plain
+          click at normal zoom, then continued with one click after zooming
+          into map overview, came back as one unbroken connected run instead
+          of two disconnected segments once zoomed back in; mobile idle row
+          (412×915 touch/mobile emulation) renders trash/pipette/undo/redo/
+          pencil with the layers icon correctly hidden pre-wires-unlock, and
+          the pipette/layers SVGs render cleanly in isolation. Zero console/
+          page errors across every run. `npx tsc --noEmit` and `npx eslint`
+          on every touched file showed the same pre-existing, unrelated
+          error/warning counts as the pre-change baseline (`git stash`
+          comparison) - no new errors introduced.
       - [x] **2c-6 — Auto-tunnel placement (item 9), mobile part done
         2026-08-31.** New `resolveBeltPath()` in `mobile_controls.js`: given a
         raw belt tile path (a drag or a tap-continuation), scans for runs of
@@ -2231,6 +2359,66 @@ logs.
       Since puzzle content is just building layout + shape goals (theme-agnostic),
       it'll automatically pick up whatever rebranded building sprites Chunk 1's
       asset work produces — no puzzle-specific rebrand work needed.
+
+- [x] **Main menu (desktop) cleanup, done 2026-09-01, same session as 2c-9.**
+      User asked to remove the language-flag icon, the "Список изменений"/"Помоги
+      с переводом" footer links, the Puzzle DLC card, the Import button, and the
+      Mods button from the desktop main screen (`main_menu.js`/`.scss`) - not the
+      underlying features, just these entry points (language is still changeable
+      via the generic Settings-screen `EnumSetting` row; `ChangelogState`/
+      `PuzzleMenuState`/mods-difference-checking code all left intact for later).
+      `mainWrapper`'s `data-columns` is now `hasMods ? 2 : 1` instead of a
+      hardcoded `2`, and the small-button `.outer` div is only appended when it
+      actually has a child (previously always appended, even empty) - otherwise
+      removing Import+Mods would've left an empty grid column/dead space. Also,
+      while in there: removed the unused build-version/commit-hash footer
+      (`.versionbar`, `renderBuildText()`) from the Settings screen per a
+      follow-up user request (separate screenshot, same session).
+      Then, per two more follow-ups in the same session: the in-game
+      keybinding-overlay hints for the new undo/redo (see 2c-9 above) didn't
+      show the required Ctrl modifier - fixed by adding
+      `k.massSelect.massSelectStart, ADDER_TOKEN` ahead of the key, same pattern
+      the existing "Area select" hint already uses, so they now read "CTRL + Z"/
+      "CTRL + X". And: the preload/boot screen showed a few hardcoded-English
+      status labels ("Initializing savegames", "Checking changelog", "Launching",
+      the "Downloading resources" line) regardless of language, plus a subtler
+      bug - the very first loading *tip* (`hints.js`'s `getRandomHint()`, reads
+      `T.tips` at call time) could render in English even on a Russian profile,
+      because `PreloadState.update()` starts ticking immediately in `onEnter()`,
+      racing ahead of the async settings/language-detection promise chain, and
+      then that first tip's own multi-second display duration (`nextHintDuration`)
+      kept it on screen well after the language actually flipped. Fixed: new
+      `T.preload.*` keys (`initializingSounds`/`initializingSavegames`/
+      `checkingChangelog`/`launching`) for statuses that happen *after* language
+      is known in the boot sequence, `T.global.loadingResources` reused (already
+      existed, already used by in-game loading) instead of hardcoding "Downloading
+      resources"; a few earlier statuses ("Booting", "Creating platform wrapper/
+      storage", "Initializing settings/language" themselves) are left in English
+      as a hard technical floor - they run *before* the language is determined,
+      so there's nothing to translate them *into* yet (same for `index.html`'s
+      static "Downloading Game" placeholder, shown before the JS bundle has even
+      parsed). New `this.languageReady` flag, set once
+      `updateApplicationLanguage()` resolves, gates `update()`'s hint logic so no
+      tip - localized or not - renders before the real language is applied.
+      First YAML edit attempt for the new `preload:` block in `base-en.yaml`
+      accidentally landed *inside* `global:` (same indentation as `global`'s own
+      later keys, silently re-parenting `thousandsDivider`/`suffix`/`time`/`keys`
+      etc. under `preload` instead) - caught via `python3 -c "import yaml; ..."`
+      round-tripping both files before moving on, not just a visual glance at the
+      diff; moved to its own top-level section after `global:` ends and
+      re-verified. Verified live via Playwright against the dev server
+      throughout: main menu screenshots with/without a savegame present (both
+      layouts clean, no empty gaps from the removed Import/Mods column), Settings
+      screen (version footer gone, language row still functional), and a DOM-
+      polling capture of every preload status/hint transition in one run -
+      confirmed "ИНИЦИАЛИЗАЦИЯ СОХРАНЕНИЙ", "СКАЧИВАНИЕ ДОПОЛНИТЕЛЬНЫХ РЕСУРСОВ
+      (X %)", "ПРОВЕРКА СПИСКА ИЗМЕНЕНИЙ", "ЗАПУСК" all in Russian, and the very
+      first hint captured was already Russian too. `npx tsc --noEmit`/`npx
+      eslint` on every touched file matched the pre-change baseline exactly (`git
+      stash` comparison) - no new errors/warnings. Also trimmed the now-dead CSS
+      those removed elements left behind (`.languageChoose`, `.puzzleContainer`,
+      `.footerGrow`, `.versionbar`, a couple of mobile-only `.modsButton`/
+      `.importButton` overrides) rather than leaving unreachable selectors.
 
 ## Later
 

@@ -178,6 +178,18 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
          */
         this.currentDirectionLockSideIndeterminate = true;
 
+        /**
+         * Item 4 (desktop transform/move, "T"): true while currentMetaBuilding
+         * stands in for a real building picked up via startTransform (which
+         * already deleted it), so cancelling the placement should restore the
+         * original with a plain undo() instead of just losing it, and
+         * confirming it should collapse the pickup's delete and the new
+         * placement into a single undo step - mirrors mobile's own
+         * movedBuildingCut (HUDMobileControls.beginMoveExistingBuilding).
+         * @type {boolean}
+         */
+        this.movedBuildingCut = false;
+
         this.initializeBindings();
     }
 
@@ -200,6 +212,9 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             .add(this.switchDirectionLockSide, this);
         keyActionMapper.getBinding(KEYMAPPINGS.general.back).add(this.abortPlacement, this);
         keyActionMapper.getBinding(KEYMAPPINGS.placement.pipette).add(this.startPipette, this);
+        keyActionMapper.getBinding(KEYMAPPINGS.placement.moveBuilding).add(this.startTransform, this);
+        keyActionMapper.getBinding(KEYMAPPINGS.ingame.undo).add(this.onUndo, this);
+        keyActionMapper.getBinding(KEYMAPPINGS.ingame.redo).add(this.onRedo, this);
         this.root.gameState.inputReceiver.keyup.add(this.checkForDirectionLockSwitch, this);
 
         // BINDINGS TO GAME EVENTS
@@ -320,6 +335,12 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      */
     abortPlacement() {
         if (this.currentMetaBuilding.get()) {
+            if (this.movedBuildingCut && this.root.actionHistory.canUndo) {
+                // Restore the building startTransform picked up, same as
+                // mobile's onCancelClicked.
+                this.root.actionHistory.undo();
+            }
+            this.movedBuildingCut = false;
             this.currentMetaBuilding.set(null);
             return STOP_PROPAGATION;
         }
@@ -512,7 +533,10 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         const tile = worldPos.toTileSpace();
         const contents = this.root.map.getTileContent(tile, this.root.currentLayer);
         if (contents) {
-            if (this.root.logic.tryDeleteBuilding(contents)) {
+            this.root.actionHistory.beginTransaction();
+            const deleted = this.root.logic.tryDeleteBuilding(contents);
+            this.root.actionHistory.endTransaction();
+            if (deleted) {
                 this.root.soundProxy.playUi(SOUNDS.destroyBuilding);
                 return true;
             }
@@ -537,7 +561,17 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
 
         const worldPos = this.root.camera.screenToWorld(mousePosition);
         const tile = worldPos.toTileSpace();
+        this.pipetteAt(tile);
+    }
 
+    /**
+     * Extracts the building type at the given tile into currentMetaBuilding
+     * for further placement, without touching the original - shared by
+     * startPipette (desktop's mouse-position-driven Q key) and mobile's own
+     * tap-driven pipette mode (HUDMobileControls.onMouseDown).
+     * @param {Vector} tile
+     */
+    pipetteAt(tile) {
         const contents = this.root.map.getTileContent(tile, this.root.currentLayer);
         if (!contents) {
             const tileBelow = this.root.map.getLowerLayerContentXY(tile.x, tile.y);
@@ -593,6 +627,83 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
     }
 
     /**
+     * Item 4: picks up the building under the cursor into the normal
+     * placement flow (mirrors mobile's HUDMobileControls.
+     * beginMoveExistingBuilding) - unlike pipetteAt, this deletes the
+     * original, so it can be rotated (the existing rotateWhilePlacing
+     * binding) and moved (the mouse) like a fresh building, confirmed with a
+     * left click (tryPlaceCurrentBuildingAt, unchanged) or cancelled with a
+     * right click/Escape (abortPlacement, which restores the original via
+     * movedBuildingCut). A no-op while something is already selected for
+     * placement, so cycleBuildingVariants (also bound to "T") keeps working
+     * as before whenever a building is actively being placed.
+     */
+    startTransform() {
+        if (this.currentMetaBuilding.get()) {
+            return;
+        }
+
+        if (this.root.camera.getIsMapOverlayActive()) {
+            return;
+        }
+
+        const mousePosition = this.root.app.mousePosition;
+        if (!mousePosition) {
+            // Not on screen
+            return;
+        }
+
+        const worldPos = this.root.camera.screenToWorld(mousePosition);
+        const tile = worldPos.toTileSpace();
+        const contents = this.root.map.getTileContent(tile, this.root.currentLayer);
+        if (!contents || !this.root.logic.canDeleteBuilding(contents)) {
+            // Nothing there, or e.g. the hub - nothing to pick up.
+            return;
+        }
+
+        const staticComp = contents.components.StaticMapEntity;
+        const extracted = getBuildingDataFromCode(staticComp.code);
+        const originRotation = staticComp.rotation;
+
+        this.root.actionHistory.beginTransaction();
+        const deleted = this.root.logic.tryDeleteBuilding(contents);
+        this.root.actionHistory.endTransaction();
+        if (!deleted) {
+            return;
+        }
+
+        this.movedBuildingCut = true;
+        this.currentMetaBuilding.set(extracted.metaInstance);
+        this.currentVariant.set(extracted.variant);
+        this.currentBaseRotation = originRotation;
+    }
+
+    /**
+     * Global undo/redo (Ctrl+Z/Ctrl+X) - mirrors HUDMobileControls.
+     * onUndoClicked/onRedoClicked, including keeping the overview-zoom belt
+     * continuation state (lastBeltTile/lastBeltIncomingDirection, item 9) in
+     * sync via the transaction's own meta.
+     */
+    onUndo() {
+        if (this.root.actionHistory.canUndo) {
+            const meta = this.root.actionHistory.undo();
+            this.lastBeltTile = meta ? meta.beltTileBefore : null;
+            this.lastBeltIncomingDirection = meta ? meta.beltIncomingBefore : undefined;
+        }
+    }
+
+    /**
+     * @see onUndo
+     */
+    onRedo() {
+        if (this.root.actionHistory.canRedo) {
+            const meta = this.root.actionHistory.redo();
+            this.lastBeltTile = meta ? meta.beltTileAfter : null;
+            this.lastBeltIncomingDirection = meta ? meta.beltIncomingAfter : undefined;
+        }
+    }
+
+    /**
      * Switches the side for the direction lock manually
      */
     switchDirectionLockSide() {
@@ -634,6 +745,14 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             layer: metaBuilding.getLayer(),
         });
 
+        // One transaction per placement attempt, including any side effects
+        // it triggers synchronously inside tryPlaceBuilding itself (e.g.
+        // underground_belt.js's own tunnel-pair cleanup) - see
+        // ActionHistory's class doc. Every caller (a single click, one tile
+        // of a Bresenham drag, a direction-locked placement, an overview-zoom
+        // tap) gets undo/redo for free this way, with nothing extra to wrap
+        // at each call site.
+        this.root.actionHistory.beginTransaction();
         const entity = this.root.logic.tryPlaceBuilding({
             origin: tile,
             rotation,
@@ -642,10 +761,20 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             building: this.currentMetaBuilding.get(),
             variant: this.currentVariant.get(),
         });
+        this.root.actionHistory.endTransaction();
 
         if (entity) {
             // Succesfully placed, find which entity we actually placed
             this.root.signals.entityManuallyPlaced.dispatch(entity);
+
+            if (this.movedBuildingCut) {
+                // A confirmed transform (item 4) is a deliberate choice, not
+                // something left to revert any more (see abortPlacement) -
+                // collapse the pickup's delete and this placement into a
+                // single undo step, mirroring mobile's placeSingle.
+                this.root.actionHistory.combineLastTwo();
+                this.movedBuildingCut = false;
+            }
 
             // Check if we should flip the orientation (used for tunnels)
             if (
@@ -914,6 +1043,23 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             if (!this.isDirectionLockActive) {
                 if (this.tryPlaceCurrentBuildingAt(this.lastDragTile)) {
                     this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
+
+                    // Item 9 (normal zoom): this anchor tile is a genuine
+                    // belt placement too, same as any tap-continuation or
+                    // drag commit below - keep lastBeltTile up to date so a
+                    // later click while zoomed into map overview continues
+                    // from here (placeBeltTapAt) instead of starting a fresh,
+                    // disconnected segment. Previously only overview clicks
+                    // ever wrote this, so normal-zoom activity was invisible
+                    // to it.
+                    if (this.isBeltSelected) {
+                        this.lastBeltTile = this.lastDragTile;
+                        this.lastBeltIncomingDirection = this.root.map.getLayerContentXY(
+                            this.lastDragTile.x,
+                            this.lastDragTile.y,
+                            "regular"
+                        )?.components.StaticMapEntity.rotation;
+                    }
                 }
 
                 // Item 9: belt drags from here on are a preview committed on
@@ -945,7 +1091,7 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
 
         // Cancel placement
         if (button === enumMouseButton.right && metaBuilding) {
-            this.currentMetaBuilding.set(null);
+            this.abortPlacement();
         }
     }
 
@@ -1035,7 +1181,10 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                             // Deletion
                             const contents = this.root.map.getLayerContentXY(x0, y0, this.root.currentLayer);
                             if (contents && !contents.queuedForDestroy && !contents.destroyed) {
-                                if (this.root.logic.tryDeleteBuilding(contents)) {
+                                this.root.actionHistory.beginTransaction();
+                                const deleted = this.root.logic.tryDeleteBuilding(contents);
+                                this.root.actionHistory.endTransaction();
+                                if (deleted) {
                                     anythingDeleted = true;
                                 }
                             }
@@ -1093,7 +1242,19 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 // red instead of placing a gapped/broken belt.
                 this.flashInvalidBelt(this.beltDragPath);
             } else if (this.beltDragPreviewEntries.length > 0) {
-                this.beltPathPlanner.placePath(this.beltDragPreviewEntries);
+                // Item 9 (normal zoom): thread lastBeltTile through the same
+                // way placeBeltTapAt does, so a later overview-zoom click
+                // continues from wherever this drag ended instead of
+                // starting a fresh segment - see the anchor-tile capture in
+                // onMouseDown for the other half of this.
+                const result = this.beltPathPlanner.placePath(this.beltDragPreviewEntries, {
+                    tile: this.lastBeltTile,
+                    incoming: this.lastBeltIncomingDirection,
+                });
+                if (result.placed) {
+                    this.lastBeltTile = result.lastTile;
+                    this.lastBeltIncomingDirection = result.lastIncoming;
+                }
             }
         }
 

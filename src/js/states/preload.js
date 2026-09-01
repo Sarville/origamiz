@@ -36,6 +36,14 @@ export class PreloadState extends GameState {
         this.hintsText = this.htmlElement.querySelector("#preload_ll_text");
         this.lastHintShown = -1000;
         this.nextHintDuration = 0;
+        // Gated in update() - update() starts ticking immediately, which can
+        // race ahead of the async settings/language-detection chain below
+        // and show the very first tip (getRandomHint() reads T.tips at call
+        // time) before the real language is applied, then leave it up for
+        // its own multi-second duration regardless of the language flipping
+        // shortly after. Set true once startLoading()'s chain confirms the
+        // language is actually applied.
+        this.languageReady = false;
 
         /** @type {HTMLElement} */
         this.statusText = this.htmlElement.querySelector("#ll_preload_status");
@@ -87,13 +95,22 @@ export class PreloadState extends GameState {
                 const language = this.app.settings.getLanguage();
                 return updateApplicationLanguage(language);
             })
+            .then(() => {
+                // Everything above this point runs before the language is
+                // known (it's what determines it), so those status labels
+                // and the very first tip - update() starts ticking as soon
+                // as onEnter() runs, potentially before this promise chain
+                // gets here - stay in English by necessity. Everything below
+                // can safely use T.* now.
+                this.languageReady = true;
+            })
 
-            .then(() => this.setStatus("Initializing sounds", 30))
+            .then(() => this.setStatus(T.preload.initializingSounds, 30))
             .then(() => {
                 return this.app.sound.initialize();
             })
 
-            .then(() => this.setStatus("Initializing savegames", 38))
+            .then(() => this.setStatus(T.preload.initializingSavegames, 38))
             .then(() => {
                 return this.app.savegameMgr.initialize().catch(err => {
                     logger.error("Failed to initialize savegames:", err);
@@ -104,11 +121,11 @@ export class PreloadState extends GameState {
                 });
             })
 
-            .then(() => this.setStatus("Downloading resources", 40))
+            .then(() => this.setStatus(T.global.loadingResources.replace("<percentage>", "0.0"), 40))
             .then(() => {
                 this.app.backgroundResourceLoader.resourceStateChangedSignal.add(({ progress }) => {
                     this.setStatus(
-                        "Downloading resources (" + (progress * 100.0).toFixed(1) + " %)",
+                        T.global.loadingResources.replace("<percentage>", (progress * 100.0).toFixed(1)),
                         40 + progress * 50
                     );
                 });
@@ -122,7 +139,7 @@ export class PreloadState extends GameState {
                 this.app.backgroundResourceLoader.resourceStateChangedSignal.removeAll();
             })
 
-            .then(() => this.setStatus("Checking changelog", 95))
+            .then(() => this.setStatus(T.preload.checkingChangelog, 95))
             .then(() => {
                 if (G_IS_DEV && globalConfig.debug.disableUpgradeNotification) {
                     return;
@@ -172,7 +189,7 @@ export class PreloadState extends GameState {
                     });
             })
 
-            .then(() => this.setStatus("Launching", 99))
+            .then(() => this.setStatus(T.preload.launching, 99))
             .then(
                 () => {
                     this.moveToState("MainMenuState");
@@ -184,6 +201,9 @@ export class PreloadState extends GameState {
     }
 
     update() {
+        if (!this.languageReady) {
+            return;
+        }
         const now = performance.now();
         if (now - this.lastHintShown > this.nextHintDuration) {
             this.lastHintShown = now;

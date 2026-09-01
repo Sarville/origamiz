@@ -4,6 +4,13 @@
 
 @use "sass:color";
 
+// "Card" button palette (Continue/New Game/Play text color, and the
+// savegame row's own resume button) - a warm leather/paper look distinct
+// from the flat $colorGreenBright CTA this replaced. Button
+// backgrounds/gradients themselves are a direct port of
+// origamiz-main-menu-buttons.css, inlined at each selector below.
+$cardTextDark: #3f4140;
+
 #state_MainMenuState {
     display: grid;
     align-items: center;
@@ -25,8 +32,7 @@
         gap: 0.9rem;
 
         .settingsButton,
-        .exitAppButton,
-        .languageChoose {
+        .exitAppButton {
             width: 3.5rem;
             height: 3.5rem;
             pointer-events: all;
@@ -63,15 +69,6 @@
             }
         }
 
-        .languageChoose {
-            background: rgba(#fff, 1) center center / contain no-repeat;
-            border-radius: 50%;
-            background-color: #222428 !important;
-            background-size: contain !important;
-            background-position: center center !important;
-            opacity: 0.8;
-            transform: scale(0.98);
-        }
     }
 
     &::after {
@@ -165,52 +162,6 @@
         grid-column: 2 / 3;
         flex-direction: column;
         grid-gap: 2rem;
-
-        .puzzleContainer {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            background: $colorBlueBright;
-            grid-row: 1 / 2;
-            width: 100%;
-            box-sizing: border-box;
-            position: relative;
-            border-radius: $globalBorderRadius;
-            box-shadow: 0 0.5rem 1rem rgba(#000, 0.4);
-            border: 0.1rem solid rgba(#000, 0.1);
-            overflow: hidden;
-
-            > button {
-                margin-top: 2rem;
-                @include Heading;
-                padding: 1rem 3rem;
-                background-color: #333;
-                color: #fff;
-            }
-
-            &.owned {
-                height: 11.8rem;
-                width: 25rem;
-                background: uiResource("puzzle_460x215_15.png") center -0.5rem / cover repeat;
-
-                > button {
-                    pointer-events: all;
-                    padding: 0.4rem 1rem;
-                    margin: 0;
-                    background: #47c599;
-                    box-sizing: border-box;
-                    position: absolute;
-                    top: 1rem;
-                    right: 1rem;
-                    z-index: 100;
-                    @include PlainText;
-                    z-index: 200;
-                    color: #111215;
-                    box-shadow: 0 0.2rem 0.9rem rgba(#000, 0.4);
-                }
-            }
-        }
 
         .modsOverview {
             display: flex;
@@ -329,16 +280,12 @@
         overflow: hidden;
         box-sizing: border-box;
 
-        &[data-savegames="0"] .buttons .outer {
-            grid-template-rows: 1fr 1fr;
-        }
-
         .buttons {
             display: grid;
-            grid-template-columns: auto auto;
+            // Continue reads wider than New Game in the reference design,
+            // not an even split.
+            grid-template-columns: 2.3fr 1fr;
             grid-template-rows: 1fr;
-            // flex-direction: column;
-            // align-items: center;
             width: 100%;
             background: rgba(#3c3122, 0.06);
 
@@ -347,56 +294,229 @@
             max-width: 100%;
             box-sizing: border-box;
 
-            .playButton,
-            .continueButton {
-                @include SuperHeading;
+            // Shared base - port of origamiz-main-menu-buttons.css's
+            // .menu-button (px values ÷10, since this project's rem = 10px *
+            // ui-scale, not the browser default 16px - see
+            // Application.checkResize).
+            .menu-button {
+                // Font-size below is in cqw (container query width, a % of
+                // this element's own rendered width) instead of vw/rem -
+                // vw ties to the *viewport*, rem to the game's own dynamic
+                // UI scale (Application.checkResize), and neither actually
+                // tracks this button's own box, which is what needs to fit.
+                // Mixing them was still clipping/overlapping the play icon
+                // on some real phones despite fitting fine in every desktop
+                // test. cqw is pinned to the one dimension that matters.
+                container-type: inline-size;
+                position: relative;
+                overflow: hidden;
                 width: 100%;
-                padding: 1.5rem 1rem;
-                letter-spacing: 0.1em;
+                height: 100%;
                 box-sizing: border-box;
-                font-weight: bold;
-                background-color: $colorGreenBright;
+                border: 0.1rem solid rgba(170, 150, 115, 0.28);
+                border-radius: 1.2rem;
+                cursor: pointer;
+                box-shadow:
+                    0 0.5rem 1rem rgba(75, 65, 50, 0.18),
+                    0 0.1rem 0.2rem rgba(75, 65, 50, 0.12),
+                    inset 0 0.1rem 0 rgba(255, 255, 255, 0.75);
                 transition:
                     transform 0.12s ease-in-out,
-                    background-color 0.12s ease-in-out;
+                    box-shadow 0.12s ease-in-out,
+                    filter 0.12s ease-in-out;
 
-                grid-column: 1 / 2;
-                min-width: auto;
-                grid-row: 1 / 1;
-
-                &:hover {
-                    background-color: color.adjust($colorGreenBright, $lightness: -4%, $space: hsl);
-                    opacity: 1;
+                &:active {
+                    transform: translateY(0.2rem) scale(0.99);
+                    box-shadow:
+                        0 0.2rem 0.4rem rgba(75, 65, 50, 0.16),
+                        inset 0 0.1rem 0.3rem rgba(90, 75, 50, 0.08);
                 }
 
-                &.continueButton {
-                    @include Heading;
+                // Folded-paper corner (dog-ear), built as two triangles
+                // sharing one box - a real fold, not a decorative stripe:
+                //  - ::before shades only the fold line itself (a thin band
+                //    hugging the crease) rather than filling the whole gap
+                //    behind the flap - the card's own face color still
+                //    shows through the rest of that corner.
+                //  - ::after is the *flap itself*, folded back over the
+                //    crease so its own far tip (originally the corner)
+                //    now points inward at the box's opposite corner instead
+                //    of outward - same color family as the button face
+                //    (shaded, not a different hue), with a drop-shadow that
+                //    traces its own two raised edges. Colors/gradients set
+                //    per-variant below.
+                &::before,
+                &::after {
+                    content: "";
+                    position: absolute;
+                    right: 0;
+                    bottom: 0;
+                    width: 26cqw;
+                    height: 26cqw;
+                    max-width: 4rem;
+                    max-height: 4rem;
+                    min-width: 2.4rem;
+                    min-height: 2.4rem;
+                }
+
+                // For a *square* WxH box, the crease line (100% 0 to 0 100%)
+                // sits at exactly the 50% mark of a 135deg gradient, not 0%
+                // - the box's own corner (0,0) is where 0% falls, and that
+                // point is outside the notch triangle entirely. Centering
+                // the shadow stops on 50% is what makes it actually land on
+                // the crease instead of the invisible ::after side of it.
+                &::before {
+                    z-index: 1;
+                    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+                    background: linear-gradient(
+                        135deg,
+                        transparent 0% 40%,
+                        rgba(25, 17, 6, 0.55) 50%,
+                        rgba(25, 17, 6, 0.28) 62%,
+                        rgba(25, 17, 6, 0.14) 100%
+                    );
+                }
+
+                &::after {
+                    z-index: 2;
+                    clip-path: polygon(0 0, 100% 0, 0 100%);
+                    filter: drop-shadow(-0.09rem 0.09rem 0.14rem rgba(25, 17, 6, 0.5));
                 }
             }
 
-            .outer {
-                display: grid;
-                grid-template-columns: 1fr;
-                grid-template-rows: 1fr 1fr 1fr;
-                height: 100%;
+            .title {
+                // cqw, not vw/rem - see .menu-button's own doc above.
+                font-size: clamp(1.5rem, 13cqw, 2.6rem);
+                font-weight: 600;
+                line-height: 1.05;
+                letter-spacing: 0.01em;
+                text-transform: uppercase;
+                white-space: nowrap;
+            }
 
-                grid-column: 2 / 3;
+            .subtitle {
+                display: block;
+                margin-top: 0.6rem;
+                // Was clamp(1rem, 7cqw, 1.5rem) - read as too small on real
+                // phones (same cqw-vs-device story as the title, just a
+                // smaller gap since it's already the smaller of the two).
+                font-size: clamp(1.3rem, 9cqw, 1.8rem);
+                font-weight: 400;
+                text-transform: none;
+                color: var(--menu-text-secondary, #9c927f);
+                white-space: nowrap;
+            }
+
+            .playButton,
+            .continueButton {
+                grid-column: 1 / 2;
                 grid-row: 1 / 1;
-                min-width: auto;
+                // Matches the reference's own card proportions (~2.3:1,
+                // wide and short) instead of a flat rem min-height, which
+                // rendered far too tall/narrow on some real phones (see
+                // .menu-button's doc) - aspect-ratio ties height directly to
+                // this column's own rendered width, so the shape holds
+                // regardless of device/UI-scale.
+                aspect-ratio: 2.3 / 1;
+                padding: 9cqw 15cqw 9cqw 8cqw;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: flex-start;
+                text-align: left;
+                background: linear-gradient(135deg, #fbf6e9 0%, #f4ecd9 58%, #eee3cc 100%);
+                color: $cardTextDark;
 
-                grid-gap: 0.5rem;
-                width: 100%;
-
-                > button {
-                    padding: 0.3rem 0.6rem;
-                    width: 100%;
-                    white-space: nowrap;
-                    margin: 0 !important;
-                    box-sizing: border-box;
+                .title,
+                .subtitle {
+                    color: inherit;
+                }
+                .subtitle {
+                    color: #9c927f;
                 }
 
-                .modsButton {
-                    background-color: $modsColor !important;
+                // Flap: same warm-cream family as the card face
+                // (#fbf6e9/#f4ecd9/#eee3cc above), shaded a touch darker
+                // toward its inward-pointing tip to read as the underside
+                // of the paper, catching less light there than along its
+                // raised hinge edge.
+                &::after {
+                    background: linear-gradient(225deg, #f7f0df 0%, #eee3cc 45%, #ddd0ab 100%);
+                }
+            }
+
+            // Same triangle glyph/size/color as .save-play-button's own
+            // icon below (button.resumeGame .play-icon) - was a different,
+            // lighter shade here before, which read as a different icon
+            // rather than the same one reused.
+            .play-icon {
+                position: absolute;
+                right: 6cqw;
+                top: 50%;
+                transform: translateY(-50%);
+                z-index: 2;
+                width: 15cqw;
+                height: 15cqw;
+                max-width: 2.6rem;
+                max-height: 2.6rem;
+                color: #9b835c;
+                filter: drop-shadow(0 0.1rem 0 rgba(255, 255, 255, 0.8))
+                    drop-shadow(0 0.1rem 0.1rem rgba(80, 65, 40, 0.15));
+            }
+
+            .outer {
+                display: flex;
+                flex-direction: column;
+                height: 100%;
+                grid-column: 2 / 3;
+                grid-row: 1 / 1;
+                width: 100%;
+
+                > .menu-button {
+                    flex: 1;
+                }
+            }
+
+            .newGameButton {
+                padding: 6cqw;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(145deg, #e9a168 0%, #dd8953 62%, #d77a43 100%);
+                border-color: rgba(168, 96, 48, 0.3);
+                color: #fff7eb;
+                text-align: center;
+
+                .title {
+                    font-size: clamp(1.2rem, 17cqw, 2rem);
+                    font-weight: 400;
+                    line-height: 1.25;
+                    white-space: normal;
+                    text-shadow: 0 0.1rem 0.1rem rgba(90, 45, 20, 0.15);
+                }
+
+                // Same warm-orange family as the card face
+                // (#e9a168/#dd8953/#d77a43 above), shaded darker toward the
+                // inward tip - same "underside of the paper" logic as the
+                // cream card's own flap.
+                &::after {
+                    background: linear-gradient(225deg, #dd8953 0%, #d77a43 55%, #b85e33 100%);
+                }
+            }
+
+            @include DarkThemeOverride {
+                .playButton,
+                .continueButton {
+                    background: linear-gradient(135deg, #4a4335 0%, #3c362a 58%, #302b21 100%);
+                    color: #ece6d8;
+
+                    .subtitle {
+                        color: #b6ab96;
+                    }
+
+                    &::after {
+                        background: linear-gradient(225deg, #4a4335 0%, #3c362a 50%, #221d16 100%);
+                    }
                 }
             }
         }
@@ -438,7 +558,8 @@
 
                 .savegame {
                     background: $dialogBgColor;
-                    border-radius: $globalBorderRadius;
+                    border-radius: 1rem;
+                    box-shadow: 0 0.15rem 0.4rem rgba(#000, 0.06);
                     padding: 0.5rem;
                     display: grid;
                     grid-template-columns: 1fr 1fr auto auto;
@@ -446,6 +567,9 @@
                     grid-column-gap: 0.4rem;
                     grid-row-gap: 0.1rem;
 
+                    // Kept at the original SuperSmallText size - user asked
+                    // for this one back after a first pass bumped it along
+                    // with .level.
                     .playtime {
                         grid-column: 2 / 3;
                         grid-row: 2 / 3;
@@ -453,11 +577,15 @@
                         opacity: 0.5;
                     }
 
+                    // Was @include SuperSmallText (1rem/1.3rem) - read as too
+                    // small on real phones next to the rest of this
+                    // redesigned row.
                     .level {
                         grid-column: 1 / 2;
                         grid-row: 2 / 3;
-                        @include SuperSmallText;
-                        opacity: 0.5;
+                        font-size: 1.4rem;
+                        line-height: 1.7rem;
+                        opacity: 0.55;
                     }
 
                     .name {
@@ -476,43 +604,66 @@
                         }
                     }
 
-                    button.resumeGame,
                     button.downloadGame,
                     button.deleteGame,
                     button.renameGame {
                         padding: 0;
                         align-self: center;
                         justify-self: center;
-                        background: #44484a center center / 40% no-repeat;
+                        background: center center / 40% no-repeat;
+                        border: none;
                     }
 
+                    // Port of origamiz-main-menu-buttons.css's .save-play-button -
+                    // the icon itself is an inline SVG using currentColor (see
+                    // renderSavegames), colored via this rule's `color`.
                     button.resumeGame {
-                        background-color: #44484a;
-                        & {
-                            background-image: uiResource("icons/play.png");
+                        display: inline-flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 0;
+                        border: 0.1rem solid rgba(170, 150, 115, 0.32);
+                        background: linear-gradient(145deg, #fbf6e9 0%, #f1e7d2 62%, #e7d9bd 100%);
+                        color: #9b835c;
+                        box-shadow: 0 0.3rem 0.6rem rgba(75, 65, 50, 0.16), inset 0 0.1rem 0 rgba(255, 255, 255, 0.72);
+                        transition:
+                            transform 0.12s ease-in-out,
+                            box-shadow 0.12s ease-in-out;
+
+                        &:active {
+                            transform: translateY(0.1rem) scale(0.98);
+                            box-shadow: 0 0.1rem 0.3rem rgba(75, 65, 50, 0.14), inset 0 0.1rem 0.2rem rgba(90, 75, 50, 0.08);
+                        }
+
+                        .play-icon {
+                            color: inherit;
+                            filter: drop-shadow(0 0.1rem 0 rgba(255, 255, 255, 0.72))
+                                drop-shadow(0 0.1rem 0.1rem rgba(80, 65, 40, 0.12));
+                        }
+
+                        @include DarkThemeOverride {
+                            background: linear-gradient(145deg, #4a4335 0%, #3c362a 62%, #302b21 100%);
+                            color: #c9b48b;
                         }
                     }
 
                     // Shared chrome for the small savegame-row utility buttons -
-                    // was three near-identical rulesets (transparent bg, tiny
-                    // hitbox, 0.4 opacity, square corners) that were hard to
-                    // tap on mobile and didn't read as a consistent family.
+                    // plain muted icons, no circular chip - only rename gets
+                    // one below, matching the reference's subtle outline.
                     button.downloadGame,
                     button.deleteGame,
                     button.renameGame {
-                        background-color: rgba(#3c3122, 0.08);
                         border-radius: 50%;
                         width: 1.9rem;
                         height: 1.9rem;
                         background-size: 55%;
-                        opacity: 0.65;
+                        opacity: 0.55;
                         transition:
                             opacity 0.12s ease-in-out,
                             background-color 0.12s ease-in-out;
 
                         &:hover {
                             opacity: 1;
-                            background-color: rgba(#3c3122, 0.14);
                         }
 
                         @include DarkThemeInvert;
@@ -540,8 +691,14 @@
                         align-self: center;
                         justify-self: center;
                         margin-left: 0.5rem;
+                        background-color: rgba(#3c3122, 0.06);
+                        opacity: 0.7;
                         & {
                             background-image: uiResource("icons/edit_key.png");
+                        }
+
+                        &:hover {
+                            background-color: rgba(#3c3122, 0.12);
                         }
                     }
 
@@ -552,14 +709,7 @@
                         width: 3.2rem;
                         height: 100%;
                         margin-left: 0.4rem;
-
-                        @include DarkThemeOverride {
-                            background-color: color.adjust(
-                                $darkModeControlsBackground,
-                                $lightness: 10%,
-                                $space: hsl
-                            );
-                        }
+                        border-radius: 0.8rem;
                     }
                 }
             }
@@ -682,24 +832,6 @@
             }
         }
 
-        .footerGrow {
-            flex-grow: 1;
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            gap: 1.5rem;
-            > a {
-                @include SuperSmallText;
-                padding: 0.2rem;
-                font-weight: bold;
-                color: #000;
-                opacity: 0.6;
-                transition: opacity 0.12s ease-in-out;
-                &:hover {
-                    opacity: 1;
-                }
-            }
-        }
     }
 
     .brandMark {
@@ -734,11 +866,6 @@
             .settingsButton {
                 width: 3rem;
                 height: 3rem;
-            }
-
-            // Language is chosen automatically (Russian by default); no picker on mobile.
-            .languageChoose {
-                display: none;
             }
         }
 
@@ -781,27 +908,6 @@
             flex-wrap: wrap;
             row-gap: 0.5rem;
             padding: 1rem 1.5rem;
-
-            .footerGrow .changelog,
-            .footerGrow .helpTranslate {
-                display: none;
-            }
-        }
-
-        // Mods and file import/export aren't offered on mobile - let the remaining
-        // buttons (currently just New Game, if any) fill the space.
-        .buttons .outer {
-            display: flex;
-            flex-direction: column;
-
-            > button {
-                width: 100%;
-            }
-
-            .modsButton,
-            .importButton {
-                display: none;
-            }
         }
 
         // Nothing left to show in .outer with no savegames (import+mods both hidden) -
