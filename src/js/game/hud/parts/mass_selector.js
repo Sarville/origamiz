@@ -191,6 +191,9 @@ export class HUDMassSelector extends BaseHUDPart {
             // copy code relies on entities still existing, so must copy before deleting.
             this.root.hud.signals.buildingsSelectedForBlueprint.dispatch(entityUids, true);
 
+            // One transaction for the whole cut, same as mass delete - see
+            // ActionHistory's class doc.
+            this.root.actionHistory.beginTransaction();
             for (let i = 0; i < entityUids.length; ++i) {
                 const uid = entityUids[i];
                 const entity = this.root.entityMgr.findByUid(uid);
@@ -199,6 +202,7 @@ export class HUDMassSelector extends BaseHUDPart {
                     this.selectedUids.delete(uid);
                 }
             }
+            this.root.actionHistory.endTransaction();
 
             this.root.soundProxy.playUiClick();
         } else {

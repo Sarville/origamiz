@@ -859,6 +859,67 @@ logs.
         storage (localStorage or savegame-embedded), a save/name UI, and a
         browse/pick UI; would slot in next to the new "copy" icon once
         designed.
+
+        **Follow-up, same day - two-finger pinch/pan fix + tap-to-deselect.**
+        User reported that a two-finger touch in select mode left a frozen
+        selection rectangle under one finger and wrongly selected whatever
+        building was under it once both fingers lifted - the existing
+        `cancelGestureOnSecondTouch` (already used to abort belt dragging
+        when a second finger joins) didn't know about the mass-selector's
+        own pending rubber-band. Extended it to null out
+        `massSelector.currentSelectionStartWorld`/`currentSelectionEnd`
+        too - verified live with a real two-finger gesture via
+        `Input.dispatchTouchEvent`: pinch-zoom during the gesture still
+        works (1.7 → 3.5), releasing both fingers leaves the selection
+        empty, and a two-finger pan moves the camera without touching an
+        existing selection. Also added tap-to-deselect: `HUDMassSelector.
+        onMouseUp()` now checks whether a plain tap (not a drag) landed on a
+        building already in `selectedUids` and removes it instead of
+        re-adding it - shared method, so desktop's Ctrl+click gets the same
+        toggle. Verified live: tap selects, tap again deselects, a third tap
+        reselects.
+
+        **Follow-up, same day - long-press now branches on what's under the
+        finger, adds move-existing-building.** Previously long-press always
+        entered select mode regardless of what was tapped; user asked for it
+        to only do that on an empty tile, and for two new cases: long-press
+        on a belt continues it (same as tapping the belt icon then that
+        tile - reuses item 8's tap-continuation, `lastBeltTile` seeded from
+        the tile's own real rotation), long-press on any other building
+        picks it up as a movable blueprint (new `beginMoveExistingBuilding`)
+        with the same confirm/rotate/cancel row "copy" already has. Moving a
+        building is free (no shape cost) - mirrors desktop's own Ctrl+X cut
+        (`Blueprint.isNextPasteFree`) rather than the paid "copy" path, and
+        isn't gated on blueprints being unlocked (unlike copy) since it's
+        editing something already built, not a late-game convenience. The
+        original is deleted immediately (in its own `actionHistory`
+        transaction) rather than only on confirm, so cancel can restore it
+        with a plain `undo()` - new `movedBuildingCut` flag tracks this,
+        cleared the moment a confirm actually places somewhere (a deliberate
+        choice at that point, not something left to revert).
+
+        Fixed two real gaps found while wiring this up, both shared with
+        desktop: `Blueprint.tryPlace` never reported its placements to
+        `actionHistory` at all (desktop's own paste, Ctrl+V, was invisible
+        to undo/redo too) - now calls `noteEntityPlaced` per entity, and
+        both call sites (`HUDBlueprintPlacer.onMouseDown` on desktop, the
+        new mobile confirm handler) wrap the call in a transaction so it
+        actually gets recorded. `HUDMassSelector.doCut()` had the same
+        missing-transaction gap `doDelete()` already had (fixed earlier this
+        session) - wrapped the same way.
+
+        Verified live via CDP throughout: long-press an empty tile enters
+        select mode as before; long-press a placed belt enters build mode
+        with that tile already `lastBeltTile`, and a further tap correctly
+        extends it; long-press a miner removes it from the map immediately
+        and shows it as a free (no cost UI) ghost; cancel restores it at the
+        exact original tile; rotate + move-then-confirm places exactly one
+        miner at the new tile/rotation with the original gone (no
+        duplicate); a `cancel` tapped *after* a confirm no longer undoes the
+        already-placed copy; the full undo/redo chain steps correctly
+        through both halves of a completed move (undo once removes the
+        moved copy, undo again restores the original at its old tile; redo
+        mirrors it back).
       - [x] **2c-7 — Mobile building placement while zoomed out into map
         overview, done 2026-09-01.** See the twentieth follow-up further
         down (in 2c-6's own history, since it directly extends 2c-6/item 8's

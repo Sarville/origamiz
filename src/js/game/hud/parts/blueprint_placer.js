@@ -125,7 +125,10 @@ export class HUDBlueprintPlacer extends BaseHUDPart {
 
             const worldPos = this.root.camera.screenToWorld(pos);
             const tile = worldPos.toTileSpace();
-            if (blueprint.tryPlace(this.root, tile)) {
+            this.root.actionHistory.beginTransaction();
+            const placed = blueprint.tryPlace(this.root, tile);
+            this.root.actionHistory.endTransaction();
+            if (placed) {
                 this.root.soundProxy.playUi(SOUNDS.placeBuilding);
             }
             return STOP_PROPAGATION;

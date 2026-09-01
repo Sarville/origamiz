@@ -4,6 +4,7 @@ import { STOP_PROPAGATION } from "../../../core/signal";
 import { makeDiv } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
 import { SOUNDS } from "../../../platform/sound";
+import { Blueprint } from "../../blueprint";
 import { getCodeFromBuildingData } from "../../building_codes";
 import { enumMouseButton } from "../../camera";
 import { StaticMapEntityComponent } from "../../components/static_map_entity";
@@ -212,29 +213,44 @@ export class HUDMobileControls extends BaseHUDPart {
         // its already-ungated onMouseUp() directly to commit.
         this.selectModeActive = false;
 
-        // Long-press-to-select shortcut (2c-5 follow-up): a stationary hold
-        // on the map in view mode (nothing selected/deleting/selecting)
-        // enters select mode and selects whatever's under the finger, same
-        // as tapping the pencil icon then tapping that tile - lets you start
-        // selecting without detouring through the icon first. Deliberately
-        // never stops propagation on the way here (see onMouseDown/
-        // onMouseMove/onMouseUp) so it can't break a lever/waypoint tap or
-        // the camera's own default pan - belt's build-mode hold (beginDrag)
-        // is a fully separate mechanism gated on a building being selected,
-        // so the two never run at the same time.
+        // Long-press shortcut in view mode (nothing selected/deleting/
+        // selecting) - a stationary hold on the map, dispatched by
+        // beginIdleLongPress once it fires:
+        //  - empty tile -> select mode, same as tapping the pencil icon.
+        //  - a belt tile -> belt build mode, picking up right where that
+        //    tile left off (same as tapping the belt icon then tapping this
+        //    tile - see placeBeltTapAt/lastBeltTile).
+        //  - any other building -> pick it up as a movable blueprint (see
+        //    beginMoveExistingBuilding).
+        // Deliberately never stops propagation on the way here (see
+        // onMouseDown/onMouseMove/onMouseUp) so it can't break a lever/
+        // waypoint tap or the camera's own default pan - belt's own build-
+        // mode hold (beginDrag) is a fully separate mechanism gated on a
+        // building already being selected, so the two never run at the same
+        // time.
         this.idleHoldPos = null;
         this.idleHoldTimer = null;
 
-        // Copied-blueprint placement (2c-5 follow-up, item 2's "copy" icon):
-        // the tile the finger-follow ghost currently rests at, once
-        // blueprintPlacer.currentBlueprint is set via onCopyClicked - mirrors
-        // blueprintTile above but for a pasted Blueprint object instead of a
-        // MetaBuilding (desktop's HUDBlueprintPlacer only wires up real
-        // mouse handlers, nothing touch-based, so mobile drives its
-        // currentBlueprint/tryPlace/rotateCw/abortPlacement directly instead
-        // of duplicating any of that).
+        // Copied/moved-building blueprint placement: the tile the finger-
+        // follow ghost currently rests at, once blueprintPlacer.
+        // currentBlueprint is set via onCopyClicked or
+        // beginMoveExistingBuilding - mirrors blueprintTile above but for a
+        // Blueprint object instead of a MetaBuilding (desktop's
+        // HUDBlueprintPlacer only wires up real mouse handlers, nothing
+        // touch-based, so mobile drives its currentBlueprint/tryPlace/
+        // rotateCw/abortPlacement directly instead of duplicating any of
+        // that).
         /** @type {Vector} */
         this.copiedBlueprintTile = null;
+
+        // True while copiedBlueprintTile holds a building picked up via
+        // long-press (beginMoveExistingBuilding already deleted the
+        // original) rather than a multi-selection "copy" - lets
+        // exitCopiedBlueprintMode restore the original on cancel ("отмена -
+        // возврат к первоначальному состоянию"). Cleared the moment a
+        // confirm actually places somewhere, since at that point the move
+        // is a deliberate choice, not something left to revert.
+        this.movedBuildingCut = false;
 
         // Persists across building selections, not per-building - a player
         // preference for how placing works, not a building property.
@@ -502,21 +518,72 @@ export class HUDMobileControls extends BaseHUDPart {
 
     /**
      * Fired after a stationary hold on the map in view mode - see
-     * idleHoldPos's doc in initialize(). Enters select mode and selects
-     * whatever's under the finger via the same HUDMassSelector.onMouseUp
-     * every other selection gesture commits through.
+     * idleHoldPos's doc in initialize(). Branches on what's under the
+     * finger: an empty tile enters select mode, a belt continues it, any
+     * other building gets picked up as a movable blueprint.
      */
-    beginIdleLongPressSelect() {
+    beginIdleLongPress() {
         this.idleHoldTimer = null;
-        if (!this.idleHoldPos) {
+        const pos = this.idleHoldPos;
+        this.idleHoldPos = null;
+        if (!pos) {
             return;
         }
-        this.selectModeActive = true;
-        this.selectButton.classList.add("active");
-        this.massSelector.currentSelectionStartWorld = this.root.camera.screenToWorld(this.idleHoldPos);
-        this.massSelector.currentSelectionEnd = this.idleHoldPos.copy();
-        this.massSelector.onMouseUp();
-        this.idleHoldPos = null;
+        const tile = this.root.camera.screenToWorld(pos).toTileSpace();
+        const contents = this.root.map.getTileContent(tile, this.root.currentLayer);
+
+        if (!contents) {
+            this.selectModeActive = true;
+            this.selectButton.classList.add("active");
+            this.massSelector.currentSelectionStartWorld = this.root.camera.screenToWorld(pos);
+            this.massSelector.currentSelectionEnd = pos.copy();
+            this.massSelector.onMouseUp();
+            return;
+        }
+
+        const staticComp = contents.components.StaticMapEntity;
+        const metaBuilding = staticComp.getMetaBuilding();
+        if (metaBuilding.getId() === "belt") {
+            // Picks up right where this tile left off - same as tapping the
+            // belt icon then tapping this tile (see placeBeltTapAt).
+            this.placerLogic.currentMetaBuilding.set(metaBuilding);
+            this.lastBeltTile = tile;
+            this.lastBeltIncomingDirection = staticComp.rotation;
+            return;
+        }
+
+        this.beginMoveExistingBuilding(contents);
+    }
+
+    /**
+     * Picks up an existing building as a movable blueprint (long-press on a
+     * non-belt building in view mode) - same underlying mechanism as
+     * onCopyClicked (a Blueprint object placed via the confirm/rotate/
+     * cancel row), except free (this.root's own building, not a new copy -
+     * mirrors how desktop's Ctrl+X cut sets isNextPasteFree) and the
+     * original is deleted immediately rather than only on confirm, so
+     * exitCopiedBlueprintMode can restore it with a plain undo() on cancel.
+     * @param {Entity} entity
+     */
+    beginMoveExistingBuilding(entity) {
+        if (!this.root.logic.canDeleteBuilding(entity)) {
+            // e.g. the hub - nothing to pick up.
+            return;
+        }
+        const originTile = entity.components.StaticMapEntity.origin.copy();
+        const blueprint = Blueprint.fromUids(this.root, [entity.uid]);
+        blueprint.isNextPasteFree = true;
+
+        this.root.actionHistory.beginTransaction();
+        const deleted = this.root.logic.tryDeleteBuilding(entity);
+        this.root.actionHistory.endTransaction();
+        if (!deleted) {
+            return;
+        }
+
+        this.blueprintPlacer.currentBlueprint.set(blueprint);
+        this.movedBuildingCut = true;
+        this.copiedBlueprintTile = originTile;
     }
 
     /**
@@ -552,13 +619,22 @@ export class HUDMobileControls extends BaseHUDPart {
         this.selectModeActive = false;
         this.selectButton.classList.remove("active");
         this.copiedBlueprintTile = this.root.camera.center.toTileSpace();
+        this.movedBuildingCut = false;
     }
 
     exitCopiedBlueprintMode() {
         if (this.copiedBlueprintTile) {
+            if (this.movedBuildingCut && this.root.actionHistory.canUndo) {
+                // Restores the building beginMoveExistingBuilding deleted -
+                // safe to assume it's still the top of the stack, since
+                // this whole mode blocks every other action that could push
+                // onto it (see onMouseDown's copiedBlueprintTile branch).
+                this.root.actionHistory.undo();
+            }
             this.blueprintPlacer.abortPlacement();
         }
         this.copiedBlueprintTile = null;
+        this.movedBuildingCut = false;
     }
 
     onBlueprintCancelClicked() {
@@ -587,8 +663,14 @@ export class HUDMobileControls extends BaseHUDPart {
             this.root.soundProxy.playUiError();
             return;
         }
-        if (blueprint.tryPlace(this.root, this.copiedBlueprintTile)) {
+        this.root.actionHistory.beginTransaction();
+        const placed = blueprint.tryPlace(this.root, this.copiedBlueprintTile);
+        this.root.actionHistory.endTransaction();
+        if (placed) {
             this.root.soundProxy.playUi(SOUNDS.placeBuilding);
+            // A confirmed placement is a deliberate choice, not something
+            // left to revert any more - see exitCopiedBlueprintMode's doc.
+            this.movedBuildingCut = false;
         }
     }
 
@@ -886,11 +968,11 @@ export class HUDMobileControls extends BaseHUDPart {
         const metaBuilding = this.placerLogic.currentMetaBuilding.get();
         if (!metaBuilding) {
             // View mode: nothing placing/deleting/selecting - start the
-            // long-press-to-select timer (see idleHoldPos's doc), but never
-            // stop propagation here, so a real lever/waypoint tap or the
+            // long-press timer (see idleHoldPos's doc), but never stop
+            // propagation here, so a real lever/waypoint tap or the
             // camera's own default pan both keep working exactly as before.
             this.idleHoldPos = pos.copy();
-            this.idleHoldTimer = setTimeout(() => this.beginIdleLongPressSelect(), LONG_PRESS_MS);
+            this.idleHoldTimer = setTimeout(() => this.beginIdleLongPress(), LONG_PRESS_MS);
             return;
         }
 
@@ -1228,7 +1310,11 @@ export class HUDMobileControls extends BaseHUDPart {
         // fall back out of copied-blueprint mode instead of leaving its row
         // stuck up with nothing left to act on.
         if (this.copiedBlueprintTile && !this.blueprintPlacer.currentBlueprint.get()) {
+            if (this.movedBuildingCut && this.root.actionHistory.canUndo) {
+                this.root.actionHistory.undo();
+            }
             this.copiedBlueprintTile = null;
+            this.movedBuildingCut = false;
         }
 
         this.element.classList.toggle("placing", !!this.placerLogic.currentMetaBuilding.get());
