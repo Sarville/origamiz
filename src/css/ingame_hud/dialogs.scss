@@ -70,6 +70,13 @@
         backdrop-filter: blur(0.3rem);
     }
 
+    // No physical Enter/Esc keys on mobile - the "ESC"/"⏎" hints on dialog
+    // buttons are just visual noise there, and every dialog (rename, delete
+    // confirm, option choosers, forms) routes through this same button markup.
+    html.is-mobile & > .dialogInner > .buttons > button > kbd {
+        display: none;
+    }
+
     .dialogInner {
         transition: opacity 0.2s ease-in-out;
         opacity: 0;
@@ -90,12 +97,18 @@
     }
 
     > .dialogInner {
-        background: #fff;
+        background: $dialogBgColor;
+        // See the height comment in textual_game_state.scss - same viewport
+        // trick, so a tall dialog (e.g. the upgrades/shop list) doesn't grow
+        // past the real screen and get clipped top+bottom by centering.
         max-height: calc(100vh - 4rem);
+        max-height: calc(100dvh - 4rem);
+        max-width: calc(100vw - 2rem);
         border-radius: $globalBorderRadius;
         display: flex;
         flex-direction: column;
         padding: 1.2rem;
+        box-sizing: border-box;
 
         box-shadow: 0 0.5rem 1.5rem rgba(#000, 0.1);
         pointer-events: all;
@@ -117,12 +130,12 @@
                     cursor: pointer;
                     padding: 1rem;
 
-                    background: #eee;
+                    background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
 
                     transition: background-color 0.12s ease-in-out;
 
                     &:hover {
-                        background-color: #e7e7e7;
+                        background-color: color.adjust($mainBgColor, $lightness: 4%, $space: hsl);
                     }
 
                     &.active {
@@ -164,6 +177,8 @@
             overflow-y: auto;
             pointer-events: all;
             width: 35rem;
+            max-width: 100%;
+            box-sizing: border-box;
 
             @include DarkThemeOverride {
                 color: #aaa;
@@ -192,7 +207,7 @@
             }
 
             input {
-                background: #eee;
+                background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
                 color: #333438;
                 width: 100%;
 

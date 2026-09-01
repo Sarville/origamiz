@@ -81,7 +81,7 @@
                 padding: 0.1rem 0;
             }
 
-            background-color: #44484a !important;
+            background-color: $themeColor !important;
             transition: opacity 0.2s ease-in-out;
 
             @include DarkThemeOverride {
@@ -136,7 +136,7 @@
         }
 
         > div {
-            background: #f4f4f4;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
             margin-bottom: 0.4rem;
             display: grid;
             border-radius: $globalBorderRadius;
@@ -148,7 +148,7 @@
             }
 
             &.pinned {
-                background: #e3e5e9;
+                background: color.mix($mainBgColor, $colorBlueBright, 85%);
             }
 
             @include DarkThemeOverride {
@@ -260,6 +260,23 @@ html.is-mobile #ingame_HUD_Statistics {
         flex-wrap: wrap;
         gap: 0.5rem;
         justify-content: space-between;
+    }
+
+    // The 3 data-source tabs (ПРОИЗВОДИТСЯ/ДОСТАВЛЯЕТСЯ/ХРАНИТСЯ) sized to
+    // their own text ran wider than the screen, clipping the last tab -
+    // splitting the row evenly always fits, wrapping/shrinking the label
+    // instead of the row.
+    .filtersDataSource {
+        width: 100%;
+
+        button {
+            flex: 1 1 0;
+            min-width: 0;
+            padding: 0.4rem 0.3rem;
+            font-size: 0.8rem;
+            line-height: 1.1;
+            white-space: normal;
+        }
     }
 
     .dialogInner {

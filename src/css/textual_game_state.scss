@@ -7,7 +7,17 @@
     grid-template-rows: auto 1fr;
     box-sizing: border-box;
     padding: 3.2rem;
+    // Explicit rather than relying on inherited html/body background - same
+    // belt-and-braces approach main_menu.scss uses for its own background.
+    background: $mainBgColor !important;
+    // 100vh on mobile Chrome/Safari is the height with the address bar
+    // collapsed, taller than what's actually visible - this box (and its
+    // rounded/padded .content child) ends up sticking out past the real
+    // bottom edge, which is why the bottom corner/padding looked missing.
+    // 100dvh tracks the real visible viewport; browsers without it just keep
+    // the 100vh value above.
     height: 100vh;
+    height: 100dvh;
 
     .headerBar {
         display: flex;
@@ -67,6 +77,8 @@
     }
 
     @include DarkThemeOverride {
+        background: $darkModeGameBackground !important;
+
         .headerBar {
             h1 {
                 color: #e2e0db;

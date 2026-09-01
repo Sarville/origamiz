@@ -408,6 +408,7 @@ export class MainMenuState extends GameState {
                     ["name"],
                     "<span>" + (games[i].name ? games[i].name : T.mainMenu.savegameUnnamed) + "</span>"
                 );
+                this.trackClicks(name, () => this.requestRenameSavegame(games[i]));
 
                 const deleteButton = document.createElement("button");
                 deleteButton.classList.add("styledButton", "deleteGame");
@@ -423,7 +424,12 @@ export class MainMenuState extends GameState {
                 renameButton.classList.add("styledButton", "renameGame");
                 renameButton.setAttribute("aria-label", "Rename Savegame");
                 name.appendChild(renameButton);
-                this.trackClicks(renameButton, () => this.requestRenameSavegame(games[i]));
+                // consumeEvents: the button sits inside the now-clickable .name
+                // div - without this, tapping the pencil would also bubble up
+                // and fire the parent's rename handler a second time.
+                this.trackClicks(renameButton, () => this.requestRenameSavegame(games[i]), {
+                    consumeEvents: true,
+                });
 
                 const resumeButton = document.createElement("button");
                 resumeButton.classList.add("styledButton", "resumeGame");

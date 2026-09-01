@@ -186,23 +186,44 @@ canvas {
 }
 
 // Scrollbar
+* {
+    scrollbar-width: thin;
+    scrollbar-color: $themeColor color.adjust($mainBgColor, $lightness: 6%, $space: hsl);
+
+    @include DarkThemeOverride {
+        scrollbar-color: color.adjust($darkModeControlsBackground, $lightness: 20%, $space: hsl)
+            $darkModeControlsBackground;
+    }
+}
+
 ::-webkit-scrollbar {
     width: 0.6rem;
     height: 0.6rem;
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(#000, 0.05);
+    background: color.adjust($mainBgColor, $lightness: 6%, $space: hsl);
+
+    @include DarkThemeOverride {
+        background: $darkModeControlsBackground;
+    }
 }
 
 ::-webkit-scrollbar-thumb {
-    // border-radius: 4px;
     border-radius: $globalBorderRadius;
-    background: #cdd0d4;
+    background: $themeColor;
+
+    @include DarkThemeOverride {
+        background: color.adjust($darkModeControlsBackground, $lightness: 20%, $space: hsl);
+    }
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #d8dce0;
+    background: color.adjust($themeColor, $lightness: 10%, $space: hsl);
+
+    @include DarkThemeOverride {
+        background: color.adjust($darkModeControlsBackground, $lightness: 28%, $space: hsl);
+    }
 }
 
 .pressed:not(.noPressEffect) {

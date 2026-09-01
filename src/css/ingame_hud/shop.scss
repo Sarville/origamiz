@@ -14,7 +14,7 @@
         .upgrade {
             display: grid;
             grid-template-columns: auto 1fr auto;
-            background: #eee;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
             border-radius: $globalBorderRadius;
             margin-bottom: 0.4rem;
             padding: 0.5rem 1rem;
@@ -233,7 +233,7 @@
                         margin-top: 0.4rem;
                         z-index: 10;
                         @include SuperSmallText;
-                        background: #e2e4e6;
+                        background: color.adjust($mainBgColor, $lightness: 4%, $space: hsl);
 
                         line-height: 1.3rem;
                         border-radius: $globalBorderRadius;
@@ -246,7 +246,7 @@
                         width: 100%;
 
                         @include DarkThemeOverride {
-                            background: #333438;
+                            background: $darkModeControlsBackground;
                             color: #fff;
                         }
 
@@ -261,10 +261,10 @@
                             z-index: -1;
                             transition: all 0.2s ease-in-out;
                             transition-property: width, background-color;
-                            background: #bdbfca;
+                            background: color.adjust($mainBgColor, $lightness: -12%, $saturation: -5%, $space: hsl);
 
                             @include DarkThemeOverride {
-                                background: #8c8d96;
+                                background: color.adjust($darkModeControlsBackground, $lightness: 12%, $space: hsl);
                             }
 
                             &.complete {
@@ -293,7 +293,7 @@
                 transition-property: background-color, opacity;
 
                 &:not(.buyable) {
-                    background-color: #aaa;
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
                     cursor: default;
                     pointer-events: none;
                     opacity: 0.3;

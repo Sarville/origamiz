@@ -51,7 +51,11 @@ $colorGreenBright: #66bb6a;
 $colorBlueBright: #ef9d50;
 $colorRedBright: #ef5072;
 $colorOrangeBright: #ef9d50;
-$themeColor: #393747;
+// Dark brown (was a cool navy-purple, #393747) - drives every "checked"
+// toggle and slider-knob fill (see .checkbox / input.rangeInput in
+// common.scss), same brown already used for the in-game settings-menu icon
+// strokes (settings_menu.scss) so active controls read consistently warm.
+$themeColor: #5c4b2a;
 // Warm dark brown (was a cool blue-gray, #33343b) - shared by every dark
 // in-game HUD overlay (building info tooltip, tutorial hints, waypoints,
 // sandbox controller, etc.), so recoloring it here shifts all of them to the
@@ -59,7 +63,12 @@ $themeColor: #393747;
 $ingameHudBg: rgba(#3c3122, 0.9);
 $modsColor: rgb(214, 60, 228);
 
-$darkModeGameBackground: #535866;
+// Was a cool slate blue-gray, #535866 - every dark-mode UI surface (dialogs,
+// settings, main menu dark mode, HUD overlays via $darkModeControlsBackground
+// below) inherits from this one value, so deriving it from $mainBgColor's own
+// warm hue (just much darker) keeps light/dark reading as the same brand
+// instead of two different color families.
+$darkModeGameBackground: color.adjust($mainBgColor, $lightness: -55%, $saturation: -8%, $space: hsl);
 $darkModeControlsBackground: color.adjust($darkModeGameBackground, $lightness: -5%, $space: hsl);
 
 // Dialog properties

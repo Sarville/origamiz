@@ -826,7 +826,7 @@ settings:
                 large: Большой
                 huge: Огромный
         autosaveInterval:
-            title: Интервал автосохранения
+            title: Интервал авто&shy;сохранения
             description: Управляет тем, как часто игра автоматически сохраняется. Также
                 здесь можно полностью отключить автосохранение.
             intervals:
@@ -837,7 +837,7 @@ settings:
                 twenty_minutes: 20 минут
                 disabled: Отключено
         scrollWheelSensitivity:
-            title: Чувствительность зума
+            title: Зум
             description: Изменяет чувствительность зума (от колесика мыши или тачпада).
             sensitivity:
                 super_slow: Очень медленно

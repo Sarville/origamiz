@@ -5,7 +5,9 @@
 @use "sass:color";
 
 #state_SettingsState {
-    $colorCategoryButton: #eeeff5;
+    // Light cream (was cool gray-blue, #eeeff5) - distinct from the .setting
+    // card cream (#f2ecdc below) so tabs still read separately from content.
+    $colorCategoryButton: color.adjust($mainBgColor, $lightness: 6%, $space: hsl);
     $colorCategoryButtonSelected: $colorBlueBright;
 
     $layoutBreak: 1000px;
@@ -163,6 +165,14 @@
                         > label {
                             text-transform: uppercase;
                             @include Text;
+                            // Grid items don't shrink below their content's
+                            // width by default (same issue as the sidebar
+                            // buttons above) - without this, a long label
+                            // (or the value box's min-width) pushes the row
+                            // wider than the card and clips the start of the
+                            // text off-screen instead of wrapping.
+                            min-width: 0;
+                            overflow-wrap: break-word;
                         }
                     }
 
@@ -223,6 +233,17 @@
                 }
             }
         }
+    }
+
+    // Mouse/keyboard-only settings (edge-pan, hover-vs-Alt tooltip, the
+    // "same as holding Shift/RMB" ones) don't map to a touch device - hidden
+    // rather than left to confuse someone with no mouse to test them with.
+    html.is-mobile & .setting:has(> .row [data-setting="enableMousePan"]),
+    html.is-mobile & .setting:has(> .row [data-setting="shapeTooltipAlwaysOn"]),
+    html.is-mobile & .setting:has(> .row [data-setting="alwaysMultiplace"]),
+    html.is-mobile & .setting:has(> .row [data-setting="zoomToCursor"]),
+    html.is-mobile & .setting:has(> .row [data-setting="clearCursorOnDeleteWhilePlacing"]) {
+        display: none;
     }
 
     @include DarkThemeOverride {
