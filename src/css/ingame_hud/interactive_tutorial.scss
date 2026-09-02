@@ -2,10 +2,22 @@
 @use "../variables" as *;
 
 #ingame_HUD_InteractiveTutorial {
-    // Hidden on mobile for now - it sits in the same corner as the buildings
-    // toolbar and covers it. The plan is to bring it back behind a toggle button.
     html.is-mobile & {
-        display: none !important;
+        // Keep the tutorial above the full-width bottom toolbar. The toolbar
+        // height changes with its pages, so HUDMobileControls keeps this CSS
+        // variable up to date for us. The left side stays clear of the
+        // placement hint and control buttons on the right.
+        right: auto;
+        bottom: calc(1rem + var(--toolbar-height, 0px) + 0.75rem);
+        left: 0.5rem;
+        width: min(13rem, calc(100vw - 1rem));
+        padding: 0.55rem;
+
+        .helperGif {
+            width: 100%;
+            height: min(10rem, 32vw);
+            margin-top: 0.35rem;
+        }
     }
 
     position: absolute;

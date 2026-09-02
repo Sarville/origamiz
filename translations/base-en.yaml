@@ -404,7 +404,7 @@ ingame:
                 PS: Use the <strong>0-9 hotkeys</strong> to access buildings faster!
 
             3_1_rectangles: >-
-                Now let's extract some rectangles! <strong>Build 4 extractors</strong> and connect them to the hub.<br><br>
+                Now let's extract some rectangles! <strong>Build 3 extractors</strong> and connect them to the hub.<br><br>
                 PS: Hold <strong>SHIFT</strong> while dragging a belt to activate the belt planner!
 
             21_1_place_quad_painter: >-
@@ -422,6 +422,19 @@ ingame:
                 PS: You don't have to connect all inputs! Try wiring only two.
 
             1_2_hold_and_drag: Hold and drag
+        mobileHints:
+            1_1_extractor: "Choose an <strong>extractor</strong> in the toolbar, tap a <strong>circle shape</strong>, then tap <strong>confirm</strong> to extract it!"
+            1_2_conveyor: "Connect the extractor to your hub with a <strong>conveyor belt</strong>!<br><br>Tip: <strong>Touch, hold and drag</strong> to place a belt path."
+            1_3_expand: "This is <strong>NOT</strong> an idle game! Build more extractors and belts to finish the goal quicker.<br><br>Tip: Choose a building in the toolbar, tap the map, then tap <strong>confirm</strong>. Use the <strong>rotate</strong> button to turn it."
+            2_1_place_cutter: "Now place a <strong>Cutter</strong> to cut the circles in two halves!<br><br>Tip: The cutter always cuts from <strong>top to bottom</strong> regardless of its orientation."
+            2_2_place_trash: "The cutter can <strong>clog and stall</strong>!<br><br>Use a <strong>trash</strong> to get rid of the currently (!) not needed waste."
+            2_3_more_cutters: "Good job! Now place <strong>2 more cutters</strong> to speed up this slow process!<br><br>Tip: Select buildings from the bottom toolbar."
+            3_1_rectangles: "Now let's extract some rectangles! <strong>Build 3 extractors</strong> and connect them to the hub.<br><br>Tip: <strong>Touch, hold and drag</strong> to lay a belt path."
+            21_1_place_quad_painter: "Place the <strong>quad painter</strong> and get some <strong>circles</strong>, <strong>white</strong> and <strong>red</strong> color!"
+            21_2_switch_to_wires: "Tap the <strong>wires-layer button</strong> above the toolbar!<br><br>Then <strong>connect all four inputs</strong> of the painter with cables."
+            21_3_place_button: "Awesome! Now place a <strong>Switch</strong> and connect it with wires!"
+            21_4_press_button: "Tap the switch to make it <strong>emit a truthy signal</strong> and activate the painter.<br><br>Tip: You don't have to connect all inputs! Try wiring only two."
+            1_2_hold_and_drag: Touch, hold and drag
 
     # Connected miners
     connectedMiners:

@@ -22,6 +22,54 @@
         }
     }
 
+    html.is-mobile & {
+        .dialog {
+            min-height: 100%;
+            box-sizing: border-box;
+            padding: 1.25rem 0.75rem;
+
+            .title,
+            .subTitle {
+                max-width: 100%;
+                font-size: 2.5rem;
+                line-height: 1.05;
+                overflow-wrap: anywhere;
+            }
+
+            .subTitle {
+                margin: 0.4rem 0 1.25rem;
+            }
+
+            .contents {
+                width: 100%;
+                max-width: calc(100vw - 1.5rem);
+                box-sizing: border-box;
+
+                .rewardDesc {
+                    width: 100%;
+                    box-sizing: border-box;
+                    overflow-wrap: anywhere;
+                }
+
+                .images {
+                    width: 100%;
+                    flex-wrap: wrap;
+                    justify-content: center;
+                    gap: 0.5rem;
+
+                    .buildingExplanation {
+                        width: min(11rem, calc((100vw - 3rem) / 2));
+                        height: min(11rem, calc((100vw - 3rem) / 2));
+                    }
+                }
+            }
+
+            button.close {
+                margin-top: 1.5rem;
+            }
+        }
+    }
+
     .dialog {
         // background: rgba(#222428, 0.5);
         border-radius: $globalBorderRadius;

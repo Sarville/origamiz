@@ -1398,7 +1398,9 @@ export class HUDMobileControls extends BaseHUDPart {
 
         const toolbar = document.querySelector(".ingame_buildingsToolbar.visible");
         const height = toolbar ? toolbar.getBoundingClientRect().height : 0;
-        this.element.style.setProperty("--toolbar-height", height + "px");
+        // Both the mobile controls and the interactive tutorial are siblings
+        // in the HUD. Set the value on html so each can clear the toolbar.
+        document.documentElement.style.setProperty("--toolbar-height", height + "px");
     }
 
     update() {

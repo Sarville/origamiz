@@ -1,4 +1,4 @@
-import { globalConfig } from "../../../core/config";
+import { globalConfig, IS_MOBILE } from "../../../core/config";
 import { DrawParameters } from "../../../core/draw_parameters";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { TrackedState } from "../../../core/tracked_state";
@@ -91,7 +91,7 @@ const tutorialsByLevel = [
         {
             id: "3_1_rectangles",
             condition: /** @param {GameRoot} root */ root =>
-                // 4 miners placed above rectangles and 10 delivered
+                // 3 miners placed above rectangles and 10 delivered
                 root.hubGoals.getCurrentGoalDelivered() < 10 ||
                 root.entityMgr.getAllWithComponent(MinerComponent).filter(entity => {
                     const tile = entity.components.StaticMapEntity.origin;
@@ -101,7 +101,7 @@ const tutorialsByLevel = [
                         return shape === "RuRuRuRu";
                     }
                     return false;
-                }).length < 4,
+                }).length < 3,
         },
     ],
 
@@ -158,6 +158,18 @@ const tutorialsByLevel = [
     ],
 ];
 
+/**
+ * Mobile has no keyboard or mouse, so use the touch-specific copy where it is
+ * available. Locales which have not supplied mobile copy fall back to English
+ * mobile copy from the base translation instead of showing an unusable hotkey.
+ *
+ * @param {string} hintId
+ */
+function getHintText(hintId) {
+    const tutorial = T.ingame.interactiveTutorial;
+    return (IS_MOBILE && tutorial.mobileHints?.[hintId]) || tutorial.hints[hintId];
+}
+
 export class HUDInteractiveTutorial extends BaseHUDPart {
     createElements(parent) {
         this.element = makeDiv(
@@ -185,7 +197,7 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
     }
 
     onHintChanged(hintId) {
-        this.elementDescription.innerHTML = T.ingame.interactiveTutorial.hints[hintId];
+        this.elementDescription.innerHTML = getHintText(hintId);
         document.documentElement.setAttribute("data-tutorial-step", hintId);
 
         this.elementGif.style.backgroundImage =
@@ -387,7 +399,7 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
                         parameters.context.translate(pos.x, pos.y);
                         parameters.context.rotate(-Math.radians(90));
                         parameters.context.fillText(
-                            T.ingame.interactiveTutorial.hints["1_2_hold_and_drag"],
+                            getHintText("1_2_hold_and_drag"),
                             0,
                             0
                         );
@@ -396,7 +408,7 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
                     } else {
                         const pos = staticComp.origin.toWorldSpace().addScalars(40, 50);
                         parameters.context.fillText(
-                            T.ingame.interactiveTutorial.hints["1_2_hold_and_drag"],
+                            getHintText("1_2_hold_and_drag"),
                             pos.x,
                             pos.y
                         );
