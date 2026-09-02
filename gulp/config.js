@@ -3,7 +3,6 @@ import path from "node:path/posix";
 
 export const baseDir = path.resolve("..");
 export const buildFolder = path.join(baseDir, "build");
-export const buildOutputFolder = path.join(baseDir, "build_output");
 export const generatedCodeFolder = path.join(baseDir, "src/js/built-temp");
 
 // Globs for atlas resources

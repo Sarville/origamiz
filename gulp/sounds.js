@@ -54,31 +54,6 @@ export function music() {
         .pipe(gulp.dest(path.join(builtSoundsDir, "music")));
 }
 
-// Encodes the game music in high quality for the standalone
-export function musicHQ() {
-    return gulp
-        .src([path.join(soundsDir, "music", "**", "*.wav"), path.join(soundsDir, "music", "**", "*.mp3")])
-        .pipe(gulpPlumber())
-        .pipe(
-            gulpCache(
-                gulpFluentFfmpeg("mp3", function (cmd) {
-                    return cmd
-                        .audioBitrate(256)
-                        .audioChannels(2)
-                        .audioFrequency(44100)
-                        .audioCodec("libmp3lame")
-                        .audioFilters(["volume=0.15"]);
-                }),
-                {
-                    name: "music-high-quality",
-                    fileCache,
-                    value: getFileCacheValue,
-                }
-            )
-        )
-        .pipe(gulp.dest(path.join(builtSoundsDir, "music")));
-}
-
 // Encodes the ui sounds
 export function sfxGenerateSprites() {
     return gulp
@@ -124,8 +99,6 @@ export function copy() {
 }
 
 export const buildall = gulp.parallel(music, sfx);
-export const buildallHQ = gulp.parallel(musicHQ, sfx);
 
 export const fullbuild = gulp.series(clear, buildall, copy);
-export const fullbuildHQ = gulp.series(clear, buildallHQ, copy);
 export const dev = gulp.series(buildall, copy);

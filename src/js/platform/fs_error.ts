@@ -1,5 +1,5 @@
 /**
- * Represents a filesystem error as reported by the main process.
+ * Represents a filesystem error reported by the browser storage backend.
  */
 export class FsError extends Error {
     code?: string;
@@ -9,11 +9,10 @@ export class FsError extends Error {
         Error.captureStackTrace(this, FsError);
         this.name = "FsError";
 
-        // Take the code from the error message, quite ugly
+        // Browser APIs don't provide a common error type for missing files, so
+        // retain the familiar POSIX code when it is included in the message.
         if (options?.cause && options.cause instanceof Error) {
-            // Example message:
-            // Error invoking remote method 'fs-job': Error: ENOENT: no such...
-            this.code = options.cause.message.split(":")[2].trim();
+            this.code = options.cause.message.match(/\bE[A-Z]+\b/)?.[0];
         }
     }
 

@@ -52,7 +52,7 @@ export default [
     },
     ...nodeConfig.map(config => ({
         ...config,
-        files: ["*.{ts,js}", "{gulp,electron}/**/*.{ts,js}"],
+        files: ["*.{ts,js}", "gulp/**/*.{ts,js}"],
     })),
     ...runtimeConfig.map(config => ({
         ...config,

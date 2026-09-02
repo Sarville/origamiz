@@ -15,7 +15,7 @@ import { MOD_SIGNALS } from "./mods/mod_signals";
 import { MODS } from "./mods/modloader";
 import { Sound } from "./platform/sound";
 import { Storage, STORAGE_SAVES } from "./platform/storage";
-import { PlatformWrapperImplBrowser, PlatformWrapperImplElectron } from "./platform/wrapper";
+import { PlatformWrapperImplBrowser } from "./platform/wrapper";
 import { ApplicationSettings } from "./profile/application_settings";
 import { SavegameManager } from "./savegame/savegame_manager";
 import { AboutState } from "./states/about";
@@ -64,10 +64,7 @@ export class Application {
         this.storage = new Storage(this, STORAGE_SAVES);
         await this.storage.initialize();
 
-        this.platformWrapper =
-            typeof ipcRenderer !== "undefined"
-                ? new PlatformWrapperImplElectron(this)
-                : new PlatformWrapperImplBrowser(this);
+        this.platformWrapper = new PlatformWrapperImplBrowser(this);
 
         // Global stuff
         this.settings = new ApplicationSettings(this, this.storage);

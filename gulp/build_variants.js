@@ -1,13 +1,7 @@
-// Single place to rebrand the standalone/electron packaging output.
+// Single place to configure browser build outputs.
 export const BRAND_NAME = "Origamiz";
 
-/**
- * @type {Record<string, {
- *  standalone: boolean
- * }>}
- */
 export const BUILD_VARIANTS = {
-    standalone: {
-        standalone: true,
-    },
+    // Self-contained static files for a regular web server or a game portal.
+    web: {},
 };

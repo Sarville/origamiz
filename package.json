@@ -10,15 +10,10 @@
     "scripts": {
         "postinstall": "gulp -f gulp/environment.js prepare",
         "gulp": "gulp --cwd gulp",
+        "build-web": "gulp --cwd gulp build.web.full",
+        "serve-web": "gulp --cwd gulp serve.web",
         "lint": "eslint .",
-        "prettier-all": "prettier --write .",
-        "package-win32-x64": "gulp --cwd gulp package.standalone.win32-x64",
-        "package-win32-arm64": "gulp --cwd gulp package.standalone.win32-arm64",
-        "package-linux-x64": "gulp --cwd gulp package.standalone.linux-x64",
-        "package-linux-arm64": "gulp --cwd gulp package.standalone.linux-arm64",
-        "package-darwin-x64": "gulp --cwd gulp package.standalone.darwin-x64",
-        "package-darwin-arm64": "gulp --cwd gulp package.standalone.darwin-arm64",
-        "package-all": "gulp --cwd gulp package.standalone.all"
+        "prettier-all": "prettier --write ."
     },
     "dependencies": {
         "@msgpack/msgpack": "^3.1.2",
@@ -28,7 +23,6 @@
         "semver": "^7.8.0"
     },
     "devDependencies": {
-        "@electron/packager": "^18.3.6",
         "@eslint/js": "^9.24.0",
         "@rspack/core": "^1.7.2",
         "@tsconfig/node-lts": "^22.0.1",

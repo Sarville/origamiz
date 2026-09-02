@@ -21,8 +21,6 @@ declare const G_IS_RELEASE: boolean;
 
 declare const shapez: any;
 
-declare const ipcRenderer: any;
-
 declare interface CanvasRenderingContext2D {
     beginCircle(x: number, y: number, r: number): void;
 }

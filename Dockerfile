@@ -19,10 +19,6 @@ RUN --mount=type=cache,target=/root/.npm \
     npm ci && \
     (cp gulp/runnable-texturepacker.jar /tmp/jar-cache/ 2>/dev/null || true)
 
-COPY electron/package.json electron/package-lock.json electron/
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --prefix electron --ignore-scripts
-
 COPY . .
 
 COPY docker-entrypoint.sh /usr/local/bin/

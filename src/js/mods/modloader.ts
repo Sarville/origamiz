@@ -3,7 +3,7 @@ import { SavegameStoredMods } from "@/savegame/savegame_typedefs";
 import { Logger } from "../core/logging";
 import { DisabledMod } from "./disabled_mod";
 import { Mod, ModConstructor } from "./mod";
-import { ModInfo, ModMetadata, ModQueueEntry } from "./mod_metadata";
+import { ModInfo, ModMetadata } from "./mod_metadata";
 import { MOD_SIGNALS } from "./mod_signals";
 
 const LOG = new Logger("mods");
@@ -76,8 +76,7 @@ export class ModLoader {
 
     async initMods() {
         this.exposeExports();
-        const queue: ModQueueEntry[] =
-            typeof ipcRenderer !== "undefined" ? await ipcRenderer.invoke("get-mods") : [];
+        const queue = [];
 
         // Mods can be parsed and constructed in parallel
         const loadedMods = await Promise.all(

@@ -32,7 +32,7 @@ function runRspack(config) {
 // TODO: Move webpack config to build_variants.js and use a separate
 // build variant for development
 export default Object.fromEntries(
-    Object.entries(BUILD_VARIANTS).map(([variant, data]) => {
+    Object.keys(BUILD_VARIANTS).map(variant => {
         const dev = {
             build: () => runRspack(rspackConfig),
         };

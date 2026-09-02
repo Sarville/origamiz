@@ -31,17 +31,16 @@ jobs:
               env:
                   DOCKER_BUILDKIT: 1
               run: docker build -t origamiz-builder .
-            - name: Build linux-x64 and win32-x64
+            - name: Build web version
               run: >
                 docker run --rm
                 -v ${{ github.workspace }}/build_output:/output
                 origamiz-builder
-                package.standalone.linux-x64
-                package.standalone.win32-x64
+                build.web.full
             - name: Fix artifact permissions
               run: sudo chown -R "$(id -u):$(id -g)" build_output
             - name: Upload build artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: standalone
-                  path: build_output/standalone
+                  name: web
+                  path: build_output

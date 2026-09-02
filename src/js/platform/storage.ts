@@ -79,9 +79,7 @@ export class Storage {
 
     private invokeFsJob(data: FsJob) {
         const job = { id: this.id, ...data };
-        const promise =
-            typeof ipcRenderer !== "undefined" ? ipcRenderer.invoke("fs-job", job) : handleBrowserFsJob(job);
-        return promise.catch(e => this.wrapError(e));
+        return handleBrowserFsJob(job).catch(e => this.wrapError(e));
     }
 
     private wrapError(err: unknown): Promise<never> {

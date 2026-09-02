@@ -1,6 +1,5 @@
-// Browser counterpart of electron/src/fsjob.ts's FsJobHandler. Mirrors the same
-// job contract (see Storage#invokeFsJob) but persists to IndexedDB instead of disk,
-// and uses native file pickers for the "external" (import/export) jobs.
+// Persists game data to IndexedDB and uses native file pickers for the
+// "external" (import/export) jobs.
 
 interface BrowserFsJob {
     id: string;
@@ -38,11 +37,8 @@ function keyFor(job: BrowserFsJob): string {
     return `${job.id}/${job.filename}`;
 }
 
-// FsError parses the error code out of `message.split(":")[2]`, matching the shape
-// of Electron's real IPC error messages. Mimicking that string keeps FsError/
-// isFileNotFound() working unmodified for both platforms.
 function notFoundError(filename: string): Error {
-    return new Error(`Error invoking remote method 'fs-job': Error: ENOENT: no such file or directory, open '${filename}'`);
+    return new Error(`ENOENT: no such file or directory, open '${filename}'`);
 }
 
 async function readFile(job: BrowserFsJob): Promise<Uint8Array> {

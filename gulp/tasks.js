@@ -8,7 +8,6 @@ import { BUILD_VARIANTS } from "./build_variants.js";
 import {
     browserSync,
     buildFolder,
-    buildOutputFolder,
     generatedCodeFolder,
     imageResourcesGlobs,
     nonImageResourcesGlobs,
@@ -26,19 +25,15 @@ import html from "./html.js";
 import * as imgres from "./image-resources.js";
 import js from "./js.js";
 import * as sounds from "./sounds.js";
-import standalone from "./standalone.js";
 import * as translations from "./translations.js";
 
-export { css, environment, html, imgres, js, sounds, standalone, translations };
+export { css, environment, html, imgres, js, sounds, translations };
 
 /////////////////////  BUILD TASKS  /////////////////////
 
 // Cleans up everything
 function cleanBuildFolder() {
     return gulp.src(buildFolder, { read: false, allowEmpty: true }).pipe(gulpClean({ force: true }));
-}
-function cleanBuildOutputFolder() {
-    return gulp.src(buildOutputFolder, { read: false, allowEmpty: true }).pipe(gulpClean({ force: true }));
 }
 function cleanBuildTempFolder() {
     return gulp.src(generatedCodeFolder, { read: false, allowEmpty: true }).pipe(gulpClean({ force: true }));
@@ -85,7 +80,6 @@ function copyAdditionalBuildFiles() {
 
 export const utils = {
     cleanBuildFolder,
-    cleanBuildOutputFolder,
     cleanBuildTempFolder,
     cleanImageBuildFolder,
     cleanup,
@@ -209,21 +203,14 @@ export const build =
     ({
         prepare,
     });
-/**
- * @type {Record<string, Record<string, TaskFunction>>}
- */
-const pack = {};
-export { pack as package };
 /** @type {Record<string, TaskFunction>} */
 export const serve = {};
 
 // Builds everything for every variant
 for (const variant in BUILD_VARIANTS) {
-    const data = BUILD_VARIANTS[variant];
-
     // build
     const code = gulp.series(
-        data.standalone ? sounds.fullbuildHQ : sounds.fullbuild,
+        sounds.fullbuild,
         translations.fullBuild,
         js[variant].prod.build
     );
@@ -236,30 +223,6 @@ for (const variant in BUILD_VARIANTS) {
 
     build[variant] = { code, resourcesAndCode, all, full };
 
-    // Tasks for creating packages. These packages are already distributable, but usually can be further
-    // wrapped in a different format (an installer for Windows, tarball for Linux, DMG for macOS).
-    if (data.standalone) {
-        const packageTasks = [
-            "win32-x64",
-            "win32-arm64",
-            "linux-x64",
-            "linux-arm64",
-            "darwin-x64",
-            "darwin-arm64",
-            "all",
-        ];
-
-        pack[variant] = {};
-        for (const task of packageTasks) {
-            pack[variant][task] = gulp.series(
-                full,
-                utils.cleanBuildOutputFolder,
-                standalone[variant].prepare.all,
-                standalone[variant].package[task]
-            );
-        }
-    }
-
     // serve
     serve[variant] = gulp.series(build.prepare.dev(variant), () => serveHTML({ version: variant }));
 }
@@ -269,4 +232,4 @@ export const main = {
 };
 
 // Default task (dev, localhost)
-export default gulp.series(serve["standalone"]);
+export default gulp.series(serve["web"]);

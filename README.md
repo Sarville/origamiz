@@ -1,4 +1,4 @@
-# Origamiz <img src="./electron/favicon.png" alt="Origamiz Logo" align="right" height="40">
+# Origamiz <img src="./res/logo.png" alt="Origamiz Logo" align="right" height="40">
 
 **Origamiz** is a shape-folding factory-automation game, forked from the GPL-3.0-licensed
 [shapez Community Edition](https://github.com/tobspr-games/shapez-community-edition), which is
@@ -9,8 +9,7 @@ by tobspr Games.
 > Origamiz is an independent project and is not affiliated with, endorsed by, or
 > associated with tobspr Games or the official shapez/Shapez 2 games.
 
-As of now, Origamiz must be built from source and supports only a standalone build,
-with no plans for re-supporting a web version.
+Origamiz is built from source as a static web game.
 
 ## Contributing
 
@@ -46,31 +45,25 @@ and does not intend to provide compatibility for older clients.
 
 ### Development
 
--   Run `npm i` in the root folder and in `electron/`.
--   Run `npm run gulp` in the root folder to build and serve files.
-    If a new browser tab opens, ignore it.
--   Open a new terminal and run `npm start` in `electron/` to open an Electron window.
-    -   Use `npm start -- --dev` to run in development mode.
-    -   Tip: If you open the Electron window too early, you can reload it when focused on DevTools.
+-   Run `npm run serve-web` in the root folder to build and serve the browser version.
 
 ### Release
 
--   Run `npm i` in the root folder and in `electron/`.
--   In the root folder, run `npm run package-$PLATFORM-$ARCH` where:
-    -   `$PLATFORM` is `win32`, `linux` or `darwin` depending on your system.
-    -   `$ARCH` is the target system architecture (`x64` or `arm64`)
--   The build will be found under `build_output/standalone` as `origamiz-...`.
+#### Web
+
+-   Run `npm run build-web` in the root folder.
+-   Deploy the generated `build/` directory to any static HTTP(S) host.
 
 ### Building with Docker
 
-You can build without installing Node, Java, or ffmpeg on the host. From the repo root, build the image and run a package task with a volume so output appears in `build_output/` on your machine:
+You can build without installing Node, Java, or ffmpeg on the host. From the repo root, build the image and run the web build with a volume so output appears in `build_output/` on your machine:
 
 ```bash
 docker build -t origamiz-builder .
-docker run --rm -v "$(pwd)/build_output:/output" origamiz-builder package.standalone.linux-x64
+docker run --rm -v "$(pwd)/build_output:/output" origamiz-builder build.web.full
 ```
 
-On Apple Silicon add `--platform linux/amd64` to the build command. For other targets use e.g. `package.standalone.win32-x64`. Darwin builds are best done on macOS.
+On Apple Silicon add `--platform linux/amd64` to the build command.
 
 ## Credits
 
