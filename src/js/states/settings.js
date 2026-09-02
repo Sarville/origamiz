@@ -1,8 +1,3 @@
-import { THIRDPARTY_URLS } from "../core/config";
-
-// TODO: privacyPolicy currently points at tobspr's own policy, hidden until
-// Origamiz has its own. See config.ts.
-const SHOW_PRIVACY_LINK = false;
 import { TextualGameState } from "../core/textual_game_state";
 import { enumCategories } from "../profile/application_settings";
 import { T } from "../translations";
@@ -37,10 +32,13 @@ export class SettingsState extends TextualGameState {
             ${T.mods.title}
             </button>
 
+            <button class="styledButton categoryButton shapeViewerTool">
+            ${T.shapeViewerTool.title}
+            </button>
+
 
             <div class="other">
                 <button class="styledButton about">${T.about.title}</button>
-                ${SHOW_PRIVACY_LINK ? `<button class="styledButton privacy">Privacy Policy</button>` : ""}
             </div>
         </div>
 
@@ -92,11 +90,6 @@ export class SettingsState extends TextualGameState {
             preventDefault: false,
         });
 
-        const privacyButton = this.htmlElement.querySelector(".privacy");
-        if (privacyButton) {
-            this.trackClicks(privacyButton, this.onPrivacyClicked, { preventDefault: false });
-        }
-
         const keybindingsButton = this.htmlElement.querySelector(".editKeybindings");
 
         if (keybindingsButton) {
@@ -112,6 +105,11 @@ export class SettingsState extends TextualGameState {
         const modsButton = this.htmlElement.querySelector(".manageMods");
         if (modsButton) {
             this.trackClicks(modsButton, this.onModsClicked, { preventDefault: false });
+        }
+
+        const shapeViewerButton = this.htmlElement.querySelector(".shapeViewerTool");
+        if (shapeViewerButton) {
+            this.trackClicks(shapeViewerButton, this.onShapeViewerToolClicked, { preventDefault: false });
         }
     }
 
@@ -171,15 +169,15 @@ export class SettingsState extends TextualGameState {
         this.moveToStateAddGoBack("AboutState");
     }
 
-    onPrivacyClicked() {
-        this.app.platformWrapper.openExternalLink(THIRDPARTY_URLS.privacyPolicy);
-    }
-
     onKeybindingsClicked() {
         this.moveToStateAddGoBack("KeybindingsState");
     }
 
     onModsClicked() {
         this.moveToStateAddGoBack("ModsState");
+    }
+
+    onShapeViewerToolClicked() {
+        this.moveToStateAddGoBack("ShapeViewerToolState");
     }
 }

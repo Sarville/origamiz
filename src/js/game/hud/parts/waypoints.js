@@ -1,5 +1,5 @@
 import { makeOffscreenBuffer } from "../../../core/buffer_utils";
-import { globalConfig, IS_MOBILE, THIRDPARTY_URLS } from "../../../core/config";
+import { globalConfig, IS_MOBILE } from "../../../core/config";
 import { DrawParameters } from "../../../core/draw_parameters";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { Loader } from "../../../core/loader";
@@ -9,7 +9,6 @@ import { Rectangle } from "../../../core/rectangle";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import {
     arrayDeleteValue,
-    fillInLinkIntoTranslation,
     lerp,
     makeDiv,
     removeAllChildren,
@@ -292,7 +291,7 @@ export class HUDWaypoints extends BaseHUDPart {
         const dialog = new DialogWithForm({
             app: this.root.app,
             title: waypoint ? T.dialogs.createMarker.titleEdit : T.dialogs.createMarker.title,
-            desc: fillInLinkIntoTranslation(T.dialogs.createMarker.desc, THIRDPARTY_URLS.shapeViewer),
+            desc: T.dialogs.createMarker.desc.replace(/<\/?link>/g, ""),
             formElements: [markerNameInput],
             buttons: waypoint ? ["delete:bad", "cancel", "ok:good"] : ["cancel", "ok:good"],
         });

@@ -961,9 +961,32 @@ keybindings:
         showShapeTooltip: Показывать подсказку фигуры на выходе
 about:
     title: Об игре
+    currentBody: >-
+        Origamiz — игра с открытым исходным кодом о строительстве фабрик, со своим визуальным стилем и механиками.
     body: >-
         Эта игра - ремейк известной игры shapez, с обновленной механикой,
         визуальным стилем и функциями.
+
+shapeViewerTool:
+    title: Просмотр фигур
+    description: >-
+        Создавайте, изучайте и копируйте короткие ключи фигур, не выходя из игры. Введите ключ для предпросмотра или сгенерируйте случайную фигуру как отправную точку.
+    shortKey: Короткий ключ фигуры
+    preview: Предпросмотр
+    randomize: Случайная фигура
+    copy: Копировать ключ
+    export: Экспорт PNG
+    invalid: Введите корректный короткий ключ фигуры.
+    instructions: >-
+        <h2>Как записывать фигуры</h2>
+        <p>Фигура задаётся <strong>коротким ключом</strong> и содержит до четырёх слоёв. В каждом слое четыре квадранта: запись начинается с <strong>верхнего правого</strong> и идёт по часовой стрелке.</p>
+        <p>Квадрант — это пара символов: заглавная буква формы и строчная буква цвета. Для пустого квадранта используйте <code>--</code>. Слои отделяются <code>:</code>; первым указывается нижний слой.</p>
+        <div class="legendGrid">
+            <section><h3>Формы</h3><ul class="legendList"><li><code>C</code><span>— Круг</span></li><li><code>R</code><span>— Прямоугольник</span></li><li><code>W</code><span>— Ветряк</span></li><li><code>S</code><span>— Звезда</span></li></ul></section>
+            <section><h3>Цвета</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Красный</span></li><li><code>g</code><i class="colorDot green"></i><span>Зелёный</span></li><li><code>b</code><i class="colorDot blue"></i><span>Синий</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Жёлтый</span></li><li><code>p</code><i class="colorDot purple"></i><span>Фиолетовый</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Голубой</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Без цвета</span></li><li><code>w</code><i class="colorDot white"></i><span>Белый</span></li></ul></section>
+        </div>
+        <h3>Примеры</h3>
+        <dl class="examples"><dt><code>CwCwCwCw</code></dt><dd>Белый круг</dd><dt><code>----RuRu</code></dt><dd>Половина прямоугольника</dd><dt><code>CgScScCg</code></dt><dd>Смешанные круги и звёзды</dd><dt><code>RpRpRpRp:CwCwCwCw</code></dt><dd>Два наложенных слоя</dd></dl>
 changelog:
     title: Список изменений
 demo:

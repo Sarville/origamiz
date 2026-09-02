@@ -26,6 +26,7 @@ import { MainMenuState } from "./states/main_menu";
 import { ModsState } from "./states/mods";
 import { PreloadState } from "./states/preload";
 import { SettingsState } from "./states/settings";
+import { ShapeViewerToolState } from "./states/shape_viewer_tool";
 
 /**
  * @typedef {import("./platform/sound").SoundInterface} SoundInterface
@@ -130,6 +131,7 @@ export class Application {
             MainMenuState,
             InGameState,
             SettingsState,
+            ShapeViewerToolState,
             KeybindingsState,
             AboutState,
             ChangelogState,

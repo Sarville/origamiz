@@ -1,8 +1,6 @@
-import { THIRDPARTY_URLS } from "../../../core/config";
 import { DialogWithForm } from "../../../core/modal_dialog_elements";
 import { FormElementInput, FormElementItemChooser } from "../../../core/modal_dialog_forms";
 import { STOP_PROPAGATION } from "../../../core/signal";
-import { fillInLinkIntoTranslation } from "../../../core/utils";
 import { Vector } from "../../../core/vector";
 import { T } from "../../../translations";
 import { BaseItem } from "../../base_item";
@@ -65,7 +63,7 @@ export class HUDConstantSignalEdit extends BaseHUDPart {
         const signal = entity.components.ConstantSignal.signal;
         const signalValueInput = new FormElementInput({
             id: "signalValue",
-            label: fillInLinkIntoTranslation(T.dialogs.editSignal.descShortKey, THIRDPARTY_URLS.shapeViewer),
+            label: T.dialogs.editSignal.descShortKey.replace(/<\/?link>/g, ""),
             placeholder: "",
             defaultValue: signal ? signal.getAsCopyableKey() : "",
             validator: val => this.parseSignalCode(entity, val) !== null,

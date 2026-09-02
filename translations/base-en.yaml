@@ -1147,9 +1147,32 @@ keybindings:
 
 about:
     title: About this Game
+    currentBody: >-
+        Origamiz is an open-source factory-building game with its own visual style and mechanics.
     body: >-
         This game is a remake of the well-known game shapez, featuring
         updated mechanics, visual style, and features.
+
+shapeViewerTool:
+    title: Shape Viewer
+    description: >-
+        Create, inspect, and copy shape short keys without leaving the game. Enter a key to preview it, or generate a random shape to use as a starting point.
+    shortKey: Shape short key
+    preview: Preview
+    randomize: Random shape
+    copy: Copy key
+    export: Export PNG
+    invalid: Enter a valid shape short key.
+    instructions: >-
+        <h2>How shape keys work</h2>
+        <p>A shape is written as a <strong>short key</strong> with up to four layers. Each layer has four quadrants, starting at the <strong>top right</strong> and moving clockwise.</p>
+        <p>A quadrant is a pair of characters: an uppercase shape letter followed by a lowercase colour letter. Use <code>--</code> for an empty quadrant. Layers are separated by <code>:</code>, with the bottom layer first.</p>
+        <div class="legendGrid">
+            <section><h3>Shapes</h3><ul class="legendList"><li><code>C</code><span>— Circle</span></li><li><code>R</code><span>— Rectangle</span></li><li><code>W</code><span>— Windmill</span></li><li><code>S</code><span>— Star</span></li></ul></section>
+            <section><h3>Colours</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Red</span></li><li><code>g</code><i class="colorDot green"></i><span>Green</span></li><li><code>b</code><i class="colorDot blue"></i><span>Blue</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Yellow</span></li><li><code>p</code><i class="colorDot purple"></i><span>Purple</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Cyan</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Uncoloured</span></li><li><code>w</code><i class="colorDot white"></i><span>White</span></li></ul></section>
+        </div>
+        <h3>Examples</h3>
+        <dl class="examples"><dt><code>CwCwCwCw</code></dt><dd>White circle</dd><dt><code>----RuRu</code></dt><dd>Half rectangle</dd><dt><code>CgScScCg</code></dt><dd>Circles and stars mixed</dd><dt><code>RpRpRpRp:CwCwCwCw</code></dt><dd>Layering example</dd></dl>
 
 changelog:
     title: Changelog

@@ -1,0 +1,161 @@
+@use "../mixins" as *;
+@use "../variables" as *;
+
+.shapeViewerTool {
+    max-width: 48rem;
+    margin: 0 auto;
+
+    .description,
+    .instructions {
+        line-height: 1.5;
+    }
+
+    .keyLabel {
+        display: block;
+        margin-top: 1.5rem;
+        @include Heading;
+    }
+
+    .keyControls,
+    .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+
+    .shapeKeyInput {
+        min-width: 0;
+        flex: 0 0 100%;
+        width: 100%;
+        box-sizing: border-box;
+        font-family: monospace;
+        font-size: 1.1rem;
+    }
+
+    .previewButton {
+        width: 100%;
+    }
+
+    .previewArea {
+        display: flex;
+        min-height: 15rem;
+        margin-top: 1rem;
+        align-items: center;
+        justify-content: center;
+        border-radius: $globalBorderRadius;
+        background: #eee;
+
+        canvas {
+            width: min(100%, 22rem);
+            height: auto;
+        }
+    }
+
+    .error {
+        color: $colorRedBright;
+
+        &.hidden {
+            visibility: hidden;
+        }
+    }
+
+    .actions {
+        .randomButton {
+            flex-basis: 100%;
+        }
+    }
+
+    .instructions {
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.15);
+
+        h2,
+        h3 {
+            margin: 1.25rem 0 0.5rem;
+            @include Heading;
+        }
+
+        code {
+            padding: 0.12rem 0.35rem;
+            border-radius: 0.2rem;
+            background: rgba(0, 0, 0, 0.1);
+            color: #3b3d46;
+            font-size: 0.95em;
+            font-weight: bold;
+        }
+
+        .legendGrid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.5rem;
+        }
+
+        dl {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 0.35rem 0.65rem;
+            margin: 0;
+        }
+
+        dt,
+        dd {
+            margin: 0;
+        }
+
+        .legendList {
+            display: grid;
+            gap: 0.35rem;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+
+            li {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+            }
+        }
+
+        .colorDot {
+            display: inline-block;
+            width: 0.65em;
+            height: 0.65em;
+            border: 1px solid rgba(0, 0, 0, 0.35);
+            border-radius: 50%;
+        }
+
+        .red { background: #ff666a; }
+        .green { background: #78ff66; }
+        .blue { background: #66a7ff; }
+        .yellow { background: #fcf52a; }
+        .purple { background: #dd66ff; }
+        .cyan { background: #87fff5; }
+        .uncolored { background: #aaaaaa; }
+        .white { background: #ffffff; }
+    }
+
+    @include DarkThemeOverride {
+        .previewArea {
+            background: rgba(0, 10, 20, 0.25);
+        }
+    }
+
+    @media screen and (max-width: 35rem) {
+        .actions {
+            > button {
+                flex: 1 1 9rem;
+            }
+
+            .randomButton {
+                flex-basis: 100%;
+            }
+        }
+
+        .instructions .legendGrid {
+            grid-template-columns: 1fr;
+            gap: 0.5rem;
+        }
+    }
+}

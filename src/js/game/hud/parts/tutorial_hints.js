@@ -6,8 +6,6 @@ import { KeyActionMapper, KEYMAPPINGS } from "../../key_action_mapper";
 import { BaseHUDPart } from "../base_hud_part";
 import { DynamicDomAttach } from "../dynamic_dom_attach";
 
-// TODO: originally pulled from tobspr's static.shapez.io CDN — disabled until
-// Origamiz hosts its own tutorial videos. See config.ts THIRDPARTY_URLS note.
 const tutorialVideos = [];
 
 export class HUDPartTutorialHints extends BaseHUDPart {
@@ -61,12 +59,6 @@ export class HUDPartTutorialHints extends BaseHUDPart {
         if (tutorialVideos.indexOf(level) < 0) {
             this.videoElement.querySelector("source").setAttribute("src", "");
             this.videoElement.pause();
-        } else {
-            this.videoElement
-                .querySelector("source")
-                .setAttribute("src", "https://static.shapez.io/tutorial_videos/level_" + level + ".webm");
-            this.videoElement.currentTime = 0;
-            this.videoElement.load();
         }
     }
 

@@ -6,25 +6,6 @@ export const APP_NAME = "Origamiz";
 // Single place to rebrand the publisher name shown in the UI (e.g. mobile footer).
 export const BRAND_AUTHOR = "Sarville";
 
-export const THIRDPARTY_URLS = {
-    // TODO: these are tobspr's own community channels/services, not Origamiz's.
-    // Kept working but hidden from the UI (see main_menu.js/settings.js) until
-    // Origamiz has its own Discord/Reddit/Patreon/shape-viewer/privacy-policy/API.
-    discord: "https://discord.gg/HN7EVzV",
-    github: "https://github.com/Sarville/origamiz",
-    reddit: "https://www.reddit.com/r/shapezio",
-    shapeViewer: "https://viewer.shapez.io",
-
-    patreon: "https://www.patreon.com/tobsprgames",
-    privacyPolicy: "https://tobspr.io/privacy.html",
-
-    levelTutorialVideos: {
-        21: "https://www.youtube.com/watch?v=0nUfRLMCcgo&",
-        25: "https://www.youtube.com/watch?v=7OCV1g40Iew&",
-        26: "https://www.youtube.com/watch?v=gfm6dS1dCoY",
-    },
-};
-
 export const globalConfig = {
     // Size of a single tile in Pixels.
     tileSize: 32,
