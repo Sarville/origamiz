@@ -71,10 +71,6 @@ export class MainMenuState extends GameState {
                                     <div class="author">Not implemented yet</div>
                                 </div>
                             </div>
-
-                            <div class="dlcHint">
-                                ${T.mainMenu.mods.warningPuzzleDLC}
-                            </div>
                         </div>
                 </div>
                         `
@@ -142,11 +138,6 @@ export class MainMenuState extends GameState {
                 T.dialogs.gameLoadFailure.title,
                 T.dialogs.gameLoadFailure.text + "<br><br>" + payload.loadError
             );
-        }
-
-        if (G_IS_DEV && globalConfig.debug.testPuzzleMode) {
-            this.onPuzzleModeButtonClicked(true);
-            return;
         }
 
         if (G_IS_DEV && globalConfig.debug.fastGameEnter) {
@@ -246,23 +237,6 @@ export class MainMenuState extends GameState {
         if (outerDiv.childElementCount > 0) {
             buttonContainer.appendChild(outerDiv);
         }
-    }
-
-    onPuzzleModeButtonClicked(force = false) {
-        const hasUnlockedBlueprints = this.app.savegameMgr.getSavegamesMetaData().some(s => s.level >= 12);
-        if (!force && !hasUnlockedBlueprints) {
-            const { ok } = this.dialogs.showWarning(
-                T.dialogs.puzzlePlayRegularRecommendation.title,
-                T.dialogs.puzzlePlayRegularRecommendation.desc,
-                ["cancel:good", "ok:bad:timeout"]
-            );
-            ok.add(() => this.onPuzzleModeButtonClicked(true));
-            return;
-        }
-
-        this.moveToState("LoginState", {
-            nextStateId: "PuzzleMenuState",
-        });
     }
 
     onBackButtonClicked() {

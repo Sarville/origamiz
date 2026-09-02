@@ -48,11 +48,6 @@ export const KEYMAPPINGS = {
     },
 
     buildings: {
-        // Puzzle buildings
-        constant_producer: { keyCode: keyToKeyCode("H") },
-        goal_acceptor: { keyCode: keyToKeyCode("N") },
-        block: { keyCode: keyToKeyCode("4") },
-
         // Primary Toolbar
         belt: { keyCode: keyToKeyCode("1") },
         balancer: { keyCode: keyToKeyCode("2") },
@@ -64,9 +59,6 @@ export const KEYMAPPINGS = {
         mixer: { keyCode: keyToKeyCode("8") },
         painter: { keyCode: keyToKeyCode("9") },
         trash: { keyCode: keyToKeyCode("0") },
-
-        // Sandbox
-        item_producer: { keyCode: keyToKeyCode("L") },
 
         // Secondary toolbar
         storage: { keyCode: keyToKeyCode("Y") },

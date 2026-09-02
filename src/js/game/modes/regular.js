@@ -1,15 +1,10 @@
 /* typehints:start */
-import { MetaBuilding } from "../meta_building";
 import { GameRoot } from "../root";
 /* typehints:end */
 
 import { IS_MOBILE } from "../../core/config";
 import { findNiceIntegerValue } from "../../core/utils";
 import { MOD_SIGNALS } from "../../mods/mod_signals";
-import { MetaBlockBuilding } from "../buildings/block";
-import { MetaConstantProducerBuilding } from "../buildings/constant_producer";
-import { MetaGoalAcceptorBuilding } from "../buildings/goal_acceptor";
-import { MetaItemProducerBuilding } from "../buildings/item_producer";
 import { enumGameModeIds, enumGameModeTypes, GameMode } from "../game_mode";
 import { HUDConstantSignalEdit } from "../hud/parts/constant_signal_edit";
 import { HUDGameMenu } from "../hud/parts/game_menu";
@@ -359,14 +354,6 @@ export class RegularGameMode extends GameMode {
             this.additionalHudParts.tutorialHints = HUDPartTutorialHints;
             this.additionalHudParts.interactiveTutorial = HUDInteractiveTutorial;
         }
-
-        /** @type {(typeof MetaBuilding)[]} */
-        this.hiddenBuildings = [
-            MetaConstantProducerBuilding,
-            MetaGoalAcceptorBuilding,
-            MetaBlockBuilding,
-            MetaItemProducerBuilding,
-        ];
     }
 
     /**

@@ -210,17 +210,6 @@ $cardTextDark: #3f4140;
                 margin: 0;
             }
 
-            .dlcHint {
-                @include SuperSmallText;
-                margin-top: 1rem;
-                width: 100%;
-
-                display: grid;
-                grid-template-columns: 1fr auto;
-                grid-gap: 20px;
-                align-items: center;
-            }
-
             .mod {
                 background: #eee;
                 width: 100%;
@@ -894,7 +883,7 @@ $cardTextDark: #3f4140;
             }
         }
 
-        // Puzzle DLC / mods box doesn't fit the single-column mobile layout.
+        // Mods box doesn't fit the single-column mobile layout.
         .sideContainer {
             display: none;
         }
@@ -961,10 +950,6 @@ $cardTextDark: #3f4140;
                     background: color.adjust($darkModeControlsBackground, $lightness: -5%, $space: hsl);
                     color: white;
                 }
-            }
-
-            .dlcHint {
-                color: $accentColorBright;
             }
         }
 

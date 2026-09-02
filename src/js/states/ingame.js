@@ -4,7 +4,6 @@ import { Logger, logSection } from "../core/logging";
 import { waitNextFrame } from "../core/utils";
 import { GameCore } from "../game/core";
 import { GameLoadingOverlay } from "../game/game_loading_overlay";
-import { enumGameModeIds } from "../game/game_mode";
 import { HUDModalDialogs } from "../game/hud/parts/modal_dialogs";
 import { KeyActionMapper } from "../game/key_action_mapper";
 import { MOD_SIGNALS } from "../mods/mod_signals";
@@ -149,11 +148,7 @@ export class InGameState extends GameState {
      * Goes back to the menu state
      */
     goBackToMenu() {
-        if ([enumGameModeIds.puzzleEdit, enumGameModeIds.puzzlePlay].includes(this.gameModeId)) {
-            this.saveThenGoToState("PuzzleMenuState");
-        } else {
-            this.saveThenGoToState("MainMenuState");
-        }
+        this.saveThenGoToState("MainMenuState");
     }
 
     /**
@@ -240,14 +235,7 @@ export class InGameState extends GameState {
 
             this.app.backgroundResourceLoader.getIngamePromise().then(
                 () => {
-                    if (
-                        this.creationPayload.gameModeId &&
-                        this.creationPayload.gameModeId.includes("puzzle")
-                    ) {
-                        this.app.sound.playThemeMusic(MUSIC.puzzle);
-                    } else {
-                        this.app.sound.playThemeMusic(MUSIC.theme);
-                    }
+                    this.app.sound.playThemeMusic(MUSIC.theme);
 
                     this.loadingOverlay.loadingIndicator.innerText = "";
                     this.app.backgroundResourceLoader.resourceStateChangedSignal.removeAll();

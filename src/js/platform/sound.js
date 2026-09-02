@@ -40,7 +40,16 @@ export const MUSIC = {
 
 MUSIC.menu = "menu";
 
-MUSIC.puzzle = "puzzle-full";
+// In-game theme is a playlist of tracks, shuffled and rotated on end
+const THEME_PLAYLIST = ["theme-1", "theme-2", "theme-3", "theme-4", "theme-5", "theme-6", "theme-7"];
+
+function shuffle(array) {
+    for (let i = array.length - 1; i > 0; --i) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 export class SoundInstanceInterface {
     constructor(key, url) {
@@ -339,18 +348,20 @@ class WrappedSoundInstance extends SoundInstanceInterface {
 }
 
 class MusicInstance extends MusicInstanceInterface {
-    constructor(key, url) {
+    constructor(key, url, { loop = true, onEnd = null } = {}) {
         super(key, url);
         this.howl = null;
         this.instance = null;
         this.playing = false;
+        this.loop = loop;
+        this.onEnd = onEnd;
     }
     load() {
         return new Promise((resolve, reject) => {
             this.howl = new Howl({
                 src: "res/sounds/music/" + this.url + ".mp3",
                 autoplay: false,
-                loop: true,
+                loop: this.loop,
                 html5: true,
                 volume: 1,
                 preload: true,
@@ -360,6 +371,12 @@ class MusicInstance extends MusicInstanceInterface {
                     if (this.playing) {
                         logger.log("Playing music after manual unlock");
                         this.play();
+                    }
+                },
+
+                onend: () => {
+                    if (this.onEnd) {
+                        this.onEnd();
                     }
                 },
 
@@ -417,6 +434,71 @@ class MusicInstance extends MusicInstanceInterface {
     }
 }
 
+// Rotates through a shuffled list of tracks, advancing to the next one each
+// time the current track finishes (no crossfade, matches MusicInstance's
+// plain loop-to-0 behavior between tracks).
+class PlaylistMusicInstance extends MusicInstanceInterface {
+    /**
+     * @param {string} key
+     * @param {string[]} urls
+     */
+    constructor(key, urls) {
+        super(key, urls[0]);
+        this.urls = shuffle(urls.slice());
+        this.trackIndex = 0;
+        this.playing = false;
+        this.volume = 1;
+        this.current = this._makeTrack(this.urls[this.trackIndex]);
+    }
+
+    _makeTrack(url) {
+        return new MusicInstance(this.key, url, { loop: false, onEnd: () => this._advance() });
+    }
+
+    _advance() {
+        this.trackIndex++;
+        if (this.trackIndex >= this.urls.length) {
+            this.trackIndex = 0;
+            shuffle(this.urls);
+        }
+        this.current.deinitialize();
+        this.current = this._makeTrack(this.urls[this.trackIndex]);
+        this.current.load().then(() => {
+            if (this.playing) {
+                this.current.play(this.volume);
+            }
+        });
+    }
+
+    load() {
+        return this.current.load();
+    }
+
+    play(volume) {
+        this.playing = true;
+        this.volume = volume;
+        this.current.play(volume);
+    }
+
+    stop() {
+        this.playing = false;
+        this.current.stop();
+    }
+
+    isPlaying() {
+        return this.current.isPlaying();
+    }
+
+    setVolume(volume) {
+        this.volume = volume;
+        this.current.setVolume(volume);
+    }
+
+    deinitialize() {
+        this.current.deinitialize();
+    }
+}
+
 export class Sound extends SoundInterface {
     constructor(app) {
         Howler.mobileAutoEnable = true;
@@ -441,7 +523,10 @@ export class Sound extends SoundInterface {
         });
         for (const musicKey in MUSIC) {
             const musicPath = MUSIC[musicKey];
-            const music = new this.musicClass(musicKey, musicPath);
+            const music =
+                musicKey === "theme"
+                    ? new PlaylistMusicInstance(musicKey, THEME_PLAYLIST)
+                    : new this.musicClass(musicKey, musicPath);
             this.music[musicPath] = music;
         }
 

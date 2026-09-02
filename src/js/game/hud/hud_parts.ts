@@ -15,17 +15,8 @@ import type { HUDLeverToggle } from "./parts/lever_toggle.js";
 import type { HUDMassSelector } from "./parts/mass_selector.js";
 import type { HUDMinerHighlight } from "./parts/miner_highlight.js";
 import type { HUDModalDialogs } from "./parts/modal_dialogs.js";
-import type { HUDPuzzleNextPuzzle } from "./parts/next_puzzle.js";
 import type { HUDNotifications } from "./parts/notifications.js";
 import type { HUDPinnedShapes } from "./parts/pinned_shapes.js";
-import type { HUDPuzzleBackToMenu } from "./parts/puzzle_back_to_menu.js";
-import type { HUDPuzzleCompleteNotification } from "./parts/puzzle_complete_notification.js";
-import type { HUDPuzzleDLCLogo } from "./parts/puzzle_dlc_logo.js";
-import type { HUDPuzzleEditorControls } from "./parts/puzzle_editor_controls.js";
-import type { HUDPuzzleEditorReview } from "./parts/puzzle_editor_review.js";
-import type { HUDPuzzleEditorSettings } from "./parts/puzzle_editor_settings.js";
-import type { HUDPuzzlePlayMetadata } from "./parts/puzzle_play_metadata.js";
-import type { HUDPuzzlePlaySettings } from "./parts/puzzle_play_settings.js";
 import type { HUDScreenshotExporter } from "./parts/screenshot_exporter.js";
 import type { HUDSettingsMenu } from "./parts/settings_menu.js";
 import type { HUDShapeTooltip } from "./parts/shape_tooltip.js";
@@ -87,17 +78,4 @@ export interface HudParts {
     keybindingOverlay?: HUDKeybindingOverlay;
     tutorialHints?: HUDPartTutorialHints;
     interactiveTutorial?: HUDInteractiveTutorial;
-
-    // Puzzle mode
-    puzzleBackToMenu?: HUDPuzzleBackToMenu;
-    puzzleDlcLogo?: HUDPuzzleDLCLogo;
-
-    puzzleEditorControls?: HUDPuzzleEditorControls;
-    puzzleEditorReview?: HUDPuzzleEditorReview;
-    puzzleEditorSettings?: HUDPuzzleEditorSettings;
-
-    puzzlePlayMetadata?: HUDPuzzlePlayMetadata;
-    puzzlePlaySettings?: HUDPuzzlePlaySettings;
-    puzzleCompleteNotification?: HUDPuzzleCompleteNotification;
-    puzzleNext?: HUDPuzzleNextPuzzle;
 }

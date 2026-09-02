@@ -24,9 +24,6 @@ import { DisplaySystem } from "./systems/display";
 import { ItemProcessorOverlaysSystem } from "./systems/item_processor_overlays";
 import { BeltReaderSystem } from "./systems/belt_reader";
 import { FilterSystem } from "./systems/filter";
-import { ItemProducerSystem } from "./systems/item_producer";
-import { ConstantProducerSystem } from "./systems/constant_producer";
-import { GoalAcceptorSystem } from "./systems/goal_acceptor";
 import { ZoneSystem } from "./systems/zone";
 
 const logger = new Logger("game_system_manager");
@@ -106,15 +103,6 @@ export class GameSystemManager {
             /** @type {FilterSystem} */
             filter: null,
 
-            /** @type {ItemProducerSystem} */
-            itemProducer: null,
-
-            /** @type {ConstantProducerSystem} */
-            ConstantProducer: null,
-
-            /** @type {GoalAcceptorSystem} */
-            GoalAcceptor: null,
-
             /** @type {ZoneSystem} */
             zone: null,
 
@@ -160,8 +148,6 @@ export class GameSystemManager {
 
         add("filter", FilterSystem);
 
-        add("itemProducer", ItemProducerSystem);
-
         add("itemEjector", ItemEjectorSystem);
 
         if (this.root.gameMode.hasResources()) {
@@ -193,10 +179,6 @@ export class GameSystemManager {
         add("display", DisplaySystem);
 
         add("itemProcessorOverlays", ItemProcessorOverlaysSystem);
-
-        add("constantProducer", ConstantProducerSystem);
-
-        add("goalAcceptor", GoalAcceptorSystem);
 
         if (this.root.gameMode.getBuildableZones()) {
             add("zone", ZoneSystem);

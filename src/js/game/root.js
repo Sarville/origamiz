@@ -184,9 +184,6 @@ export class GameRoot {
             // Called before actually placing an entity, use to perform additional logic
             // for freeing space before actually placing.
             freeEntityAreaBeforeBuild: /** @type {Signal<[Entity]>} */ (new Signal()),
-
-            // Puzzle mode
-            puzzleComplete: /** @type {Signal<[]>} */ (new Signal()),
         };
 
         // RNG's

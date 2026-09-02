@@ -13,7 +13,6 @@ import { getPlatformName, round2Digits, waitNextFrame } from "./core/utils";
 import { Vector } from "./core/vector";
 import { MOD_SIGNALS } from "./mods/mod_signals";
 import { MODS } from "./mods/modloader";
-import { ClientAPI } from "./platform/api";
 import { Sound } from "./platform/sound";
 import { Storage, STORAGE_SAVES } from "./platform/storage";
 import { PlatformWrapperImplBrowser, PlatformWrapperImplElectron } from "./platform/wrapper";
@@ -23,11 +22,9 @@ import { AboutState } from "./states/about";
 import { ChangelogState } from "./states/changelog";
 import { InGameState } from "./states/ingame";
 import { KeybindingsState } from "./states/keybindings";
-import { LoginState } from "./states/login";
 import { MainMenuState } from "./states/main_menu";
 import { ModsState } from "./states/mods";
 import { PreloadState } from "./states/preload";
-import { PuzzleMenuState } from "./states/puzzle_menu";
 import { SettingsState } from "./states/settings";
 
 /**
@@ -80,7 +77,6 @@ export class Application {
         this.savegameMgr = new SavegameManager(this, this.storage);
         this.inputMgr = new InputDistributor(this);
         this.backgroundResourceLoader = new BackgroundResourcesLoader(this);
-        this.clientApi = new ClientAPI(this);
 
         this.sound = new Sound(this);
 
@@ -137,8 +133,6 @@ export class Application {
             KeybindingsState,
             AboutState,
             ChangelogState,
-            PuzzleMenuState,
-            LoginState,
             ModsState,
         ];
 

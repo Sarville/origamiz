@@ -60,12 +60,7 @@ export const globalConfig = {
 
     readerAnalyzeIntervalSeconds: 10,
 
-    goalAcceptorItemsRequired: 12,
-    goalAcceptorsPerProducer: 5,
     puzzleModeSpeed: 3,
-    puzzleMinBoundsSize: 2,
-    puzzleMaxBoundsSize: 20,
-    puzzleValidationDurationSeconds: 30,
 
     buildingSpeeds: {
         cutter: 1 / 4,

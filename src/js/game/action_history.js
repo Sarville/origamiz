@@ -17,12 +17,11 @@ const MAX_HISTORY_LENGTH = 30;
  * changed" signal: GameLogic.tryPlaceBuilding and tryDeleteBuilding both
  * unconditionally report to noteEntityPlaced/noteEntityWillBeDeleted, but
  * those are no-ops unless a transaction is currently open (see
- * beginTransaction/endTransaction below) - so every other caller (puzzle
- * editor setup, savegame/puzzle deserialization, the mass-selector, and
- * every side effect *other* systems trigger - automatic tunnel-pair belt
- * cleanup, lever/constant-signal rebuilds, wired-pins auto-cleanup, ...) is
- * completely unaffected, by construction, with no per-caller allowlist to
- * maintain.
+ * beginTransaction/endTransaction below) - so every other caller (savegame
+ * deserialization, the mass-selector, and every side effect *other* systems
+ * trigger - automatic tunnel-pair belt cleanup, lever/constant-signal
+ * rebuilds, wired-pins auto-cleanup, ...) is completely unaffected, by
+ * construction, with no per-caller allowlist to maintain.
  *
  * A transaction wraps one user-initiated action end to end - a single tap, a
  * whole dragged belt path, one delete-mode tap - not one tile at a time (see

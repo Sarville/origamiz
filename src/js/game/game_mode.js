@@ -5,21 +5,17 @@ import { GameRoot } from "./root";
 import { gGameModeRegistry } from "../core/global_registries";
 import { Rectangle } from "../core/rectangle";
 import { BasicSerializableObject } from "../savegame/serialization";
-import { MetaItemProducerBuilding } from "./buildings/item_producer";
 import { BaseHUDPart } from "./hud/base_hud_part";
 import { MetaBuilding } from "./meta_building";
 
 /** @enum {string} */
 export const enumGameModeIds = {
-    puzzleEdit: "puzzleEditMode",
-    puzzlePlay: "puzzlePlayMode",
     regular: "regularMode",
 };
 
 /** @enum {string} */
 export const enumGameModeTypes = {
     default: "defaultModeType",
-    puzzle: "puzzleModeType",
 };
 
 export class GameMode extends BasicSerializableObject {
@@ -56,7 +52,7 @@ export class GameMode extends BasicSerializableObject {
         this.additionalHudParts = {};
 
         /** @type {typeof MetaBuilding[]} */
-        this.hiddenBuildings = [MetaItemProducerBuilding];
+        this.hiddenBuildings = [];
     }
 
     /** @returns {object} */
@@ -169,11 +165,6 @@ export class GameMode extends BasicSerializableObject {
     /** @returns {boolean} */
     getSupportsWires() {
         return true;
-    }
-
-    /** @returns {boolean} */
-    getIsEditor() {
-        return false;
     }
 
     /** @returns {boolean} */

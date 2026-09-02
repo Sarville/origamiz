@@ -5,16 +5,12 @@ import { buildBuildingCodeCache, gBuildingVariants, registerBuildingVariant } fr
 import { MetaAnalyzerBuilding } from "./buildings/analyzer";
 import { MetaBalancerBuilding } from "./buildings/balancer";
 import { MetaBeltBuilding } from "./buildings/belt";
-import { MetaBlockBuilding } from "./buildings/block";
 import { MetaComparatorBuilding } from "./buildings/comparator";
-import { MetaConstantProducerBuilding } from "./buildings/constant_producer";
 import { MetaConstantSignalBuilding } from "./buildings/constant_signal";
 import { MetaCutterBuilding } from "./buildings/cutter";
 import { MetaDisplayBuilding } from "./buildings/display";
 import { MetaFilterBuilding } from "./buildings/filter";
-import { MetaGoalAcceptorBuilding } from "./buildings/goal_acceptor";
 import { MetaHubBuilding } from "./buildings/hub";
-import { MetaItemProducerBuilding } from "./buildings/item_producer";
 import { MetaLeverBuilding } from "./buildings/lever";
 import { MetaLogicGateBuilding } from "./buildings/logic_gate";
 import { MetaMinerBuilding } from "./buildings/miner";
@@ -65,7 +61,6 @@ export function initMetaBuildingRegistry() {
         MetaStorageBuilding,
         MetaBeltBuilding,
         MetaUndergroundBeltBuilding,
-        MetaGoalAcceptorBuilding,
         MetaHubBuilding,
         MetaWireBuilding,
         MetaConstantSignalBuilding,
@@ -79,9 +74,6 @@ export function initMetaBuildingRegistry() {
         MetaTransistorBuilding,
         MetaAnalyzerBuilding,
         MetaComparatorBuilding,
-        MetaItemProducerBuilding,
-        MetaConstantProducerBuilding,
-        MetaBlockBuilding,
     ];
 
     buildings.forEach(registerBuildingVariants);

@@ -116,20 +116,7 @@
                 width: 2.5rem;
                 .icon {
                     opacity: 0.15;
-                }
-                &.editor {
-                    .icon {
-                        pointer-events: all;
-                        cursor: pointer;
-                        &:hover {
-                            background-color: rgba(22, 30, 68, 0.1);
-                        }
-                    }
-                }
-                &:not(.editor) {
-                    .icon {
-                        background-image: uiResource("locked_building.png") !important;
-                    }
+                    background-image: uiResource("locked_building.png") !important;
                 }
             }
 
@@ -168,33 +155,6 @@
 
                     kbd {
                         color: #111;
-                    }
-                }
-
-                .puzzle-lock {
-                    & {
-                        /* @load-async */
-                        background: uiResource("locked_building.png") center center / 90% no-repeat;
-                    }
-
-                    display: grid;
-                    grid-auto-flow: column;
-
-                    position: absolute;
-                    top: -1.5rem;
-                    left: 50%;
-                    transform: translateX(-50%) !important;
-                    transition: all 0.12s ease-in-out;
-                    transition-property: opacity, transform;
-
-                    cursor: pointer;
-                    pointer-events: all;
-
-                    width: 1.2rem;
-                    height: 1.2rem;
-
-                    &:hover {
-                        opacity: 0.5;
                     }
                 }
             }

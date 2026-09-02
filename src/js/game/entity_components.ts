@@ -17,8 +17,6 @@ import type { WireTunnelComponent } from "./components/wire_tunnel";
 import type { DisplayComponent } from "./components/display";
 import type { BeltReaderComponent } from "./components/belt_reader";
 import type { FilterComponent } from "./components/filter";
-import type { ItemProducerComponent } from "./components/item_producer";
-import type { GoalAcceptorComponent } from "./components/goal_acceptor";
 import type { Component } from "./component";
 
 /**
@@ -44,8 +42,6 @@ export interface EntityComponentStorage {
     Display?: DisplayComponent;
     BeltReader?: BeltReaderComponent;
     Filter?: FilterComponent;
-    ItemProducer?: ItemProducerComponent;
-    GoalAcceptor?: GoalAcceptorComponent;
 
     [k: string]: Component;
 }

@@ -12,7 +12,6 @@
 @use "states/settings";
 @use "states/about";
 @use "states/changelog";
-@use "states/puzzle_menu";
 @use "states/mods";
 
 @use "ingame_hud/buildings_toolbar";
@@ -38,22 +37,12 @@
 @use "ingame_hud/color_blind_helper";
 @use "ingame_hud/shape_viewer";
 @use "ingame_hud/sandbox_controller";
-@use "ingame_hud/puzzle_back_to_menu";
-@use "ingame_hud/puzzle_editor_review";
-@use "ingame_hud/puzzle_dlc_logo";
-@use "ingame_hud/puzzle_editor_controls";
-@use "ingame_hud/puzzle_editor_settings";
-@use "ingame_hud/puzzle_play_settings";
-@use "ingame_hud/puzzle_play_metadata";
-@use "ingame_hud/puzzle_complete_notification";
-@use "ingame_hud/puzzle_next";
 
 // prettier-ignore
 $elements:
 // Base
 ingame_Canvas,
 ingame_VignetteOverlay,
-ingame_HUD_PuzzleDLCLogo,
 // Below the building-info tooltip on purpose (see ingame_HUD_PlacementHints
 // below) - on mobile they can occupy the same corner of the screen, and the
 // tooltip should win when they overlap.
@@ -67,15 +56,6 @@ ingame_HUD_PlacerVariants,
 // Regular hud
 ingame_HUD_GameMenu,
 ingame_HUD_KeybindingOverlay,
-ingame_HUD_PuzzleBackToMenu,
-ingame_HUD_PuzzleNextPuzzle,
-ingame_HUD_PuzzleEditorReview,
-ingame_HUD_PuzzleEditorControls,
-ingame_HUD_PuzzleEditorTitle,
-ingame_HUD_PuzzleEditorSettings,
-ingame_HUD_PuzzlePlaySettings,
-ingame_HUD_PuzzlePlayMetadata,
-ingame_HUD_PuzzlePlayTitle,
 ingame_HUD_Notifications,
 ingame_HUD_DebugInfo,
 ingame_HUD_EntityDebugger,
@@ -98,7 +78,6 @@ ingame_HUD_Shop,
 ingame_HUD_Statistics,
 ingame_HUD_ShapeViewer,
 ingame_HUD_UnlockNotification,
-ingame_HUD_PuzzleCompleteNotification,
 ingame_HUD_SettingsMenu,
 ingame_HUD_ModalDialogs;
 
@@ -115,7 +94,7 @@ $zindex: 100;
 body.uiHidden {
     > div:not(.ingameDialog):not(#ingame_HUD_SettingsMenu):not(#ingame_HUD_ModalDialogs):not(
             #ingame_HUD_UnlockNotification
-        ):not(#ingame_HUD_PuzzleCompleteNotification) {
+        ) {
         display: none !important;
     }
 }
