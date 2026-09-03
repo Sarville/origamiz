@@ -314,7 +314,9 @@
                 }
             }
 
-            &.maxLevel {
+            &.maxLevel,
+            &.completed,
+            &.locked {
                 button.buy {
                     opacity: 0 !important;
                 }
@@ -323,6 +325,34 @@
                 }
                 .description {
                     color: $colorGreenBright;
+                }
+            }
+
+            &.locked {
+                opacity: 0.5;
+
+                .description {
+                    color: #aaa;
+                }
+            }
+        }
+
+        .researchSection {
+            display: none;
+
+            &.visible {
+                display: block;
+            }
+
+            .sectionTitle {
+                @include PlainText;
+                text-transform: uppercase;
+                font-weight: bold;
+                color: #aaa;
+                margin: 1rem 0 0.4rem;
+
+                @include DarkThemeOverride {
+                    color: #fff;
                 }
             }
         }

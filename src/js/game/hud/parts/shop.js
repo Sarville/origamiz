@@ -55,6 +55,154 @@ export class HUDShop extends BaseHUDPart {
             // Assign handle
             this.upgradeToElements[upgradeId] = handle;
         }
+
+        // Research - one-shot building-variant purchases, grouped in their own
+        // section below the (tiered, repeatable) speed upgrades above. Hidden
+        // entirely until Research Tier 1 is unlocked (see renderCountsAndStatus).
+        this.researchSection = makeDiv(this.contentDiv, null, ["researchSection"]);
+        makeDiv(this.researchSection, null, ["sectionTitle"], T.ingame.shop.researchSectionTitle);
+
+        this.researchToElements = {};
+        const research = this.root.gameMode.getResearch();
+        for (const researchId in research) {
+            const researchDef = research[researchId];
+            const handle = {};
+            handle.requireIndexToElement = [];
+
+            handle.elem = makeDiv(this.researchSection, null, ["upgrade"]);
+            handle.elem.setAttribute("data-research-id", researchId);
+
+            const title = makeDiv(handle.elem, null, ["title"], T.storyRewards[researchDef.reward].title);
+            handle.elemTierLabel = makeDiv(
+                title,
+                null,
+                ["tier"],
+                T.ingame.shop.tier.replace("<x>", getRomanNumber(researchDef.tier))
+            );
+            handle.elemTierLabel.setAttribute("data-tier", researchDef.tier - 1);
+
+            handle.elemDescription = makeDiv(handle.elem, null, ["description"], "");
+            handle.elemRequirements = makeDiv(handle.elem, null, ["requirements"]);
+
+            handle.buyButton = document.createElement("button");
+            handle.buyButton.classList.add("buy", "styledButton");
+            handle.buyButton.innerText = T.ingame.shop.buttonResearch;
+            handle.elem.appendChild(handle.buyButton);
+
+            this.trackClicks(handle.buyButton, () => this.tryPurchaseResearch(researchId));
+
+            // Requirements are static for research (one purchase, not tiered),
+            // so unlike upgrades they're built once here instead of on every
+            // rerenderFull().
+            researchDef.required.forEach(({ shape, amount }) => {
+                handle.requireIndexToElement.push(
+                    this.createRequirementElement(handle.elemRequirements, shape, amount)
+                );
+            });
+
+            this.researchToElements[researchId] = handle;
+        }
+    }
+
+    /**
+     * Builds one shape requirement entry (icon, progress bar, pin/info controls)
+     * @param {HTMLElement} parent
+     * @param {string} shape
+     * @param {number} amount
+     */
+    createRequirementElement(parent, shape, amount) {
+        const container = makeDiv(parent, null, ["requirement"]);
+
+        const shapeDef = this.root.shapeDefinitionMgr.getShapeFromShortKey(shape);
+        const shapeCanvas = shapeDef.generateAsCanvas(120);
+        shapeCanvas.classList.add();
+        container.appendChild(shapeCanvas);
+
+        const progressContainer = makeDiv(container, null, ["amount"]);
+        const progressBar = document.createElement("label");
+        progressBar.classList.add("progressBar");
+        progressContainer.appendChild(progressBar);
+
+        const progressLabel = document.createElement("label");
+        progressContainer.appendChild(progressLabel);
+
+        // On mobile, pinning already has a home in the shape info
+        // dialog (see shape_viewer.js) - no separate pin button here,
+        // and the shape's own canvas doubles as the info tap target
+        // instead of a dedicated button (same convention
+        // pinned_shapes.js uses), since there's no room for two tiny
+        // overlaid buttons per shape on a small screen.
+        // Static "pinned" marker, same corner the old .pin button
+        // occupied - not a button (nothing to click, pinning happens
+        // in the info dialog now), just an at-a-glance status badge,
+        // shown/hidden each frame in renderCountsAndStatus().
+        let pinMarker = null;
+        let pinButton = null;
+        let pinDetector = null;
+        let infoDetector;
+        if (IS_MOBILE) {
+            pinMarker = makeDiv(container, null, ["pinMarker"]);
+
+            shapeCanvas.classList.add("clickable");
+            infoDetector = new ClickDetector(shapeCanvas, {
+                consumeEvents: true,
+                preventDefault: true,
+                targetOnly: true,
+            });
+            infoDetector.click.add(() =>
+                this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
+            );
+        } else {
+            pinButton = document.createElement("button");
+            pinButton.classList.add("pin");
+            container.appendChild(pinButton);
+
+            const viewInfoButton = document.createElement("button");
+            viewInfoButton.classList.add("showInfo");
+            container.appendChild(viewInfoButton);
+            infoDetector = new ClickDetector(viewInfoButton, {
+                consumeEvents: true,
+                preventDefault: true,
+            });
+            infoDetector.click.add(() =>
+                this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
+            );
+
+            const currentGoalShape = this.root.hubGoals.currentGoal.definition.getHash();
+            if (shape === currentGoalShape) {
+                pinButton.classList.add("isGoal");
+            } else if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
+                pinButton.classList.add("pinned");
+            }
+
+            pinDetector = new ClickDetector(pinButton, {
+                consumeEvents: true,
+                preventDefault: true,
+            });
+            pinDetector.click.add(() => {
+                if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
+                    this.root.hud.signals.shapeUnpinRequested.dispatch(shape);
+                    pinButton.classList.add("unpinned");
+                    pinButton.classList.remove("pinned");
+                } else {
+                    this.root.hud.signals.shapePinRequested.dispatch(shapeDef);
+                    pinButton.classList.add("pinned");
+                    pinButton.classList.remove("unpinned");
+                }
+            });
+        }
+
+        return {
+            container,
+            progressLabel,
+            progressBar,
+            definition: shapeDef,
+            required: amount,
+            shapeKey: shape,
+            pinMarker,
+            pinDetector,
+            infoDetector,
+        };
     }
 
     rerenderFull() {
@@ -106,98 +254,9 @@ export class HUDShop extends BaseHUDPart {
                 .replace("<newMult>", (currentTierMultiplier + tierHandle.improvement).toFixed(2));
 
             tierHandle.required.forEach(({ shape, amount }) => {
-                const container = makeDiv(handle.elemRequirements, null, ["requirement"]);
-
-                const shapeDef = this.root.shapeDefinitionMgr.getShapeFromShortKey(shape);
-                const shapeCanvas = shapeDef.generateAsCanvas(120);
-                shapeCanvas.classList.add();
-                container.appendChild(shapeCanvas);
-
-                const progressContainer = makeDiv(container, null, ["amount"]);
-                const progressBar = document.createElement("label");
-                progressBar.classList.add("progressBar");
-                progressContainer.appendChild(progressBar);
-
-                const progressLabel = document.createElement("label");
-                progressContainer.appendChild(progressLabel);
-
-                // On mobile, pinning already has a home in the shape info
-                // dialog (see shape_viewer.js) - no separate pin button here,
-                // and the shape's own canvas doubles as the info tap target
-                // instead of a dedicated button (same convention
-                // pinned_shapes.js uses), since there's no room for two tiny
-                // overlaid buttons per shape on a small screen.
-                // Static "pinned" marker, same corner the old .pin button
-                // occupied - not a button (nothing to click, pinning happens
-                // in the info dialog now), just an at-a-glance status badge,
-                // shown/hidden each frame in renderCountsAndStatus().
-                let pinMarker = null;
-                let pinButton = null;
-                let pinDetector = null;
-                let infoDetector;
-                if (IS_MOBILE) {
-                    pinMarker = makeDiv(container, null, ["pinMarker"]);
-
-                    shapeCanvas.classList.add("clickable");
-                    infoDetector = new ClickDetector(shapeCanvas, {
-                        consumeEvents: true,
-                        preventDefault: true,
-                        targetOnly: true,
-                    });
-                    infoDetector.click.add(() =>
-                        this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
-                    );
-                } else {
-                    pinButton = document.createElement("button");
-                    pinButton.classList.add("pin");
-                    container.appendChild(pinButton);
-
-                    const viewInfoButton = document.createElement("button");
-                    viewInfoButton.classList.add("showInfo");
-                    container.appendChild(viewInfoButton);
-                    infoDetector = new ClickDetector(viewInfoButton, {
-                        consumeEvents: true,
-                        preventDefault: true,
-                    });
-                    infoDetector.click.add(() =>
-                        this.root.hud.signals.viewShapeDetailsRequested.dispatch(shapeDef)
-                    );
-
-                    const currentGoalShape = this.root.hubGoals.currentGoal.definition.getHash();
-                    if (shape === currentGoalShape) {
-                        pinButton.classList.add("isGoal");
-                    } else if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
-                        pinButton.classList.add("pinned");
-                    }
-
-                    pinDetector = new ClickDetector(pinButton, {
-                        consumeEvents: true,
-                        preventDefault: true,
-                    });
-                    pinDetector.click.add(() => {
-                        if (this.root.hud.parts.pinnedShapes.isShapePinned(shape)) {
-                            this.root.hud.signals.shapeUnpinRequested.dispatch(shape);
-                            pinButton.classList.add("unpinned");
-                            pinButton.classList.remove("pinned");
-                        } else {
-                            this.root.hud.signals.shapePinRequested.dispatch(shapeDef);
-                            pinButton.classList.add("pinned");
-                            pinButton.classList.remove("unpinned");
-                        }
-                    });
-                }
-
-                handle.requireIndexToElement.push({
-                    container,
-                    progressLabel,
-                    progressBar,
-                    definition: shapeDef,
-                    required: amount,
-                    shapeKey: shape,
-                    pinMarker,
-                    pinDetector,
-                    infoDetector,
-                });
+                handle.requireIndexToElement.push(
+                    this.createRequirementElement(handle.elemRequirements, shape, amount)
+                );
             });
         }
     }
@@ -225,6 +284,55 @@ export class HUDShop extends BaseHUDPart {
             }
 
             handle.buyButton.classList.toggle("buyable", this.root.hubGoals.canUnlockUpgrade(upgradeId));
+        }
+
+        const research = this.root.gameMode.getResearch();
+        this.researchSection.classList.toggle("visible", this.root.hubGoals.isResearchTierUnlocked(1));
+
+        for (const researchId in this.researchToElements) {
+            const handle = this.researchToElements[researchId];
+            const researchDef = research[researchId];
+
+            for (let i = 0; i < handle.requireIndexToElement.length; ++i) {
+                const { progressLabel, progressBar, definition, required, shapeKey, pinMarker } =
+                    handle.requireIndexToElement[i];
+
+                if (pinMarker) {
+                    pinMarker.classList.toggle(
+                        "visible",
+                        this.root.hud.parts.pinnedShapes.isShapePinned(shapeKey)
+                    );
+                }
+
+                const haveAmount = this.root.hubGoals.getShapesStored(definition);
+                const progress = Math.min(haveAmount / required, 1.0);
+
+                progressLabel.innerText = formatBigNumber(haveAmount) + " / " + formatBigNumber(required);
+                progressBar.style.width = progress * 100.0 + "%";
+                progressBar.classList.toggle("complete", progress >= 1.0);
+            }
+
+            const completed = this.root.hubGoals.isResearchCompleted(researchId);
+            const tierLocked = !this.root.hubGoals.isResearchTierUnlocked(researchDef.tier);
+
+            handle.elem.classList.toggle("completed", completed);
+            handle.elem.classList.toggle("locked", !completed && tierLocked);
+
+            if (completed) {
+                handle.elemDescription.innerText = T.ingame.shop.researchCompleted;
+            } else if (tierLocked) {
+                handle.elemDescription.innerText = T.ingame.shop.researchLocked.replace(
+                    "<tier>",
+                    String(researchDef.tier)
+                );
+            } else {
+                handle.elemDescription.innerText = "";
+            }
+
+            handle.buyButton.classList.toggle(
+                "buyable",
+                this.root.hubGoals.canUnlockResearch(researchId)
+            );
         }
     }
 
@@ -262,6 +370,19 @@ export class HUDShop extends BaseHUDPart {
             }
             handle.requireIndexToElement = [];
         }
+
+        for (const researchId in this.researchToElements) {
+            const handle = this.researchToElements[researchId];
+            for (let i = 0; i < handle.requireIndexToElement.length; ++i) {
+                const requiredHandle = handle.requireIndexToElement[i];
+                if (requiredHandle.pinDetector) {
+                    requiredHandle.pinDetector.cleanup();
+                }
+                if (requiredHandle.infoDetector) {
+                    requiredHandle.infoDetector.cleanup();
+                }
+            }
+        }
     }
 
     show() {
@@ -285,6 +406,12 @@ export class HUDShop extends BaseHUDPart {
 
     tryUnlockNextTier(upgradeId) {
         if (this.root.hubGoals.tryUnlockUpgrade(upgradeId)) {
+            this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
+        }
+    }
+
+    tryPurchaseResearch(researchId) {
+        if (this.root.hubGoals.tryUnlockResearch(researchId)) {
             this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
         }
     }

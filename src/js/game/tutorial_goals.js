@@ -33,6 +33,9 @@ export const enumHubGoalRewards = {
     reward_blueprints: "reward_blueprints",
     reward_freeplay: "reward_freeplay",
 
+    reward_research: "reward_research",
+    reward_research_t2: "reward_research_t2",
+
     no_reward: "no_reward",
     no_reward_freeplay: "no_reward_freeplay",
 };

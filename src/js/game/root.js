@@ -165,6 +165,7 @@ export class GameRoot {
 
             storyGoalCompleted: /** @type {Signal<[number, string]>} */ (new Signal()),
             upgradePurchased: /** @type {Signal<[string]>} */ (new Signal()),
+            researchPurchased: /** @type {Signal<[string]>} */ (new Signal()),
 
             // Called right after game is initialized
             postLoadHook: /** @type {Signal<[]>} */ (new Signal()),

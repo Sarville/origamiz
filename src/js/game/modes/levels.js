@@ -54,7 +54,7 @@ export const REGULAR_MODE_LEVELS = [
     {
         shape: "CrCrCrCr", // unused
         required: 300,
-        reward: enumHubGoalRewards.reward_rotator_ccw,
+        reward: enumHubGoalRewards.no_reward,
     },
     // 8
     {
@@ -63,11 +63,11 @@ export const REGULAR_MODE_LEVELS = [
         reward: enumHubGoalRewards.reward_mixer,
     },
     // 9
-    // Mixing (purple)
+    // Mixing (purple) - also opens Research Tier 1 (see generateResearch() in regular.js)
     {
         shape: "CpCpCpCp", // belts t3
         required: 600,
-        reward: enumHubGoalRewards.reward_merger,
+        reward: enumHubGoalRewards.reward_research,
     },
 
     // 10
@@ -79,11 +79,10 @@ export const REGULAR_MODE_LEVELS = [
     },
 
     // 11
-    // Chainable miner
     {
         shape: "CgScScCg", // processors t3
         required: 1000,
-        reward: enumHubGoalRewards.reward_miner_chainable,
+        reward: enumHubGoalRewards.no_reward,
     },
 
     // 12
@@ -94,11 +93,10 @@ export const REGULAR_MODE_LEVELS = [
         reward: enumHubGoalRewards.reward_blueprints,
     },
     // 13
-    // Tunnel Tier 2
     {
         shape: "RpRpRpRp:CwCwCwCw", // painting t3
         required: 3800,
-        reward: enumHubGoalRewards.reward_underground_belt_tier_2,
+        reward: enumHubGoalRewards.no_reward,
     },
 
     // 14
@@ -119,35 +117,32 @@ export const REGULAR_MODE_LEVELS = [
     },
 
     // 16
-    // Quad Cutter
+    // Also opens Research Tier 2 (see generateResearch() in regular.js)
     {
         shape: "SrSrSrSr:CyCyCyCy:SwSwSwSw", // belts t4 (two variants)
         required: 6000,
-        reward: enumHubGoalRewards.reward_cutter_quad,
+        reward: enumHubGoalRewards.reward_research_t2,
     },
 
     // 17
-    // Double painter
     {
         shape: "CbRbRbCb:CwCwCwCw:WbWbWbWb", // miner t4 (two variants)
         required: 20000,
-        reward: enumHubGoalRewards.reward_painter_double,
+        reward: enumHubGoalRewards.no_reward,
     },
 
     // 18
-    // Rotator (180deg)
     {
         shape: "Sg----Sg:CgCgCgCg:--CyCy--", // unused
         required: 20000,
-        reward: enumHubGoalRewards.reward_rotator_180,
+        reward: enumHubGoalRewards.no_reward,
     },
 
     // 19
-    // Compact splitter
     {
         shape: "CpRpCp--:SwSwSwSw",
         required: 25000,
-        reward: enumHubGoalRewards.reward_splitter,
+        reward: enumHubGoalRewards.no_reward,
     },
 
     // 20

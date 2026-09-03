@@ -128,6 +128,11 @@ export class GameMode extends BasicSerializableObject {
         };
     }
 
+    /** @returns {Object<string, import("./modes/regular").ResearchDefinition>} */
+    getResearch() {
+        return {};
+    }
+
     throughputDoesNotMatter() {
         return false;
     }

@@ -11,6 +11,15 @@ import { enumHubGoalRewards } from "./tutorial_goals";
 
 export const MOD_ITEM_PROCESSOR_SPEEDS = {};
 
+/**
+ * Which story reward has to be gained to unlock purchasing research of a given tier.
+ * @type {Object<number, string>}
+ */
+export const RESEARCH_TIER_UNLOCK_REWARDS = {
+    1: enumHubGoalRewards.reward_research,
+    2: enumHubGoalRewards.reward_research_t2,
+};
+
 export class HubGoals extends BasicSerializableObject {
     static getId() {
         return "HubGoals";
@@ -350,6 +359,75 @@ export class HubGoals extends BasicSerializableObject {
         this.upgradeImprovements[upgradeId] += tierData.improvement;
 
         this.root.signals.upgradePurchased.dispatch(upgradeId);
+
+        return true;
+    }
+
+    /**
+     * Returns whether the given research is already purchased
+     * @param {string} researchId
+     */
+    isResearchCompleted(researchId) {
+        const research = this.root.gameMode.getResearch()[researchId];
+        return this.isRewardUnlocked(research.reward);
+    }
+
+    /**
+     * Returns whether the given research tier is unlocked for purchasing yet
+     * @param {number} tier
+     */
+    isResearchTierUnlocked(tier) {
+        const unlockReward = RESEARCH_TIER_UNLOCK_REWARDS[tier];
+        return !unlockReward || this.isRewardUnlocked(unlockReward);
+    }
+
+    /**
+     * Returns whether a given research can be unlocked
+     * @param {string} researchId
+     */
+    canUnlockResearch(researchId) {
+        const research = this.root.gameMode.getResearch()[researchId];
+
+        if (this.isResearchCompleted(researchId) || !this.isResearchTierUnlocked(research.tier)) {
+            return false;
+        }
+
+        if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {
+            return true;
+        }
+
+        for (let i = 0; i < research.required.length; ++i) {
+            const requirement = research.required[i];
+            if ((this.storedShapes[requirement.shape] || 0) < requirement.amount) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Tries to unlock the given research
+     * @param {string} researchId
+     * @returns {boolean}
+     */
+    tryUnlockResearch(researchId) {
+        if (!this.canUnlockResearch(researchId)) {
+            return false;
+        }
+
+        const research = this.root.gameMode.getResearch()[researchId];
+
+        if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {
+            // Dont take resources
+        } else {
+            for (let i = 0; i < research.required.length; ++i) {
+                const requirement = research.required[i];
+                this.storedShapes[requirement.shape] -= requirement.amount;
+            }
+        }
+
+        this.gainedRewards.add(research.reward);
+        this.root.signals.researchPurchased.dispatch(researchId);
 
         return true;
     }

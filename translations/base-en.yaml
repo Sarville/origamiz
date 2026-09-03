@@ -327,6 +327,11 @@ ingame:
 
         maximumLevel: MAXIMUM LEVEL (Speed x<currentMult>)
 
+        researchSectionTitle: Research
+        buttonResearch: Research
+        researchLocked: Locked (Research Tier <tier> required)
+        researchCompleted: Completed
+
     # The "Statistics" window
     statistics:
         title: Statistics
@@ -699,6 +704,12 @@ storyRewards:
         title: Tunnel
         desc: The <strong>tunnel</strong> has been unlocked - You can now tunnel items below belts and buildings with it!
 
+    reward_research:
+        title: Research
+        desc: >-
+            You have unlocked the <strong>Research</strong> section of the Upgrades window! Spend the shapes you deliver
+            to the Hub on optional building variants there, instead of waiting for them to show up in the level ladder.
+
     reward_rotator_ccw:
         title: CCW Rotating
         desc: >-
@@ -745,6 +756,12 @@ storyRewards:
         desc: >-
             You have unlocked the <strong>storage</strong> building - It allows you to store items up to a given capacity!<br><br>
             It prioritizes the left output, so you can also use it as an <strong>overflow gate</strong>!
+
+    reward_research_t2:
+        title: Research Tier II
+        desc: >-
+            <strong>Research Tier II</strong> is now available - more building variants can be researched in the
+            Upgrades window!
 
     reward_blueprints:
         title: Blueprints

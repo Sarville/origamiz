@@ -53,6 +53,12 @@ import { finalGameShape, REGULAR_MODE_LEVELS } from "./levels";
  *   throughputOnly?: boolean
  * }} LevelDefinition */
 
+/** @typedef {{
+ *   tier: number,
+ *   reward: enumHubGoalRewards,
+ *   required: Array<UpgradeRequirement>
+ * }} ResearchDefinition */
+
 export const rocketShape = "CbCuCbCu:Sr------:--CrSrCr:CwCwCwCw";
 const preparementShape = "CpRpCp--:SwSwSwSw";
 
@@ -311,6 +317,108 @@ export function generateLevelDefinitions() {
     return levelDefinitions;
 }
 
+// Currency shapes are simply the shape of the level that opens each research
+// tier (level 9 for tier 1, level 16 for tier 2) - the player is already
+// producing it at that point, nothing new to introduce.
+const researchTier1Currency = "CpCpCpCp";
+const researchTier2Currency = "SrSrSrSr:CyCyCyCy:SwSwSwSw";
+
+let researchCache = null;
+
+/**
+ * Generates the research definitions - building variants that used to be
+ * handed out directly by the level ladder, now bought with shapes instead.
+ * @returns {Object<string, ResearchDefinition>}
+ */
+function generateResearch() {
+    if (researchCache) {
+        return researchCache;
+    }
+
+    const research = {
+        rotatorCcw: {
+            tier: 1,
+            reward: enumHubGoalRewards.reward_rotator_ccw,
+            required: [
+                { shape: researchTier1Currency, amount: 2400 },
+                { shape: "CrCrCrCr", amount: 30 },
+            ],
+        },
+        balancerMerger: {
+            tier: 1,
+            reward: enumHubGoalRewards.reward_merger,
+            // Merger used to be granted by the same level that now sells the
+            // tier-1 currency shape, so its "own" shape and the currency
+            // shape are the same one - just fold both amounts together.
+            required: [{ shape: researchTier1Currency, amount: 2430 }],
+        },
+        minerChainable: {
+            tier: 1,
+            reward: enumHubGoalRewards.reward_miner_chainable,
+            required: [
+                { shape: researchTier1Currency, amount: 2400 },
+                { shape: "CgScScCg", amount: 30 },
+            ],
+        },
+        cutterQuad: {
+            tier: 1,
+            reward: enumHubGoalRewards.reward_cutter_quad,
+            required: [
+                { shape: researchTier1Currency, amount: 2400 },
+                { shape: "SrSrSrSr:CyCyCyCy:SwSwSwSw", amount: 30 },
+            ],
+        },
+
+        undergroundBeltTier2: {
+            tier: 2,
+            reward: enumHubGoalRewards.reward_underground_belt_tier_2,
+            required: [
+                { shape: researchTier2Currency, amount: 24000 },
+                { shape: "RpRpRpRp:CwCwCwCw", amount: 30 },
+            ],
+        },
+        painterDouble: {
+            tier: 2,
+            reward: enumHubGoalRewards.reward_painter_double,
+            required: [
+                { shape: researchTier2Currency, amount: 24000 },
+                { shape: "CbRbRbCb:CwCwCwCw:WbWbWbWb", amount: 30 },
+            ],
+        },
+        rotator180: {
+            tier: 2,
+            reward: enumHubGoalRewards.reward_rotator_180,
+            required: [
+                { shape: researchTier2Currency, amount: 24000 },
+                { shape: "Sg----Sg:CgCgCgCg:--CyCy--", amount: 30 },
+            ],
+        },
+        balancerSplitter: {
+            tier: 2,
+            reward: enumHubGoalRewards.reward_splitter,
+            required: [
+                { shape: researchTier2Currency, amount: 24000 },
+                { shape: "CpRpCp--:SwSwSwSw", amount: 30 },
+            ],
+        },
+    };
+
+    if (G_IS_DEV) {
+        for (const researchId in research) {
+            research[researchId].required.forEach(({ shape }) => {
+                try {
+                    ShapeDefinition.fromShortKey(shape);
+                } catch (ex) {
+                    throw new Error("Invalid research requirement for shape " + shape, { cause: ex });
+                }
+            });
+        }
+    }
+
+    researchCache = research;
+    return research;
+}
+
 export class RegularGameMode extends GameMode {
     static getId() {
         return enumGameModeIds.regular;
@@ -372,6 +480,14 @@ export class RegularGameMode extends GameMode {
      */
     getLevelDefinitions() {
         return generateLevelDefinitions();
+    }
+
+    /**
+     * Should return all available research
+     * @returns {Object<string, ResearchDefinition>}
+     */
+    getResearch() {
+        return generateResearch();
     }
 
     /**
