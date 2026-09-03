@@ -16,9 +16,11 @@ import { MODS } from "./mods/modloader";
 import { Sound } from "./platform/sound";
 import { Storage, STORAGE_SAVES } from "./platform/storage";
 import { PlatformWrapperImplBrowser } from "./platform/wrapper";
+import { AchievementsStorage } from "./profile/achievements_storage";
 import { ApplicationSettings } from "./profile/application_settings";
 import { SavegameManager } from "./savegame/savegame_manager";
 import { AboutState } from "./states/about";
+import { AchievementsState } from "./states/achievements";
 import { ChangelogState } from "./states/changelog";
 import { InGameState } from "./states/ingame";
 import { KeybindingsState } from "./states/keybindings";
@@ -68,6 +70,7 @@ export class Application {
 
         // Global stuff
         this.settings = new ApplicationSettings(this, this.storage);
+        this.achievements = new AchievementsStorage(this, this.storage);
         this.ticker = new AnimationFrame();
         this.stateMgr = new StateManager(this);
         // NOTE: SavegameManager uses the passed storage, but savegames always
@@ -129,6 +132,7 @@ export class Application {
             InGameState,
             SettingsState,
             ShapeViewerToolState,
+            AchievementsState,
             KeybindingsState,
             AboutState,
             ChangelogState,

@@ -14,6 +14,10 @@
 - [ ] **Ребрендинг ассетов.** Продолжать по
       [REBRANDING_PLAN.md](REBRANDING_PLAN.md); это единственный источник
       оставшегося перечня графики, звука и текстов.
+- [ ] **Система исследований (research).** Спроектирована в
+      [ACHIEVEMENTS_AND_RESEARCH_PLAN.md](ACHIEVEMENTS_AND_RESEARCH_PLAN.md)
+      (часть B), код не писался — нужно подтвердить разбивку построек по
+      тирам 1/2 прежде чем начинать реализацию.
 
 ## Отложенные улучшения
 
@@ -34,6 +38,10 @@
       подтверждённому решению.
 - [x] **Chunk 2c — Mobile placement/edit UX overhaul.**
 - [x] **Chunk 5 — Puzzle mode standalone build.**
+- [x] **Система достижений.** 65 ачивок (en+ru), главный экран + пункт в
+      настройках, см.
+      [ACHIEVEMENTS_AND_RESEARCH_PLAN.md](ACHIEVEMENTS_AND_RESEARCH_PLAN.md)
+      (часть A) и `sessions/2026-09-03-0250-session.md`.
 
 ## Действующие решения
 

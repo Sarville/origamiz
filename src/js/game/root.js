@@ -171,6 +171,9 @@ export class GameRoot {
 
             shapeDelivered: /** @type {Signal<[ShapeDefinition]>} */ (new Signal()),
             itemProduced: /** @type {Signal<[BaseItem]>} */ (new Signal()),
+            itemStored: /** @type {Signal<[BaseItem]>} */ (new Signal()), // Item entered a storage building
+            itemsTrashed: /** @type {Signal<[number]>} */ (new Signal()), // N items consumed by a trash building at once
+            blueprintPlaced: /** @type {Signal<[number]>} */ (new Signal()), // A blueprint was pasted, with the number of entities placed
 
             bulkOperationFinished: /** @type {Signal<[]>} */ (new Signal()),
             immutableOperationFinished: /** @type {Signal<[]>} */ (new Signal()),

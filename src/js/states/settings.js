@@ -36,6 +36,10 @@ export class SettingsState extends TextualGameState {
             ${T.shapeViewerTool.title}
             </button>
 
+            <button class="styledButton categoryButton achievements">
+            ${T.achievements.title}
+            </button>
+
 
             <div class="other">
                 <button class="styledButton about">${T.about.title}</button>
@@ -111,6 +115,11 @@ export class SettingsState extends TextualGameState {
         if (shapeViewerButton) {
             this.trackClicks(shapeViewerButton, this.onShapeViewerToolClicked, { preventDefault: false });
         }
+
+        const achievementsButton = this.htmlElement.querySelector(".achievements");
+        if (achievementsButton) {
+            this.trackClicks(achievementsButton, this.onAchievementsClicked, { preventDefault: false });
+        }
     }
 
     setActiveCategory(category) {
@@ -179,5 +188,9 @@ export class SettingsState extends TextualGameState {
 
     onShapeViewerToolClicked() {
         this.moveToStateAddGoBack("ShapeViewerToolState");
+    }
+
+    onAchievementsClicked() {
+        this.moveToStateAddGoBack("AchievementsState");
     }
 }

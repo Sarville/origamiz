@@ -46,6 +46,7 @@ mainMenu:
     savegameLevelUnknown: Неизвестный уровень
     savegameUnnamed: Без названия
     noActiveSavegames: Сохранения не найдены - нажмите "Играть", чтобы начать новую игру!
+    achievements: Достижения
 dialogs:
     buttons:
         ok: OK
@@ -987,6 +988,208 @@ shapeViewerTool:
         </div>
         <h3>Примеры</h3>
         <dl class="examples"><dt><code>CwCwCwCw</code></dt><dd>Белый круг</dd><dt><code>----RuRu</code></dt><dd>Половина прямоугольника</dd><dt><code>CgScScCg</code></dt><dd>Смешанные круги и звёзды</dd><dt><code>RpRpRpRp:CwCwCwCw</code></dt><dd>Два наложенных слоя</dd></dl>
+achievements:
+    title: Достижения
+    unlockedOf: Открыто <x> из <y>
+    hiddenName: "???"
+    hiddenDescription: Скрытое достижение - продолжайте играть, чтобы его открыть.
+    list:
+        blueprint100k:
+            name: Будущее за чертежами
+            description: Накопите 100 000 чертежей в хабе
+        play10h:
+            name: Это было давно
+            description: Играйте 10 часов
+        play1h:
+            name: Втянулся
+            description: Играйте 1 час
+        blueprint1m:
+            name: Пригодится позже
+            description: Накопите 1 000 000 чертежей в хабе
+        play20h:
+            name: Зависимость
+            description: Играйте 20 часов
+        throughputBp25:
+            name: Эффективность I
+            description: Доставляйте 25 чертежей в секунду
+        throughputBp50:
+            name: Эффективность II
+            description: Доставляйте 50 чертежей в секунду
+        place5000Wires:
+            name: Компьютерщик
+            description: Разместите 5000 проводов
+        placeBlueprint:
+            name: Теперь это просто
+            description: Разместите чертёж
+        noBeltUpgradesUntilBp:
+            name: Как всё медленно
+            description: Пройдите 12-й уровень без единого улучшения конвейеров
+        throughputLogo25:
+            name: Специалист по брендингу I
+            description: Доставляйте 25 логотипов в секунду
+        throughputLogo50:
+            name: Специалист по брендингу II
+            description: Доставляйте 50 логотипов в секунду
+        placeBp1000:
+            name: Копипаста
+            description: Разместите 1000 построек одновременно
+        cutShape:
+            name: Резак
+            description: Разрежьте фигуру
+        darkMode:
+            name: Глаза больше не болят
+            description: Включите тёмную тему
+        destroy1000:
+            name: Перфекционист
+            description: Уничтожьте 1000 построек одновременно
+        throughputRocket10:
+            name: Готовимся к запуску
+            description: Доставляйте 10 ракет в секунду
+        produceLogo:
+            name: Вот он, логотип!
+            description: Произведите фигуру-логотип
+        level100:
+            name: Это конец?
+            description: Достигните 100-го уровня
+        unlockWires:
+            name: Провода
+            description: Пройдите 20-й уровень и откройте слой проводов
+        completeLvl26:
+            name: Свобода!
+            description: Завершите 26-й уровень и откройте свободную игру
+        upgradesTier5:
+            name: Быстрее
+            description: Доведите все улучшения до 5-го уровня
+        level50:
+            name: Не могу остановиться
+            description: Достигните 50-го уровня
+        upgradesTier8:
+            name: Ещё быстрее
+            description: Доведите все улучшения до 8-го уровня
+        mam:
+            name: Машина для всего
+            description: Пройдите любой уровень после 26-го, ни разу не изменив фабрику
+        noInverseRotater:
+            name: Король неэффективности
+            description: Не используйте поворот против часовой стрелки до 14-го уровня
+        openWires:
+            name: Следующее измерение
+            description: Откройте слой проводов
+        paintShape:
+            name: Маляр
+            description: Покрасьте фигуру
+        produceRocket:
+            name: На Луну!
+            description: Произведите фигуру ракеты
+        rotateShape:
+            name: Поворотчик
+            description: Поверните фигуру
+        speedrunBp120:
+            name: Не для ленивых
+            description: Дойдите до 12-го уровня и пройдите его за 120 минут
+        speedrunBp60:
+            name: Спидран-новичок
+            description: Дойдите до 12-го уровня и пройдите его за 60 минут
+        speedrunBp30:
+            name: Мастер спидрана
+            description: Дойдите до 12-го уровня и пройдите его за 30 минут
+        throughputRocket20:
+            name: SpaceY
+            description: Доставляйте 20 ракет в секунду
+        stackShape:
+            name: А они складываются?
+            description: Сложите фигуру в стопку
+        stack4Layers:
+            name: Переполнение стопки
+            description: Произведите фигуру из 4 слоёв
+        storeShape:
+            name: Барахольщик
+            description: Сохраните фигуру в хранилище
+        store100Unique:
+            name: Не протолкнуться
+            description: Накопите 100 уникальных фигур в хабе
+        trash1000:
+            name: Избавьтесь от них
+            description: Отправьте в мусорку 1000 фигур
+        belts10k:
+            name: Конвейеры повсюду
+            description: Разместите 10 000 конвейеров
+        freeplayLevel120s:
+            name: Уже лучше
+            description: Пройдите уровень свободной игры быстрее чем за 120 секунд
+        place1mBps:
+            name: Наконец пригодилось
+            description: Потратьте 1 000 000 чертежей
+        store200k:
+            name: Настоящий барахольщик
+            description: Накопите 200 000 фигур в хранилищах
+        freeplayLevel30s:
+            name: Мастер автоматизации
+            description: Пройдите уровень свободной игры быстрее чем за 30 секунд
+        freeplayLevel60s:
+            name: Я скорость
+            description: Пройдите уровень свободной игры быстрее чем за 60 секунд
+        beltsLvl15:
+            name: Конвейеры на максималках
+            description: Улучшите конвейеры до 15-го уровня
+        bird:
+            name: Флэппи Бёрд
+            description: Произведите фигуру птицы
+        lvl6NoBalancers:
+            name: Разбалансировка
+            description: Пройдите 6-й уровень без единого балансировщика
+        lvl12NoDestroying:
+            name: Эколог
+            description: Пройдите 12-й уровень, не сломав ни одной постройки
+        lvl20NoDoublePainter:
+            name: Император неэффективности
+            description: Пройдите 20-й уровень без двойных маляров
+        noFactoryFreeplay:
+            name: Настоящий перфекционист
+            description: Полностью очистите фабрику в любой момент после 26-го уровня
+        lvl12NoTrash:
+            name: Не выбрасывай, используй
+            description: Пройдите 12-й уровень без единой мусорки
+        lvl7NoTunnels:
+            name: Тебе нравится боль?
+            description: Пройдите 7-й уровень без единого тоннеля
+        lvl12NoUpgrades:
+            name: Ещё медленнее
+            description: Пройдите 12-й уровень, не купив ни одного улучшения
+        lvl27NoWires:
+            name: Сделай сам
+            description: Пройдите 27-й уровень вручную, без единого провода
+        rocketBeforeLogo:
+            name: Значительно рано?
+            description: Произведите фигуру ракеты раньше, чем фигуру-логотип
+        scissors:
+            name: Другой резак
+            description: Произведите фигуру ножниц
+        whoKnows:
+            name: Кто знает, тот знает
+            description: Некоторые вещи лучше не объяснять.
+        msLogo:
+            name: Где-то я это уже видел...
+            description: Hello, Bill!
+        belt500Tiles:
+            name: Мне нужны поезда
+            description: Постройте непрерывную конвейерную линию длиной 500 плиток
+        logoBefore18:
+            name: Чуть-чуть рано?
+            description: Произведите фигуру-логотип до достижения 18-го уровня
+        mapMarkers15:
+            name: GPS
+            description: Поставьте 15 маркеров на карте
+        irrelevantShape:
+            name: Упс
+            description: Доставьте в хаб фигуру, которая не нужна ни для одной цели и ни для одного улучшения
+        notRocket:
+            name: Сегодня не полетите
+            description: Произведите фигуру, почти неотличимую от ракеты
+        stack5thLayer:
+            name: Запретный слой
+            description: Сложите фигуру в 5 слоёв
+
 changelog:
     title: Список изменений
 demo:

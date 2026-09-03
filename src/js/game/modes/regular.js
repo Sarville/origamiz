@@ -6,6 +6,7 @@ import { IS_MOBILE } from "../../core/config";
 import { findNiceIntegerValue } from "../../core/utils";
 import { MOD_SIGNALS } from "../../mods/mod_signals";
 import { enumGameModeIds, enumGameModeTypes, GameMode } from "../game_mode";
+import { HUDAchievementTracker } from "../hud/parts/achievement_tracker";
 import { HUDConstantSignalEdit } from "../hud/parts/constant_signal_edit";
 import { HUDGameMenu } from "../hud/parts/game_menu";
 import { HUDInteractiveTutorial } from "../hud/parts/interactive_tutorial";
@@ -342,6 +343,7 @@ export class RegularGameMode extends GameMode {
             tutorialVideoOffer: HUDTutorialVideoOffer,
             gameMenu: HUDGameMenu,
             constantSignalEdit: HUDConstantSignalEdit,
+            achievementTracker: HUDAchievementTracker,
         };
 
         if (!IS_MOBILE) {

@@ -349,9 +349,10 @@ export class BeltPath extends BasicSerializableObject {
         const storageComp = entity.components.Storage;
         if (storageComp) {
             // It's a storage
-            return function (item) {
+            return item => {
                 if (storageComp.canAcceptItem(item)) {
                     storageComp.takeItem(item);
+                    this.root.signals.itemStored.dispatch(item);
                     return true;
                 }
             };

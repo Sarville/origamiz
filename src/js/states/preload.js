@@ -72,6 +72,8 @@ export class PreloadState extends GameState {
                 return this.app.settings.initialize();
             })
 
+            .then(() => this.app.achievements.initialize())
+
             .then(() => {
                 // Initialize fullscreen
                 if (this.app.platformWrapper.getSupportsFullscreen()) {

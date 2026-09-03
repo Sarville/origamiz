@@ -32,7 +32,8 @@ $cardTextDark: #3f4140;
         gap: 0.9rem;
 
         .settingsButton,
-        .exitAppButton {
+        .exitAppButton,
+        .achievementsButton {
             width: 3.5rem;
             height: 3.5rem;
             pointer-events: all;
@@ -45,6 +46,22 @@ $cardTextDark: #3f4140;
             opacity: 0.85;
             &:hover {
                 opacity: 1;
+            }
+        }
+
+        // Placeholder trophy glyph (inline SVG in the markup) until the final
+        // origami-style icon is generated - see the art brief in
+        // ACHIEVEMENTS_AND_RESEARCH_PLAN.md.
+        .achievementsButton {
+            background: rgba(#f2e8d5, 0.92);
+            border: 0.12rem solid rgba(#8a7550, 0.45);
+            padding: 0.7rem;
+            box-sizing: border-box;
+
+            svg {
+                width: 100%;
+                height: 100%;
+                display: block;
             }
         }
 

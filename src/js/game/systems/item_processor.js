@@ -477,7 +477,7 @@ export class ItemProcessorSystem extends GameSystemWithFilter {
      * @param {ProcessorImplementationPayload} payload
      */
     process_TRASH(payload) {
-        // Do nothing ..
+        this.root.signals.itemsTrashed.dispatch(payload.items.size);
     }
 
     /**

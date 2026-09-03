@@ -41,6 +41,9 @@ export class SavegameSerializer {
             beltPaths: root.systemMgr.systems.belt.serializePaths(),
             pinnedShapes: root.hud.parts.pinnedShapes ? root.hud.parts.pinnedShapes.serialize() : null,
             waypoints: root.hud.parts.waypoints ? root.hud.parts.waypoints.serialize() : null,
+            achievementTracker: root.hud.parts.achievementTracker
+                ? root.hud.parts.achievementTracker.serialize()
+                : null,
 
             modExtraData: {},
         };
@@ -147,6 +150,12 @@ export class SavegameSerializer {
 
         if (root.hud.parts.waypoints) {
             errorReason = errorReason || root.hud.parts.waypoints.deserialize(savegame.waypoints);
+        }
+
+        if (root.hud.parts.achievementTracker && savegame.achievementTracker) {
+            errorReason =
+                errorReason ||
+                root.hud.parts.achievementTracker.deserialize(savegame.achievementTracker);
         }
 
         // Check for errors

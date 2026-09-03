@@ -87,6 +87,8 @@ mainMenu:
     savegameLevelUnknown: Unknown Level
     savegameUnnamed: Unnamed
 
+    achievements: Achievements
+
 dialogs:
     buttons:
         ok: OK
@@ -1173,6 +1175,208 @@ shapeViewerTool:
         </div>
         <h3>Examples</h3>
         <dl class="examples"><dt><code>CwCwCwCw</code></dt><dd>White circle</dd><dt><code>----RuRu</code></dt><dd>Half rectangle</dd><dt><code>CgScScCg</code></dt><dd>Circles and stars mixed</dd><dt><code>RpRpRpRp:CwCwCwCw</code></dt><dd>Layering example</dd></dl>
+
+achievements:
+    title: Achievements
+    unlockedOf: <x> / <y> unlocked
+    hiddenName: "???"
+    hiddenDescription: Hidden achievement - keep playing to discover it.
+    list:
+        blueprint100k:
+            name: Blueprints are the future
+            description: Have 100k blueprints stored in the hub
+        play10h:
+            name: It's been a long time
+            description: Play for 10 hours
+        play1h:
+            name: Getting into it
+            description: Play for 1 hour
+        blueprint1m:
+            name: I'll use it later
+            description: Have 1 million blueprints stored in the hub
+        play20h:
+            name: Addicted
+            description: Play for 20 hours
+        throughputBp25:
+            name: Efficiency 1
+            description: Deliver 25 blueprints per second
+        throughputBp50:
+            name: Efficiency 2
+            description: Deliver 50 blueprints per second
+        place5000Wires:
+            name: Computer Guy
+            description: Place 5000 wires
+        placeBlueprint:
+            name: Now it's easy
+            description: Place a blueprint
+        noBeltUpgradesUntilBp:
+            name: It's so slow
+            description: Complete level 12 without any belt upgrades
+        throughputLogo25:
+            name: Branding Specialist 1
+            description: Deliver 25 logos per second
+        throughputLogo50:
+            name: Branding Specialist 2
+            description: Deliver 50 logos per second
+        placeBp1000:
+            name: Copypasta
+            description: Place 1000 buildings at once
+        cutShape:
+            name: Cutter
+            description: Cut a shape
+        darkMode:
+            name: My eyes no longer hurt
+            description: Enable dark mode
+        destroy1000:
+            name: Perfectionist
+            description: Destroy 1000 buildings at once
+        throughputRocket10:
+            name: Preparing to launch
+            description: Deliver 10 rockets per second
+        produceLogo:
+            name: The logo!
+            description: Produce the logo shape
+        level100:
+            name: Is this the end?
+            description: Reach level 100
+        unlockWires:
+            name: Wires
+            description: Beat level 20, unlocking wires
+        completeLvl26:
+            name: Freedom!
+            description: Complete level 26, unlocking freeplay
+        upgradesTier5:
+            name: Faster
+            description: Have all upgrades at tier 5
+        level50:
+            name: Can't Stop
+            description: Reach level 50
+        upgradesTier8:
+            name: Even faster
+            description: Have all upgrades at tier 8
+        mam:
+            name: Make Anything Machine
+            description: Beat any level after level 26 without modifying your factory
+        noInverseRotater:
+            name: King of Inefficiency
+            description: Use no counter-clockwise rotator until level 14
+        openWires:
+            name: The next dimension
+            description: Open the wires layer
+        paintShape:
+            name: Painter
+            description: Paint a shape
+        produceRocket:
+            name: To the moon!
+            description: Produce the rocket shape
+        rotateShape:
+            name: Rotater
+            description: Rotate a shape
+        speedrunBp120:
+            name: Not an idle game
+            description: Reach and complete level 12 in under 120 minutes
+        speedrunBp60:
+            name: Speedrun Novice
+            description: Reach and complete level 12 in under 60 minutes
+        speedrunBp30:
+            name: Speedrun Master
+            description: Reach and complete level 12 in under 30 minutes
+        throughputRocket20:
+            name: SpaceY
+            description: Deliver 20 rockets per second
+        stackShape:
+            name: Wait, they stack?
+            description: Stack a shape
+        stack4Layers:
+            name: Stack Overflow
+            description: Produce a shape with 4 layers
+        storeShape:
+            name: I'm a hoarder
+            description: Store a shape
+        store100Unique:
+            name: It's a mess
+            description: Store 100 unique shapes in the hub
+        trash1000:
+            name: Get rid of them
+            description: Trash 1000 shapes
+        belts10k:
+            name: Belts go brrr
+            description: Place 10k belts
+        freeplayLevel120s:
+            name: It's an improvement
+            description: Beat a freeplay level in under 120 seconds
+        place1mBps:
+            name: I've finally used it
+            description: Spend 1 million blueprints
+        store200k:
+            name: True hoarder
+            description: Store 200k shapes in storages
+        freeplayLevel30s:
+            name: Automation master
+            description: Beat a freeplay level in under 30 seconds
+        freeplayLevel60s:
+            name: I am speed
+            description: Beat a freeplay level in under 60 seconds
+        beltsLvl15:
+            name: Belts go brrrrrrrrrrrrrrrrrrr
+            description: Upgrade belts to level 15
+        bird:
+            name: Flappy Bird
+            description: Produce the bird shape
+        lvl6NoBalancers:
+            name: Unbalanced
+            description: Complete level 6 without using any balancers
+        lvl12NoDestroying:
+            name: Environmentalist
+            description: Complete level 12 without destroying any buildings
+        lvl20NoDoublePainter:
+            name: Emperor of inefficiency
+            description: Complete level 20 without using any double painters
+        noFactoryFreeplay:
+            name: True perfectionist
+            description: Have a completely empty factory at any point after beating level 26
+        lvl12NoTrash:
+            name: Reduce, reuse, recycle
+            description: Complete level 12 without using any trash
+        lvl7NoTunnels:
+            name: Do you enjoy pain?
+            description: Complete level 7 without using any tunnels
+        lvl12NoUpgrades:
+            name: It's even slower
+            description: Complete level 12 without buying any upgrades
+        lvl27NoWires:
+            name: DIY
+            description: Complete level 27 manually, without using any wires
+        rocketBeforeLogo:
+            name: A lot early?
+            description: Produce the rocket shape before producing the logo shape
+        scissors:
+            name: The other cutter
+            description: Produce the scissors shape
+        whoKnows:
+            name: Those who know, know
+            description: Some things are better left unexplained.
+        msLogo:
+            name: I've seen that before...
+            description: Hello, Bill!
+        belt500Tiles:
+            name: I need trains
+            description: Build a single uninterrupted belt line 500 tiles long
+        logoBefore18:
+            name: A bit early?
+            description: Produce the logo shape before reaching level 18
+        mapMarkers15:
+            name: GPS
+            description: Place 15 map markers
+        irrelevantShape:
+            name: Oops
+            description: Deliver a shape to the hub that isn't needed for any level or upgrade
+        notRocket:
+            name: You will not go to space today
+            description: Produce a shape that's almost, but not quite, the rocket
+        stack5thLayer:
+            name: The forbidden layer
+            description: Stack a shape 5 layers high
 
 changelog:
     title: Changelog

@@ -28,6 +28,27 @@ export class MainMenuState extends GameState {
 
         return `
             <div class="topButtons">
+                <button class="achievementsButton" aria-label="${T.mainMenu.achievements}">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <linearGradient id="achievementsButtonCup" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0" stop-color="#f7efdc"/>
+                                <stop offset="1" stop-color="#d8c48f"/>
+                            </linearGradient>
+                        </defs>
+                        <path d="M6 4.25H18V8.35C18 11.05 15.7 13.1 12 14.1C8.3 13.1 6 11.05 6 8.35Z" fill="url(#achievementsButtonCup)" stroke="#6b5636" stroke-width="1.15" stroke-linejoin="round"/>
+                        <path d="M6.1 5.25H3.85C3.85 8.05 4.95 9.75 7.35 10.25" fill="none" stroke="#6b5636" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17.9 5.25H20.15C20.15 8.05 19.05 9.75 16.65 10.25" fill="none" stroke="#6b5636" stroke-width="1.15" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6.58 4.82 12 9.15 17.42 4.82V8.18C17.42 10.43 15.44 12.23 12 13.2 8.56 12.23 6.58 10.43 6.58 8.18Z" fill="#eadbb5"/>
+                        <path d="M6.58 4.82 12 9.15V13.2C8.56 12.23 6.58 10.43 6.58 8.18Z" fill="#e1cb98"/>
+                        <path d="M17.42 4.82 12 9.15V13.2C15.44 12.23 17.42 10.43 17.42 8.18Z" fill="#f7efdc"/>
+                        <path d="M6.58 4.82 12 9.15 17.42 4.82M12 9.15V13.2" fill="none" stroke="#a58d5c" stroke-width=".7" stroke-linejoin="round"/>
+                        <path d="M10.45 13.55H13.55V16.75H10.45Z" fill="#d8c48f" stroke="#6b5636" stroke-width="1.05" stroke-linejoin="round"/>
+                        <path d="M10.45 13.55 12 15.1 13.55 13.55M12 15.1V16.75" fill="none" stroke="#a58d5c" stroke-width=".65" stroke-linejoin="round"/>
+                        <path d="M8.35 17H15.65L17.25 20H6.75Z" fill="#e8d7ab" stroke="#6b5636" stroke-width="1.15" stroke-linejoin="round"/>
+                        <path d="M8.35 17 12 19.15 15.65 17M12 19.15V20" fill="none" stroke="#a58d5c" stroke-width=".7" stroke-linejoin="round"/>
+                    </svg>
+                </button>
                 <button class="settingsButton" aria-label="Settings"></button>
                 ${
                     this.app.platformWrapper.getSupportsAppExit()
@@ -125,6 +146,7 @@ export class MainMenuState extends GameState {
 
         const clickHandling = {
             ".settingsButton": this.onSettingsButtonClicked,
+            ".achievementsButton": this.onAchievementsButtonClicked,
             ".exitAppButton": this.onExitAppButtonClicked,
             ".editMods": this.onModsClicked,
         };
@@ -457,6 +479,10 @@ export class MainMenuState extends GameState {
 
     onSettingsButtonClicked() {
         this.moveToState("SettingsState");
+    }
+
+    onAchievementsButtonClicked() {
+        this.moveToState("AchievementsState");
     }
 
     onPlayButtonClicked() {

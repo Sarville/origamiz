@@ -166,6 +166,7 @@ export class Blueprint {
      * Attempts to place the blueprint at the given tile
      */
     tryPlace(root: GameRoot, tile: Vector) {
+        let placedCount = 0;
         const consumed: boolean = root.logic.performBulkOperation(() => {
             return root.logic.performImmutableOperation(() => {
                 let count = 0;
@@ -184,6 +185,7 @@ export class Blueprint {
                     count++;
                 }
 
+                placedCount = count;
                 return count !== 0;
             });
         });
@@ -195,6 +197,7 @@ export class Blueprint {
             }
 
             this.isNextPasteFree = false;
+            root.signals.blueprintPlaced.dispatch(placedCount);
         }
 
         return consumed;
