@@ -410,14 +410,12 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 this.flashInvalidBelt(path);
                 return;
             }
+            const releaseWasOccupied = !!this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
             const result = this.beltPathPlanner.placePath(resolved, {
                 tile: this.lastBeltTile,
                 incoming: this.lastBeltIncomingDirection,
             });
-            if (result.placed) {
-                this.lastBeltTile = result.lastTile;
-                this.lastBeltIncomingDirection = result.lastIncoming;
-            }
+            this.applyBeltContinuation(result, releaseWasOccupied);
         } else if (this.tryPlaceCurrentBuildingAt(tile)) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
             this.lastBeltTile = tile;
@@ -426,6 +424,30 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 tile.y,
                 "regular"
             )?.components.StaticMapEntity.rotation;
+        }
+    }
+
+    /**
+     * After a belt drag/tap commits, either extends lastBeltTile from the
+     * new endpoint (landed on empty ground, same as before) or clears it
+     * (landed on a tile that already had something there - a machine's
+     * input, another belt trunk merged into, etc.) - same effect as
+     * mobile's "new belt" button (onNewBeltClicked): the run is done, so
+     * the next click starts a fresh, unconnected segment instead of
+     * extending from here.
+     * @param {{ placed: boolean, lastTile: Vector, lastIncoming: number= }} result
+     * @param {boolean} releaseWasOccupied Whether the release tile already had map content *before* this placement.
+     */
+    applyBeltContinuation(result, releaseWasOccupied) {
+        if (!result.placed) {
+            return;
+        }
+        if (releaseWasOccupied) {
+            this.lastBeltTile = null;
+            this.lastBeltIncomingDirection = undefined;
+        } else {
+            this.lastBeltTile = result.lastTile;
+            this.lastBeltIncomingDirection = result.lastIncoming;
         }
     }
 
@@ -1242,19 +1264,16 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 // red instead of placing a gapped/broken belt.
                 this.flashInvalidBelt(this.beltDragPath);
             } else if (this.beltDragPreviewEntries.length > 0) {
-                // Item 9 (normal zoom): thread lastBeltTile through the same
-                // way placeBeltTapAt does, so a later overview-zoom click
-                // continues from wherever this drag ended instead of
-                // starting a fresh segment - see the anchor-tile capture in
-                // onMouseDown for the other half of this.
+                const releaseWasOccupied = !!this.root.map.getLayerContentXY(
+                    this.lastDragTile.x,
+                    this.lastDragTile.y,
+                    "regular"
+                );
                 const result = this.beltPathPlanner.placePath(this.beltDragPreviewEntries, {
                     tile: this.lastBeltTile,
                     incoming: this.lastBeltIncomingDirection,
                 });
-                if (result.placed) {
-                    this.lastBeltTile = result.lastTile;
-                    this.lastBeltIncomingDirection = result.lastIncoming;
-                }
+                this.applyBeltContinuation(result, releaseWasOccupied);
             }
         }
 

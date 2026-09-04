@@ -946,7 +946,8 @@ export class HUDMobileControls extends BaseHUDPart {
                 this.flashInvalidBelt(path);
                 return;
             }
-            this.placePath(resolved);
+            const releaseWasOccupied = !!this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+            this.placePath(resolved, releaseWasOccupied);
         } else {
             this.placeSingle(tile, this.placerLogic.currentBaseRotation);
         }
@@ -956,17 +957,27 @@ export class HUDMobileControls extends BaseHUDPart {
      * Places every entry of a completed belt drag (or tap-continuation,
      * see placeBeltTapAt) immediately - thin wrapper over
      * BeltPathPlanner.placePath that threads this part's own continuation
-     * state through and updates it from the result.
+     * state through and updates it from the result. If the drag/tap ended
+     * on a tile that already had something there (a machine's input,
+     * another belt trunk merged into, etc.), the run is done instead of
+     * continued - same effect as tapping the "new belt" button
+     * (onNewBeltClicked).
      * @param {Array<PathEntry>} entries
+     * @param {boolean} releaseWasOccupied Whether the release tile already had map content *before* this placement.
      */
-    placePath(entries) {
+    placePath(entries, releaseWasOccupied) {
         const result = this.beltPathPlanner.placePath(entries, {
             tile: this.lastBeltTile,
             incoming: this.lastBeltIncomingDirection,
         });
         if (result.placed) {
-            this.lastBeltTile = result.lastTile;
-            this.lastBeltIncomingDirection = result.lastIncoming;
+            if (releaseWasOccupied) {
+                this.lastBeltTile = null;
+                this.lastBeltIncomingDirection = undefined;
+            } else {
+                this.lastBeltTile = result.lastTile;
+                this.lastBeltIncomingDirection = result.lastIncoming;
+            }
         }
     }
 
@@ -1203,7 +1214,13 @@ export class HUDMobileControls extends BaseHUDPart {
                 // flash it red instead of placing a gapped/broken belt.
                 this.flashInvalidBelt(this.dragPath);
             } else {
-                this.placePath(this.dragPreviewEntries);
+                const releaseTile = this.dragPath[this.dragPath.length - 1];
+                const releaseWasOccupied = !!this.root.map.getLayerContentXY(
+                    releaseTile.x,
+                    releaseTile.y,
+                    "regular"
+                );
+                this.placePath(this.dragPreviewEntries, releaseWasOccupied);
             }
             this.dragPath = [];
             this.dragPreviewEntries = [];
