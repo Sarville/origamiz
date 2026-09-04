@@ -222,7 +222,13 @@ export class SavegameManager extends ReadWriteProxy {
      * Helper method to generate a new internal savegame id
      */
     generateInternalId() {
-        return self.crypto.randomUUID();
+        if (self.crypto && self.crypto.randomUUID) {
+            return self.crypto.randomUUID();
+        }
+        // Fallback for non-secure contexts / older browsers where randomUUID is unavailable
+        return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
+            (c ^ (self.crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+        );
     }
 
     // End

@@ -86,14 +86,32 @@ function fillFace(context, fillColor, points) {
 function drawCrease(context, baseHex, x1, y1, x2, y2) {
     const prevStroke = context.strokeStyle;
     const prevAlpha = context.globalAlpha;
+    const prevWidth = context.lineWidth;
     context.strokeStyle = creaseColor(baseHex);
     context.globalAlpha = prevAlpha * 0.55;
+    // Thinner than the shape's own outline, and pulled back from *both*
+    // ends: (x2, y2) sits exactly on the outline stroke (a corner/tip/arc
+    // point), and (x1, y1) is the pivot where all 4 quadrants' outlines
+    // meet - drawing all the way to either overlapped the border there.
+    // The pullback is a fixed distance (tied to the outline's own width),
+    // not a fraction of the segment - a % inset left a big visible gap on
+    // longer creases (outer layers, bigger shapes).
+    context.lineWidth = prevWidth * 0.22;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const length = Math.hypot(dx, dy);
+    const inset = Math.min(length * 0.5, prevWidth * 0.6);
+    const startX = x1 + (dx / length) * inset;
+    const startY = y1 + (dy / length) * inset;
+    const endX = x2 - (dx / length) * inset;
+    const endY = y2 - (dy / length) * inset;
     context.beginPath();
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
+    context.moveTo(startX, startY);
+    context.lineTo(endX, endY);
     context.stroke();
     context.globalAlpha = prevAlpha;
     context.strokeStyle = prevStroke;
+    context.lineWidth = prevWidth;
 }
 
 /**

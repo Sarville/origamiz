@@ -8,6 +8,17 @@ import { clamp } from "../core/utils";
 
 const logger = new Logger("browser-wrapper");
 
+/**
+ * Local filename backing getCloudData/setCloudData - not really a "cloud"
+ * on this platform, just this.app.storage (the same local IndexedDB-backed
+ * store settings/achievements/savegames already use). There's no account/
+ * device to protect this from on a plain browser build (single local
+ * player, no cross-device currency-farming concern the way Yandex's real
+ * cloud data exists to guard against - see WalletStorage's class doc) -
+ * persisting it plainly is strictly better UX than losing it every reload.
+ */
+const CLOUD_DATA_FILENAME = "cloud_data.bin";
+
 export class PlatformWrapperImplBrowser {
     constructor(app) {
         /** @type {Application} */
@@ -148,20 +159,56 @@ export class PlatformWrapperImplBrowser {
     onGameplayStop() {}
 
     /**
-     * Fetches small account-wide progress data (e.g. achievements) from the
-     * platform's cloud storage. Returns null where unsupported.
-     * @returns {Promise<Record<string, unknown> | null>}
+     * Whether this platform can offer an account sign-in at all - gates
+     * whether the "Sign in" button/offer shows up anywhere.
      */
-    async getCloudData() {
-        return null;
+    getSupportsAuth() {
+        return false;
     }
 
     /**
-     * Best-effort push of small account-wide progress data to the platform's
-     * cloud storage. No-op where unsupported.
-     * @param {Record<string, unknown>} data
+     * Whether the player is currently signed in to a platform account.
      */
-    async setCloudData(data) {}
+    isAuthorized() {
+        return false;
+    }
+
+    /**
+     * Starts the platform's sign-in flow. Resolves true if the player ends
+     * up authorized, false otherwise (cancelled, failed, or unsupported).
+     * @returns {Promise<boolean>}
+     */
+    async requestAuth() {
+        return false;
+    }
+
+    /**
+     * Fetches small account-wide progress data (achievements, the currency
+     * wallet) - see CLOUD_DATA_FILENAME.
+     * @returns {Promise<Record<string, unknown> | null>}
+     */
+    async getCloudData() {
+        try {
+            const data = await this.app.storage.readFileAsync(CLOUD_DATA_FILENAME);
+            return /** @type {Record<string, unknown>} */ (data) ?? null;
+        } catch (ex) {
+            return null;
+        }
+    }
+
+    /**
+     * Merges `patch` into the locally stored data - see CLOUD_DATA_FILENAME
+     * and getCloudData.
+     * @param {Record<string, unknown>} patch
+     */
+    async setCloudData(patch) {
+        const current = (await this.getCloudData()) ?? {};
+        try {
+            await this.app.storage.writeFileAsync(CLOUD_DATA_FILENAME, { ...current, ...patch });
+        } catch (ex) {
+            logger.error("Failed to write local cloud data:", ex);
+        }
+    }
 
     /**
      * Whether this platform can show rewarded video ads at all - gates

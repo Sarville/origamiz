@@ -20,15 +20,13 @@ export const RESEARCH_TIER_UNLOCK_REWARDS = {
     2: enumHubGoalRewards.reward_research_t2,
 };
 
-// Shop daily bonus - a free once-a-day currency claim, real wall-clock time
-// (not game time), independent of ads/IAP so it works before either exists.
-const DAILY_BONUS_INTERVAL_MS = 24 * 60 * 60 * 1000;
+// Shop daily bonus amount - a free once-a-day currency claim, account-wide
+// (see WalletStorage, which owns the once-a-day timing) independent of
+// ads/IAP so it works before either exists.
 const DAILY_BONUS_AMOUNT = 1000;
 
-// Rewarded-ad currency claim - Yandex doesn't rate-limit rewarded video
-// itself, so the cooldown is entirely our own (same claimedAt-timestamp
-// pattern as the Shop daily bonus above, just a shorter interval).
-const AD_REWARD_INTERVAL_MS = 2 * 60 * 60 * 1000;
+// Rewarded-ad currency claim amount - Yandex doesn't rate-limit rewarded
+// video itself, so the cooldown (see WalletStorage) is entirely our own.
 const AD_REWARD_AMOUNT = 250;
 
 // Shape Exchange - a purchasable Shop feature, rate-limited to a handful of
@@ -51,11 +49,9 @@ export class HubGoals extends BasicSerializableObject {
             storedShapes: types.keyValueMap(types.uint),
             upgradeLevels: types.keyValueMap(types.uint),
             gainedRewards: types.set(types.string),
-            dailyBonusClaimedAt: types.uint,
             exchangeLimitUpgrades: types.uint,
             exchangeOperationsRemaining: types.uint,
             exchangeLimitResetAt: types.uint,
-            adRewardClaimedAt: types.uint,
         };
     }
 
@@ -132,13 +128,6 @@ export class HubGoals extends BasicSerializableObject {
         this.storedShapes = {};
 
         /**
-         * Wall-clock timestamp (ms) of the last Shop daily-bonus claim, 0 if
-         * never claimed - see canClaimDailyBonus()/tryClaimDailyBonus().
-         * @type {number}
-         */
-        this.dailyBonusClaimedAt = 0;
-
-        /**
          * How many times the Shape Exchange's daily-limit upgrade was
          * bought, capped at EXCHANGE_LIMIT_MAX_UPGRADES.
          * @type {number}
@@ -157,13 +146,6 @@ export class HubGoals extends BasicSerializableObject {
          * @type {number}
          */
         this.exchangeLimitResetAt = 0;
-
-        /**
-         * Wall-clock timestamp (ms) of the last rewarded-ad claim, 0 if
-         * never claimed - see canClaimAdReward()/grantAdReward().
-         * @type {number}
-         */
-        this.adRewardClaimedAt = 0;
 
         /**
          * Stores the levels for all upgrades
@@ -295,7 +277,17 @@ export class HubGoals extends BasicSerializableObject {
      */
     handleDefinitionDelivered(definition) {
         const hash = definition.getHash();
-        this.storedShapes[hash] = (this.storedShapes[hash] || 0) + 1;
+        const currencyDefinition = this.getCurrencyShapeDefinition();
+
+        if (currencyDefinition && hash === currencyDefinition.getHash()) {
+            // Currency shapes never enter storedShapes (so they can't be
+            // spent/exchanged as a per-save balance) - delivering one just
+            // credits the account-wide wallet directly. Still shows up in
+            // production stats via the shapeDelivered signal below.
+            this.root.app.wallet.credit(1);
+        } else {
+            this.storedShapes[hash] = (this.storedShapes[hash] || 0) + 1;
+        }
 
         this.root.signals.shapeDelivered.dispatch(definition);
 
@@ -524,28 +516,39 @@ export class HubGoals extends BasicSerializableObject {
     }
 
     /**
-     * Returns how much Shop currency the player has - simply the count of
-     * however many currency shapes were delivered to the Hub, the same
-     * bookkeeping as any other requested shape (see storedShapes).
+     * Returns how much Shop currency the player has - an account-wide
+     * balance (see WalletStorage), not per-save.
      * @returns {number}
      */
     getCurrencyAmount() {
-        const definition = this.getCurrencyShapeDefinition();
-        return definition ? this.getShapesStored(definition) : 0;
+        return this.getCurrencyShapeDefinition() ? this.root.app.wallet.balance : 0;
     }
 
     /**
-     * Grants currency directly (achievements, ads) without going through
-     * shape delivery.
+     * Grants currency directly (daily/ad bonus, Exchange sells) without
+     * going through shape delivery.
      * @param {number} amount
      */
     grantCurrency(amount) {
-        const definition = this.getCurrencyShapeDefinition();
-        if (!definition) {
+        if (!this.getCurrencyShapeDefinition()) {
             return;
         }
-        const hash = definition.getHash();
-        this.storedShapes[hash] = (this.storedShapes[hash] || 0) + amount;
+        this.root.app.wallet.credit(amount);
+    }
+
+    /**
+     * Whether `definition` is the Shop's currency shape - the Exchange must
+     * never buy/sell it as a regular shape (see tryPurchaseShapesWithCurrency/
+     * sellShapesForCurrency): currency shapes only ever enter storedShapes
+     * through this check failing to hold, so letting the Exchange add one to
+     * storedShapes would let it be delivered to the Hub afterward for a
+     * second, unearned wallet credit.
+     * @param {ShapeDefinition} definition
+     * @returns {boolean}
+     */
+    isCurrencyShape(definition) {
+        const currencyDefinition = this.getCurrencyShapeDefinition();
+        return Boolean(currencyDefinition) && definition.getHash() === currencyDefinition.getHash();
     }
 
     /**
@@ -560,7 +563,7 @@ export class HubGoals extends BasicSerializableObject {
         if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {
             return true;
         }
-        return this.getCurrencyAmount() >= item.price;
+        return this.root.app.wallet.canSpend(item.price);
     }
 
     /**
@@ -574,8 +577,7 @@ export class HubGoals extends BasicSerializableObject {
         }
         const item = this.root.gameMode.getShopItems()[itemId];
         if (!(G_IS_DEV && globalConfig.debug.upgradesNoCost)) {
-            const hash = this.getCurrencyShapeDefinition().getHash();
-            this.storedShapes[hash] -= item.price;
+            this.root.app.wallet.debit(item.price);
         }
         this.gainedRewards.add(item.reward);
         this.root.signals.shopItemPurchased.dispatch(itemId);
@@ -626,7 +628,11 @@ export class HubGoals extends BasicSerializableObject {
      * @returns {boolean}
      */
     canPerformExchangeOperation() {
-        return this.isExchangeUnlocked() && this.getExchangeOperationsRemaining() > 0;
+        return (
+            this.isExchangeUnlocked() &&
+            this.getExchangeOperationsRemaining() > 0 &&
+            this.root.app.wallet.canEarn()
+        );
     }
 
     /** Spends one of today's Exchange operations - call after a successful buy/sell. */
@@ -660,7 +666,7 @@ export class HubGoals extends BasicSerializableObject {
         if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {
             return true;
         }
-        return this.getCurrencyAmount() >= EXCHANGE_LIMIT_UPGRADE_PRICE;
+        return this.root.app.wallet.canSpend(EXCHANGE_LIMIT_UPGRADE_PRICE);
     }
 
     /**
@@ -672,8 +678,7 @@ export class HubGoals extends BasicSerializableObject {
             return false;
         }
         if (!(G_IS_DEV && globalConfig.debug.upgradesNoCost)) {
-            const hash = this.getCurrencyShapeDefinition().getHash();
-            this.storedShapes[hash] -= EXCHANGE_LIMIT_UPGRADE_PRICE;
+            this.root.app.wallet.debit(EXCHANGE_LIMIT_UPGRADE_PRICE);
         }
         this.refreshExchangeLimit();
         ++this.exchangeLimitUpgrades;
@@ -762,16 +767,18 @@ export class HubGoals extends BasicSerializableObject {
             return false;
         }
         const definition = this.root.shapeDefinitionMgr.getShapeFromShortKey(shapeCode);
+        if (this.isCurrencyShape(definition)) {
+            return false;
+        }
         const cost = this.getShapePurchaseCost(
             definition.layers.length,
             this.isShapeColored(definition),
             amount
         );
-        if (this.getCurrencyAmount() < cost) {
+        if (!this.root.app.wallet.canSpend(cost)) {
             return false;
         }
-        const currencyHash = this.getCurrencyShapeDefinition().getHash();
-        this.storedShapes[currencyHash] -= cost;
+        this.root.app.wallet.debit(cost);
         const shapeHash = definition.getHash();
         this.storedShapes[shapeHash] = (this.storedShapes[shapeHash] || 0) + amount;
         this.consumeExchangeOperation();
@@ -808,6 +815,9 @@ export class HubGoals extends BasicSerializableObject {
             return false;
         }
         const definition = this.root.shapeDefinitionMgr.getShapeFromShortKey(shapeCode);
+        if (this.isCurrencyShape(definition)) {
+            return false;
+        }
         const payout = this.getShapeSellPayout(
             definition.layers.length,
             this.isShapeColored(definition),
@@ -825,11 +835,11 @@ export class HubGoals extends BasicSerializableObject {
 
     /**
      * Whether the Shop's once-a-day free currency bonus can be claimed
-     * right now.
+     * right now. Account-wide (see WalletStorage), not per-save.
      * @returns {boolean}
      */
     canClaimDailyBonus() {
-        return Date.now() - this.dailyBonusClaimedAt >= DAILY_BONUS_INTERVAL_MS;
+        return this.root.app.wallet.canClaimDailyBonus();
     }
 
     /** @returns {number} */
@@ -842,17 +852,12 @@ export class HubGoals extends BasicSerializableObject {
      * @returns {boolean}
      */
     tryClaimDailyBonus() {
-        if (!this.canClaimDailyBonus()) {
-            return false;
-        }
-        this.dailyBonusClaimedAt = Date.now();
-        this.grantCurrency(DAILY_BONUS_AMOUNT);
-        return true;
+        return this.root.app.wallet.tryClaimDailyBonus(DAILY_BONUS_AMOUNT);
     }
 
     /** @returns {boolean} */
     canClaimAdReward() {
-        return Date.now() - this.adRewardClaimedAt >= AD_REWARD_INTERVAL_MS;
+        return this.root.app.wallet.canClaimAdReward();
     }
 
     /** @returns {number} */
@@ -866,7 +871,7 @@ export class HubGoals extends BasicSerializableObject {
      * @returns {number}
      */
     getAdRewardCooldownSeconds() {
-        return Math.max(0, AD_REWARD_INTERVAL_MS - (Date.now() - this.adRewardClaimedAt)) / 1000;
+        return this.root.app.wallet.getAdRewardCooldownSeconds();
     }
 
     /**
@@ -876,12 +881,7 @@ export class HubGoals extends BasicSerializableObject {
      * @returns {boolean}
      */
     grantAdReward() {
-        if (!this.canClaimAdReward()) {
-            return false;
-        }
-        this.adRewardClaimedAt = Date.now();
-        this.grantCurrency(AD_REWARD_AMOUNT);
-        return true;
+        return this.root.app.wallet.grantAdReward(AD_REWARD_AMOUNT);
     }
 
     /**

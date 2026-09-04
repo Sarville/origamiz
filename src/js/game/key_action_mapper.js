@@ -88,7 +88,7 @@ export const KEYMAPPINGS = {
         rotateToDown: { keyCode: KEYCODES.ArrowDown },
         rotateToRight: { keyCode: KEYCODES.ArrowRight },
         rotateToLeft: { keyCode: KEYCODES.ArrowLeft },
-        cycleBuildingVariants: { keyCode: keyToKeyCode("T") },
+        cycleBuildingVariants: { keyCode: keyToKeyCode("N") },
         cycleBuildings: { keyCode: KEYCODES.Tab },
         switchDirectionLockSide: { keyCode: keyToKeyCode("R") },
 

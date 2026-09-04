@@ -26,6 +26,12 @@ export class HUDGameMenu extends BaseHUDPart {
                     !this.root.app.settings.getAllSettings().offerHints || this.root.hubGoals.level >= 3,
             },
             {
+                id: "currencyShop",
+                label: "Shop",
+                handler: () => this.root.hud.parts.currencyShop.show(),
+                keybinding: KEYMAPPINGS.ingame.menuOpenCurrencyShop,
+            },
+            {
                 id: "stats",
                 label: "Stats",
                 handler: () => this.root.hud.parts.statistics.show(),

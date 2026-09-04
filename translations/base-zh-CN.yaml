@@ -40,9 +40,9 @@ mainMenu:
     continue: 继续游戏
     newGame: 新游戏
     savegameUnnamed: 存档未命名
-    mods:
-        warningPuzzleDLC: 无法在任何游戏模组（Mods）下进行“谜题挑战者” DLC，请关闭所有游戏模组（Mods）。
     noActiveSavegames: No active savegames found - Click play to start a new game!
+    importSavegameHint: You can import a savegame from your device
+    achievements: Achievements
 dialogs:
     buttons:
         ok: 确认
@@ -70,6 +70,8 @@ dialogs:
     confirmSavegameDelete:
         title: 确认删除
         text: 您确定要删除这个游戏吗？<br><br> “<savegameName>” 等级 <savegameLevel><br><br> 该操作无法回退！
+        desc: Are you sure you want to delete this savegame?
+        warningNote: This action cannot be undone.
     savegameDeletionError:
         title: 删除失败
         text: 未能删除您的存档
@@ -99,8 +101,7 @@ dialogs:
         desc: 您还没有解锁蓝图功能！通过第 12 关的挑战后可解锁蓝图。
     keybindingsIntroduction:
         title: 实用快捷键
-        desc:
-            这个游戏有很多有用的快捷键设定。以下是其中的一些介绍，记得在<strong>按键设置</strong>中查看其他按键设定！<br><br>
+        desc: 这个游戏有很多有用的快捷键设定。以下是其中的一些介绍，记得在<strong>按键设置</strong>中查看其他按键设定！<br><br>
             <code class='keybinding'>CTRL 键</code> + 拖动：选择区域以复制或删除。<br> <code
             class='keybinding'>SHIFT 键</code>： 按住以放置多个同一种设施。<br> <code
             class='keybinding'>ALT 键</code>：反向放置传送带。<br>
@@ -132,60 +133,6 @@ dialogs:
         desc: 这个关卡有英语版本的视频攻略！您想查看这个视频攻略吗？
     editConstantProducer:
         title: 设置项目
-    puzzleLoadFailed:
-        title: 谜题载入失败
-        desc: 很遗憾，谜题未能载入：
-    submitPuzzle:
-        title: 提交谜题
-        descName: 给您的谜题设定名称：
-        descIcon: 请输入唯一的短代码，它将显示为标志您的谜题的图标（<link>在此</link>生成，或者从以下随机推荐的图形中选择一个）：
-        placeholderName: 谜题标题
-    puzzleResizeBadBuildings:
-        title: 无法调整大小
-        desc: 您无法使这块区域变得更小，否则有些设施将会超出区域范围。
-    puzzleLoadError:
-        title: 谜题出错
-        desc: 谜题载入失败：
-    offlineMode:
-        title: 离线模式
-        desc: 访问服务器失败，游戏只能在离线模式下进行。请确认您的网络连接正常。
-    puzzleDownloadError:
-        title: 下载出错
-        desc: 无法下载谜题：
-    puzzleSubmitError:
-        title: 提交出错
-        desc: 无法提交您的谜题：
-    puzzleSubmitOk:
-        title: 谜题已发布
-        desc: 恭喜！您所创造的谜题已成功发布，别的玩家已经可以对您的谜题发起挑战！您可以在“我的谜题”部分找到您发布的谜题。
-    puzzleCreateOffline:
-        title: 离线模式
-        desc: 由于您现在没有连接互联网，所以您将无法保存或发布您的谜题。是否仍要继续？
-    puzzlePlayRegularRecommendation:
-        title: 游戏建议
-        desc: <strong>强烈</strong>建议您在至少完成本体第12关后再尝试体验“谜题挑战者”
-            DLC，否则您可能在游戏过程中遇到困难，您是否仍要继续？
-    puzzleShare:
-        title: 短代码已复制
-        desc: 此谜题的短代码(<key>)已经复制到了您的剪贴板！您可以在谜题菜单中输入短代码以快速访问对应谜题。
-    puzzleReport:
-        title: 上报谜题
-        options:
-            profane: 污言秽语
-            unsolvable: 无法完成
-            trolling: 恶意设计
-    puzzleReportComplete:
-        title: 感谢您的反馈！
-        desc: 此谜题已标记！
-    puzzleReportError:
-        title: 上报失败
-        desc: 无法处理您的上报：
-    puzzleLoadShortKey:
-        title: 输入短代码
-        desc: 输入此谜题的短代码以载入。
-    puzzleDelete:
-        title: 删除谜题？
-        desc: 您是否确认删除“<title>”？删除后不可恢复！
     modsDifference:
         title: 模组警告
         desc: 当前已安装的游戏模组（Mods）与该存档创建时所安装的游戏模组（Mods）不同！这可能会导致存档损坏，甚至无法加载。你确定要继续加载吗？
@@ -193,8 +140,7 @@ dialogs:
         newMods: 新安装的游戏模组（Mods）
     resourceLoadFailed:
         title: 资源载入失败
-        descSteamDemo:
-            “一个或多个资源载入失败，请重新启动游戏。 如果仍然存在问题，请重新安装游戏或者通过Steam验证游戏安装文件。 <br><br>
+        descSteamDemo: “一个或多个资源载入失败，请重新启动游戏。 如果仍然存在问题，请重新安装游戏或者通过Steam验证游戏安装文件。 <br><br>
             错误提示：”
 ingame:
     keybindingsOverlay:
@@ -218,6 +164,10 @@ ingame:
         pipette: 吸取器
         switchLayers: 切换层
         clearBelts: 清除传送带
+        moveBuilding: Transform
+        selectVariant: Select variant
+        undo: Undo
+        redo: Redo
     buildingPlacement:
         cycleBuildingVariants: 按 <key> 键以选择设施的变型体。
         hotkeyLabel: 快捷键：<key>
@@ -229,6 +179,7 @@ ingame:
             itemsPerSecond: <x> 个/秒
             itemsPerSecondDouble: （2 倍）
             tiles: <x> 格
+        swipeForVariants: Swipe for variants
     levelCompleteNotification:
         levelTitle: 第 <level> 关
         completed: 完成
@@ -243,6 +194,10 @@ ingame:
         buttonUnlock: 升级
         tier: <x>级
         maximumLevel: 最高级（<currentMult> 倍速率）
+        researchSectionTitle: Research
+        buttonResearch: Research
+        researchLocked: Locked (Research Tier <tier> required)
+        researchCompleted: Completed
     statistics:
         title: 统计信息
         dataSources:
@@ -276,18 +231,19 @@ ingame:
         description: 左键点击地图标记以跳转到该处，右键点击可删除地图标记。<br><br>按 <keybinding>
             在当前地点创建地图标记，或者在选定位置上<strong>右键</strong>创建地图标记。
         creationSuccessNotification: 成功创建地图标记。
+        descriptionMobile: Tap a marker to jump to it, or hold it to edit. Its edit icon
+            in the list also lets you rename or delete it.<br><br>Tap the marker
+            button below to create one at the current view.
     interactiveTutorial:
         title: 新手教程
         hints:
             1_1_extractor: 在<strong>圆形</strong>上放置一个<strong>开采器</strong>来获取圆形！<br><br>提示：<strong>按下鼠标左键</strong>选中<strong>开采器</strong>
             1_2_conveyor: 用<strong>传送带</strong>将您的开采器连接到中心基地上！<br><br>提示：选中<strong>传送带</strong>后<strong>按下鼠标左键可拖动</strong>布置传送带！
-            1_3_expand:
-                您可以放置更多的<strong>开采器</strong>和<strong>传送带</strong>来更有效率地完成关卡目标。<br><br>
+            1_3_expand: 您可以放置更多的<strong>开采器</strong>和<strong>传送带</strong>来更有效率地完成关卡目标。<br><br>
                 提示：按住 <strong>SHIFT</strong> 键可放置多个<strong>开采器</strong>，注意用
                 <strong>R</strong> 键可旋转<strong>开采器</strong>的出口方向，确保开采的图形可以顺利传送。
             2_1_place_cutter: 现在放置一个<strong>切割器</strong>，这个设施可把<strong>圆形</strong>切成两半！<br><br>注意：无论如何放置，切割机总是<strong>从上到下</strong>切割。
-            2_2_place_trash:
-                使用切割机后产生的废弃图形会导致<strong>堵塞</strong>。<br><br>注意使用<strong>垃圾桶</strong>清除当前
+            2_2_place_trash: 使用切割机后产生的废弃图形会导致<strong>堵塞</strong>。<br><br>注意使用<strong>垃圾桶</strong>清除当前
                 (!) 不需要的废物。
             2_3_more_cutters: 干的好！现在放置 <strong>2
                 个以上的切割机</strong>来加快当前缓慢的过程！<br><br>提示：用<strong>快捷键 0 - 9
@@ -302,6 +258,42 @@ ingame:
             21_3_place_button: 很好！现在放置一个<strong>开关</strong>并连接导线！
             21_4_press_button: 按下<strong>开关</strong>来<strong>产生正信号</strong>以激活<strong>上色器</strong>。<br><br>注：您不用连上所有的输入口！试着只接两个。
             1_2_hold_and_drag: 按住并拖动
+        mobileHints:
+            1_1_extractor: Choose an <strong>extractor</strong> in the toolbar, tap a
+                <strong>circle shape</strong>, then tap <strong>confirm</strong>
+                to extract it!
+            1_2_conveyor: "Connect the extractor to your hub with a <strong>conveyor
+                belt</strong>!<br><br>Tip: <strong>Touch, hold and drag</strong>
+                to place a belt path."
+            1_3_expand: "This is <strong>NOT</strong> an idle game! Build more extractors
+                and belts to finish the goal quicker.<br><br>Tip: Choose a
+                building in the toolbar, tap the map, then tap
+                <strong>confirm</strong>. Use the <strong>rotate</strong> button
+                to turn it."
+            2_1_place_cutter: "Now place a <strong>Cutter</strong> to cut the circles in two
+                halves!<br><br>Tip: The cutter always cuts from <strong>top to
+                bottom</strong> regardless of its orientation."
+            2_2_place_trash: The cutter can <strong>clog and stall</strong>!<br><br>Use a
+                <strong>trash</strong> to get rid of the currently (!) not
+                needed waste.
+            2_3_more_cutters: "Good job! Now place <strong>2 more cutters</strong> to speed
+                up this slow process!<br><br>Tip: Select buildings from the
+                bottom toolbar."
+            3_1_rectangles: "Now let's extract some rectangles! <strong>Build 3
+                extractors</strong> and connect them to the hub.<br><br>Tip:
+                <strong>Touch, hold and drag</strong> to lay a belt path."
+            21_1_place_quad_painter: Place the <strong>quad painter</strong> and get some
+                <strong>circles</strong>, <strong>white</strong> and
+                <strong>red</strong> color!
+            21_2_switch_to_wires: Tap the <strong>wires-layer button</strong> above the
+                toolbar!<br><br>Then <strong>connect all four inputs</strong> of
+                the painter with cables.
+            21_3_place_button: Awesome! Now place a <strong>Switch</strong> and connect it
+                with wires!
+            21_4_press_button: "Tap the switch to make it <strong>emit a truthy
+                signal</strong> and activate the painter.<br><br>Tip: You don't
+                have to connect all inputs! Try wiring only two."
+            1_2_hold_and_drag: Touch, hold and drag
     colors:
         red: 红色
         green: 绿色
@@ -316,45 +308,66 @@ ingame:
         title: 层
         empty: 空
         copyKey: 复制短代码
+        pin: Pin
+        unpin: Unpin
     connectedMiners:
         one_miner: 1 个开采器
         n_miners: <amount> 个开采器
         limited_items: 限制在 <max_throughput>
-    puzzleEditorSettings:
-        zoneTitle: 区域
-        zoneWidth: 宽度
-        zoneHeight: 高度
-        trimZone: 整理
-        clearItems: 清除项目
-        share: 共享
-        report: 上报
-        clearBuildings: 清除设施
-        resetPuzzle: 重设谜题
-    puzzleEditorControls:
-        title: 谜题编辑器
-        instructions:
-            - 1. 放置<strong>常量生成器</strong>，为玩家提供此谜题的初始图形和颜色。
-            - 2. 建造您希望玩家稍后建造的一个或多个图形，并将其交付给一个或多个<strong>目标接收器</strong>。
-            - 3.
-              当一个目标接收器接收到一个图形一段时间后，会<strong>将其保存为此玩家稍后必须建造的目标</strong>（由<strong>绿色充能条</strong>表示）。
-            - 4. 单击设施上的<strong>锁定按钮</strong>即可将其禁用。
-            - 5. 单击审阅后，您的谜题将通过验证，您可以正式发布它。
-            - 6.
-              谜题发布后，<strong>所有设施都将被拆除</strong>，除了<strong>常量生成器</strong>和<strong>目标接收器</strong>。然后，等着其他玩家对您创造的谜题发起挑战吧！
-    puzzleCompletion:
-        title: 谜题挑战成功！
-        titleLike: 喜欢此谜题的话，请为它点赞：
-        titleRating: 您觉得此谜题难度如何？
-        titleRatingDesc: 您的评分将帮助作者在未来创作出更好的谜题！
-        continueBtn: 继续游戏
-        menuBtn: 菜单
-        nextPuzzle: 下一个谜题
-    puzzleMetadata:
-        author: 作者
-        shortKey: 短代码
-        rating: 难度评分
-        averageDuration: 平均挑战时间
-        completionRate: 挑战完成率
+    currencyShop:
+        title: Shop
+        balance: You have <amount> currency shapes
+        lockedDisclaimer: Currency purchases unlock at level <level>. Until then, you
+            can remove ads below.
+        buttonBuy: Buy
+        completed: Purchased
+        buttonExchange: Exchange
+        buttonExchangeLimit: Exchange (<amount>)
+        dailyBonus:
+            title: Daily Bonus
+            description: Come back once a day for free currency.
+            buttonClaim: Claim +<amount>
+            claimed: Come back tomorrow!
+        adReward:
+            title: Watch Ad
+            description: Watch a short video for free currency, every couple hours.
+            buttonClaim: Watch (+<amount>)
+            cooldown: Available in <time>
+        removeAds:
+            title: Remove Ads
+            description: One-time purchase. Removes the banner and video ads shown between
+                actions.
+            buttonBuy: Buy
+            purchased: Purchased
+        exchangeList:
+            title: Exchange
+            empty: You don't have any shapes stored yet.
+            buttonBuy: Buy
+            buttonSell: Sell
+            buttonRates: Rates
+            lockedDescription: Trade currency for shapes and shapes for currency at a fixed
+                rate.
+            buttonUnlock: Buy
+            limitText: "Daily limit: <amount>"
+            buttonRaiseLimit: Raise limit (<price>)
+            limitExhausted: Daily exchange limit reached. Come back tomorrow!
+        exchangeRates:
+            title: Exchange Rates
+            layers: "Layers: <layers>"
+            colored: (painted)
+            buyRate: Buy <currency> currency/shape
+            sellRate: Sell <shapes> shapes/currency
+        exchangeModal:
+            titleBuy: Buy Shapes
+            titleSell: Sell Shapes
+            owned: "In stock: <amount>"
+            rate: Rate <shapes> shapes → <currency> currency
+            stepWarning: Amount must be a multiple of <step>
+            buttonRound: Round
+            buttonMax: MAX
+            buttonConfirmBuy: Buy
+            buttonConfirmSell: Sell
+            buttonCancel: Cancel
 shopUpgrades:
     belt:
         name: 传送、分发、隧道
@@ -532,22 +545,6 @@ buildings:
         painter:
             name: 模拟上色器
             description: 模拟使用右侧输入的<strong>颜色</strong>给底部输入的<strong>图形</strong>上色
-    item_producer:
-        default:
-            name: 物品生成器
-            description: 仅在沙盒模式下可用，在常规层上输出<strong>电线层</strong>给定的<strong>信号</strong>。
-    constant_producer:
-        default:
-            name: 常量生成器
-            description: 不断输出指定的图形或颜色。
-    goal_acceptor:
-        default:
-            name: 目标接收器
-            description: 将图状传递给目标接收器，以将它们设置为谜题挑战目标。
-    block:
-        default:
-            name: 方块
-            description: 放置了方块的格子将无法再进行其他放置。
 storyRewards:
     reward_cutter_and_trash:
         title: 切割图形
@@ -559,8 +556,7 @@ storyRewards:
         desc: 恭喜！您解锁了<strong>旋转机</strong>。它会顺时针将输入的<strong>图形旋转90度</strong>。
     reward_painter:
         title: 上色
-        desc:
-            恭喜！您解锁了<strong>上色器</strong>。开采一些颜色（就像您开采图形一样），将其在上色器中与图形结合来将图形上色！
+        desc: 恭喜！您解锁了<strong>上色器</strong>。开采一些颜色（就像您开采图形一样），将其在上色器中与图形结合来将图形上色！
             <br>注意：如果您不幸患有色盲，可以在设置中启用<strong>色盲模式</strong>
     reward_mixer:
         title: 混合颜色
@@ -577,13 +573,11 @@ storyRewards:
         desc: 恭喜！您解锁了<strong>隧道</strong>。它可放置在<strong>传送带</strong>或<strong>设施</strong>下方以运送物品。
     reward_rotator_ccw:
         title: 逆时针旋转
-        desc:
-            恭喜！您解锁了<strong>旋转机</strong>的<strong>逆时针</strong>变体。它可以逆时针旋转<strong>图形</strong>。
+        desc: 恭喜！您解锁了<strong>旋转机</strong>的<strong>逆时针</strong>变体。它可以逆时针旋转<strong>图形</strong>。
             <br>选择<strong>旋转机</strong>然后按 "T" 键来选取这个变体。
     reward_miner_chainable:
         title: 链式开采器
-        desc:
-            您已经解锁了<strong>链式开采器</strong>！它能<strong>转发资源</strong>给其他的开采器，这样您就能更有效率的开采各类资源了！<br><br>
+        desc: 您已经解锁了<strong>链式开采器</strong>！它能<strong>转发资源</strong>给其他的开采器，这样您就能更有效率的开采各类资源了！<br><br>
             注意：新的开采器已替换了工具栏里旧的开采器！
     reward_underground_belt_tier_2:
         title: 二级隧道
@@ -600,14 +594,12 @@ storyRewards:
             <br>它<strong>优先从左边</strong>输出，这样您就可以用它做一个<strong>溢流门</strong>了！
     reward_freeplay:
         title: 自由模式
-        desc:
-            成功了！您解锁了<strong>自由模式</strong>！挑战升级！这意味着现在将<strong>随机</strong>生成图形！
+        desc: 成功了！您解锁了<strong>自由模式</strong>！挑战升级！这意味着现在将<strong>随机</strong>生成图形！
             从现在起，中心基地最为需要的是<strong>产量</strong>，强烈建议您去制造一台能够自动交付所需图形的机器！<br><br>
             基地会在<strong>电线层</strong>输出需要的图形，您需要去分析图形并在此基础上自动配置您的工厂。
     reward_blueprints:
         title: 蓝图
-        desc:
-            您现在可以<strong>复制粘贴</strong>您的工厂的一部分了！按住 CTRL 键并拖动鼠标来选择一块区域，然后按 C 键复制。
+        desc: 您现在可以<strong>复制粘贴</strong>您的工厂的一部分了！按住 CTRL 键并拖动鼠标来选择一块区域，然后按 C 键复制。
             <br><br>粘贴并<strong>不是免费的</strong>，您需要制造<strong>蓝图图形</strong>来负担。蓝图图形是您刚刚交付的图形。
     no_reward:
         title: 下一关
@@ -635,8 +627,7 @@ storyRewards:
             <br>注意：您注意到<strong>传送读取器</strong>和<strong>存储器</strong>输出的他们最后读取的物品了吗？试着在显示屏上展示一下！
     reward_constant_signal:
         title: 恒定信号
-        desc:
-            恭喜！您解锁了生成于电线层之上的<strong>恒定信号</strong>，把它连接到<strong>过滤器</strong>时非常有用。
+        desc: 恭喜！您解锁了生成于电线层之上的<strong>恒定信号</strong>，把它连接到<strong>过滤器</strong>时非常有用。
             <br>比如，它能发出图形、颜色、开关值（1 / 0）的固定信号。
     reward_logic_gates:
         title: 逻辑门
@@ -655,12 +646,45 @@ storyRewards:
             <strong>提示</strong>：可在设置中打开电线层教程！
     reward_filter:
         title: 物品过滤器
-        desc:
-            恭喜！您解锁了<strong>物品过滤器</strong>！它会根据在电线层上输入的信号决定是从上面还是右边输出物品。<br><br>
+        desc: 恭喜！您解锁了<strong>物品过滤器</strong>！它会根据在电线层上输入的信号决定是从上面还是右边输出物品。<br><br>
             您也可以输入开关值（1 / 0）信号来激活或者禁用它。
     reward_demo_end:
         title: 试玩结束
         desc: 恭喜！您已经通关了试玩版本！<br>更多挑战，请至 Steam 商城购买完整版！谢谢支持！
+    reward_research:
+        title: Research
+        desc: You have unlocked the <strong>Research</strong> section of the Upgrades
+            window! Spend the shapes you deliver to the Hub on optional building
+            variants there, instead of waiting for them to show up in the level
+            ladder.
+    reward_research_t2:
+        title: Research Tier II
+        desc: <strong>Research Tier II</strong> is now available - more building
+            variants can be researched in the Upgrades window!
+    reward_shop_auto_tunnel:
+        title: Auto-Tunneling
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt across a gap now
+            automatically tunnels under it!
+    reward_shop_overview_building:
+        title: Overview Building
+        desc: Purchased in the <strong>Shop</strong> - you can now place buildings while
+            the map is zoomed out to overview mode!
+    reward_shop_auto_merger:
+        title: Auto-Merging
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt into an existing
+            belt run now automatically inserts a merger!
+    reward_shop_auto_splitter:
+        title: Auto-Splitting
+        desc: Purchased in the <strong>Shop</strong> - starting a new belt from an
+            existing belt run now automatically inserts a splitter!
+    reward_shop_long_route:
+        title: Long-Distance Routing
+        desc: Purchased in the <strong>Shop</strong> - belts dragged across obstacles
+            can now bend around much longer detours!
+    reward_shop_exchange:
+        title: Exchange
+        desc: Purchased in the <strong>Shop</strong> - you can now trade shapes for
+            currency and currency for shapes!
 settings:
     title: 设置
     categories:
@@ -712,8 +736,7 @@ settings:
                 light: 浅色
         refreshRate:
             title: 模拟频率、刷新频率
-            description:
-                在这里更改刷新频率，这样游戏可以正确地根据您的屏幕进行模拟。但是如果您的电脑性能不佳，提高刷新频率可能降低帧数。注意，60Hz
+            description: 在这里更改刷新频率，这样游戏可以正确地根据您的屏幕进行模拟。但是如果您的电脑性能不佳，提高刷新频率可能降低帧数。注意，60Hz
                 以上的任何频率都会导致游戏卡顿！
         alwaysMultiplace:
             title: 多重放置
@@ -798,6 +821,10 @@ settings:
         shapeTooltipAlwaysOn:
             title: 图形工具提示-始终显示
             description: 在设施上悬停时是否始终显示图形工具提示， 而不是必须按住 “Alt” 键。
+        alwaysShowBuildingInfo:
+            title: Always Show Building Info
+            description: On mobile (no keyboard/hotkey to toggle it), shows the selected
+                building's info panel automatically. Turn off to keep it hidden.
     rangeSliderPercentage: <amount>%
     tickrateHz: <amount> 赫兹
     newBadge: 新的！
@@ -872,17 +899,17 @@ keybindings:
         transistor: 晶体管
         analyzer: 图形分析器
         comparator: 比较器
-        item_producer: 物品生产器（沙盒模式）
         copyWireValue: 电线：复制指定电线上的值
         rotateToUp: 向上旋转
         rotateToDown: 向下旋转
         rotateToRight: 向右旋转
         rotateToLeft: 向左旋转
-        constant_producer: 常量生成器
-        goal_acceptor: 目标接收器
-        block: 方块
         massSelectClear: 清除传送带
         showShapeTooltip: 显示图形输出提示
+        menuOpenCurrencyShop: Shop
+        undo: Undo
+        redo: Redo
+        moveBuilding: Transform Building
 about:
     title: 关于游戏
     body: >-
@@ -896,6 +923,8 @@ about:
         本游戏的音乐由 <a href="https://soundcloud.com/pettersumelius" target="_blank">Peppsen</a> 制作——他是个很棒的伙伴。<br><br>
 
         最后，我想感谢我最好的朋友 <a href="https://github.com/niklas-dahl" target="_blank">Niklas</a> ——如果没有他的《异星工厂》（factorio）带给我的体验和启发，《异形工厂》（shapez）将不会存在。
+    currentBody: Origamiz is an open-source factory-building game with its own
+        visual style and mechanics.
 changelog:
     title: 更新日志
 demo:
@@ -957,82 +986,6 @@ tips:
     - 按两次 F4 显示您鼠标和镜头所在的块。
     - 您可以点击被固定在屏幕左侧的图形来解除固定。
     - 您可以单击左侧的固定形状将其取消固定。
-puzzleMenu:
-    play: 游戏
-    edit: 编辑
-    title: 谜题模式
-    createPuzzle: 创建谜题
-    loadPuzzle: 载入
-    reviewPuzzle: 审阅 & 发布
-    validatingPuzzle: 验证谜题
-    submittingPuzzle: 提交谜题
-    noPuzzles: 暂无满足此部分条件的谜题。
-    categories:
-        levels: 关卡
-        new: 最新
-        top-rated: 最受好评
-        mine: 我的谜题
-        easy: 简单
-        hard: 困难
-        completed: 完成
-        medium: 普通
-        official: 官方
-        trending: 本日趋势
-        trending-weekly: 本周趋势
-        categories: 分类
-        difficulties: 根据难度
-        account: 我的谜题
-        search: 查找
-    validation:
-        title: 无效谜题
-        noProducers: 请放置<strong>常量生成器</strong>！
-        noGoalAcceptors: 请放置<strong>目标接收器</strong>！
-        goalAcceptorNoItem: 一个或多个目标接收器尚未被分配图形目标。请向它们传递图形以设置目标。
-        goalAcceptorRateNotMet: 一个或多个目标接收器没有获得足够数量的图形。请确保所有接收器的充能条指示器均为绿色。
-        buildingOutOfBounds: 一个或多个设施位于可建造区域之外。请增加区域面积，或将超出区域的设施移除。
-        autoComplete: 请确保您的常量生成器不会直接向目标接收器传递目标图形。否则您的谜题会自动完成。
-    difficulties:
-        easy: 简单
-        medium: 普通
-        hard: 困难
-        unknown: 未定级
-    dlcHint: 如尚未购买 DLC，请在您的 Steam 库中右键点击异形工厂，DLCs。然后选择属性 - DLC。
-    search:
-        action: 搜索
-        placeholder: 输入谜题或作者名称
-        includeCompleted: 包括已完成
-        difficulties:
-            any: 任何难度
-            easy: 简单
-            medium: 普通
-            hard: 困难
-        durations:
-            any: 任何挑战时间
-            short: 快速（< 2 分钟）
-            medium: 正常
-            long: 较长（> 10 分钟）
-backendErrors:
-    ratelimit: 你的操作太频繁了。请稍等。
-    invalid-api-key: 与后台通信失败，请尝试更新或重新启动游戏（无效的Api密钥）。
-    unauthorized: 与后台通信失败，请尝试更新或重新启动游戏（未经授权）。
-    bad-token: 与后台通信失败，请尝试更新或重新启动游戏（令牌错误）。
-    bad-id: 谜题标识符无效。
-    not-found: 找不到给定的谜题。
-    bad-category: 找不到给定的类别。
-    bad-short-key: 给定的短代码错误。
-    profane-title: 您的谜题标题包含污言秽语。
-    bad-title-too-many-spaces: 您的谜题标题过短。
-    bad-shape-key-in-emitter: 常量生成器包含无效项目。
-    bad-shape-key-in-goal: 目标接收器包含无效项目。
-    no-emitters: 您的谜题没有任何常量生成器。
-    no-goals: 您的谜题没有任何目标接收器。
-    short-key-already-taken: 此短代码已被使用，请使用其他短代码。
-    can-not-report-your-own-puzzle: 您无法上报您自己的谜题问题。
-    bad-payload: 此请求包含无效数据。
-    bad-building-placement: 您的谜题包含放置错误的设施。
-    timeout: 请求超时。
-    too-many-likes-already: 您的谜题已经得到了许多玩家的赞赏。如果您仍然希望删除它，请联系 support@shapez.io！
-    no-permission: 您没有执行此操作的权限。
 mods:
     title: 游戏模组（Mods）
     author: 作者
@@ -1041,3 +994,263 @@ mods:
     browseMods: 浏览游戏模组（Mods）
     modsInfo: 要安装和管理游戏模组（Mods），请将它们复制到游戏模组文件夹（使用右上角的“打开游戏模组（Mods）文件夹”按钮）。记住在管理完游戏模组（Mods）后，请务必重启游戏，否则游戏模组（Mods）是不会出现的。
     modWebsite: 模组网站
+preload:
+    initializingSounds: Initializing sounds
+    initializingSavegames: Initializing savegames
+    checkingChangelog: Checking changelog
+    launching: Launching
+shopItems:
+    autoTunnel:
+        name: Auto-Tunneling
+        description: Dragging a belt across a gap automatically tunnels under it.
+    overviewBuilding:
+        name: Overview Building
+        description: Place buildings while the map is zoomed out to overview mode.
+    autoMerger:
+        name: Auto-Merging
+        description: Dragging a belt into an existing belt run automatically inserts a
+            merger.
+    autoSplitter:
+        name: Auto-Splitting
+        description: Starting a new belt from an existing belt run automatically inserts
+            a splitter.
+    longRoute:
+        name: Long-Distance Routing
+        description: Belts dragged across obstacles can bend around much longer detours.
+shapeViewerTool:
+    title: Shape Viewer
+    description: Create, inspect, and copy shape short keys without leaving the
+        game. Enter a key to preview it, or generate a random shape to use as a
+        starting point.
+    shortKey: Shape short key
+    preview: Preview
+    randomize: Random shape
+    copy: Copy key
+    useKey: Use this key
+    export: Export PNG
+    invalid: Enter a valid shape short key.
+    instructions: >-
+        <h2>How shape keys work</h2> <p>A shape is written as a <strong>short
+        key</strong> with up to four layers. Each layer has four quadrants,
+        starting at the <strong>top right</strong> and moving clockwise.</p>
+        <p>A quadrant is a pair of characters: an uppercase shape letter
+        followed by a lowercase colour letter. Use <code>--</code> for an empty
+        quadrant. Layers are separated by <code>:</code>, with the bottom layer
+        first.</p> <div class="legendGrid">
+            <section><h3>Shapes</h3><ul class="legendList"><li><code>C</code><span>— Circle</span></li><li><code>R</code><span>— Rectangle</span></li><li><code>W</code><span>— Windmill</span></li><li><code>S</code><span>— Star</span></li></ul></section>
+            <section><h3>Colours</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Red</span></li><li><code>g</code><i class="colorDot green"></i><span>Green</span></li><li><code>b</code><i class="colorDot blue"></i><span>Blue</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Yellow</span></li><li><code>p</code><i class="colorDot purple"></i><span>Purple</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Cyan</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Uncoloured</span></li><li><code>w</code><i class="colorDot white"></i><span>White</span></li></ul></section>
+        </div> <h3>Examples</h3> <ul class="examples"><li><button type="button" class="exampleKey" data-key="CwCwCwCw"><code>CwCwCwCw</code><span>White circle</span></button></li><li><button type="button" class="exampleKey" data-key="----RuRu"><code>----RuRu</code><span>Half rectangle</span></button></li><li><button type="button" class="exampleKey" data-key="CgScScCg"><code>CgScScCg</code><span>Circles and stars mixed</span></button></li><li><button type="button" class="exampleKey" data-key="RpRpRpRp:CwCwCwCw"><code>RpRpRpRp:CwCwCwCw</code><span>Layering example</span></button></li><li><button type="button" class="exampleKey" data-key="RwCu--Wu:----Rw--"><code>RwCu--Wu:----Rw--</code><span>Our logo</span></button></li></ul>
+achievements:
+    title: Achievements
+    unlockedOf: <x> / <y> unlocked
+    hiddenName: ???
+    hiddenDescription: Hidden achievement - keep playing to discover it.
+    list:
+        blueprint100k:
+            name: Blueprints are the future
+            description: Have 100k blueprints stored in the hub
+        play10h:
+            name: It's been a long time
+            description: Play for 10 hours
+        play1h:
+            name: Getting into it
+            description: Play for 1 hour
+        blueprint1m:
+            name: I'll use it later
+            description: Have 1 million blueprints stored in the hub
+        richBuratino:
+            name: Rich Buratino
+            description: Have 1 million Shop currency stored in the hub
+        play20h:
+            name: Addicted
+            description: Play for 20 hours
+        throughputBp25:
+            name: Efficiency 1
+            description: Deliver 25 blueprints per second
+        throughputBp50:
+            name: Efficiency 2
+            description: Deliver 50 blueprints per second
+        place5000Wires:
+            name: Computer Guy
+            description: Place 5000 wires
+        placeBlueprint:
+            name: Now it's easy
+            description: Place a blueprint
+        noBeltUpgradesUntilBp:
+            name: It's so slow
+            description: Complete level 12 without any belt upgrades
+        throughputLogo25:
+            name: Branding Specialist 1
+            description: Deliver 25 logos per second
+        throughputLogo50:
+            name: Branding Specialist 2
+            description: Deliver 50 logos per second
+        placeBp1000:
+            name: Copypasta
+            description: Place 1000 buildings at once
+        cutShape:
+            name: Cutter
+            description: Cut a shape
+        darkMode:
+            name: My eyes no longer hurt
+            description: Enable dark mode
+        destroy1000:
+            name: Perfectionist
+            description: Destroy 1000 buildings at once
+        throughputRocket10:
+            name: Preparing to launch
+            description: Deliver 10 rockets per second
+        produceLogo:
+            name: The logo!
+            description: Produce the logo shape
+        level100:
+            name: Is this the end?
+            description: Reach level 100
+        unlockWires:
+            name: Wires
+            description: Beat level 20, unlocking wires
+        completeLvl26:
+            name: Freedom!
+            description: Complete level 26, unlocking freeplay
+        upgradesTier5:
+            name: Faster
+            description: Have all upgrades at tier 5
+        level50:
+            name: Can't Stop
+            description: Reach level 50
+        upgradesTier8:
+            name: Even faster
+            description: Have all upgrades at tier 8
+        mam:
+            name: Make Anything Machine
+            description: Beat any level after level 26 without modifying your factory
+        noInverseRotater:
+            name: King of Inefficiency
+            description: Use no counter-clockwise rotator until level 14
+        openWires:
+            name: The next dimension
+            description: Open the wires layer
+        paintShape:
+            name: Painter
+            description: Paint a shape
+        produceRocket:
+            name: To the moon!
+            description: Produce the rocket shape
+        rotateShape:
+            name: Rotater
+            description: Rotate a shape
+        speedrunBp120:
+            name: Not an idle game
+            description: Reach and complete level 12 in under 120 minutes
+        speedrunBp60:
+            name: Speedrun Novice
+            description: Reach and complete level 12 in under 60 minutes
+        speedrunBp30:
+            name: Speedrun Master
+            description: Reach and complete level 12 in under 30 minutes
+        throughputRocket20:
+            name: SpaceY
+            description: Deliver 20 rockets per second
+        stackShape:
+            name: Wait, they stack?
+            description: Stack a shape
+        stack4Layers:
+            name: Stack Overflow
+            description: Produce a shape with 4 layers
+        storeShape:
+            name: I'm a hoarder
+            description: Store a shape
+        store100Unique:
+            name: It's a mess
+            description: Store 100 unique shapes in the hub
+        trash1000:
+            name: Get rid of them
+            description: Trash 1000 shapes
+        belts10k:
+            name: Belts go brrr
+            description: Place 10k belts
+        freeplayLevel120s:
+            name: It's an improvement
+            description: Beat a freeplay level in under 120 seconds
+        place1mBps:
+            name: I've finally used it
+            description: Spend 1 million blueprints
+        store200k:
+            name: True hoarder
+            description: Store 200k shapes in storages
+        freeplayLevel30s:
+            name: Automation master
+            description: Beat a freeplay level in under 30 seconds
+        freeplayLevel60s:
+            name: I am speed
+            description: Beat a freeplay level in under 60 seconds
+        beltsLvl15:
+            name: Belts go brrrrrrrrrrrrrrrrrrr
+            description: Upgrade belts to level 15
+        bird:
+            name: Flappy Bird
+            description: Produce the bird shape
+        lvl6NoBalancers:
+            name: Unbalanced
+            description: Complete level 6 without using any balancers
+        lvl12NoDestroying:
+            name: Environmentalist
+            description: Complete level 12 without destroying any buildings
+        lvl20NoDoublePainter:
+            name: Emperor of inefficiency
+            description: Complete level 20 without using any double painters
+        noFactoryFreeplay:
+            name: True perfectionist
+            description: Have a completely empty factory at any point after beating level 26
+        lvl12NoTrash:
+            name: Reduce, reuse, recycle
+            description: Complete level 12 without using any trash
+        lvl7NoTunnels:
+            name: Do you enjoy pain?
+            description: Complete level 7 without using any tunnels
+        lvl12NoUpgrades:
+            name: It's even slower
+            description: Complete level 12 without buying any upgrades
+        lvl27NoWires:
+            name: DIY
+            description: Complete level 27 manually, without using any wires
+        rocketBeforeLogo:
+            name: A lot early?
+            description: Produce the rocket shape before producing the logo shape
+        scissors:
+            name: The other cutter
+            description: Produce the scissors shape
+        whoKnows:
+            name: Those who know, know
+            description: Some things are better left unexplained.
+        msLogo:
+            name: I've seen that before...
+            description: Hello, Bill!
+        belt500Tiles:
+            name: I need trains
+            description: Build a single uninterrupted belt line 500 tiles long
+        logoBefore18:
+            name: A bit early?
+            description: Produce the logo shape before reaching level 18
+        mapMarkers15:
+            name: GPS
+            description: Place 15 map markers
+        irrelevantShape:
+            name: Oops
+            description: Deliver a shape to the hub that isn't needed for any level or
+                upgrade
+        notRocket:
+            name: You will not go to space today
+            description: Produce a shape that's almost, but not quite, the rocket
+        stack5thLayer:
+            name: The forbidden layer
+            description: Stack a shape 5 layers high
+errorHandler:
+    title: Unhandled Error!
+    labels:
+        buildInformation: "Build Information:"
+        loadedMods: "Loaded Mods:"
+    actions:
+        copy: Copy
+        copyDone: Copied!
+        restart: Restart

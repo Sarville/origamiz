@@ -57,6 +57,15 @@ export class GameState {
      * @param {string} stateKey The id of the new state
      */
     moveToState(stateKey, payload = {}, skipFadeOut = false) {
+        if (!this.stateManager) {
+            // This state has already been left (e.g. a delayed async callback, such as
+            // a savegame load, resolved after the user navigated away some other way).
+            // Its own fields were stripped by the state manager, so there is nothing left
+            // to transition from.
+            logger.warn("Ignoring move to '" + stateKey + "' since this state is no longer active");
+            return;
+        }
+
         if (this.fadingOut) {
             logger.warn("Skipping move to '" + stateKey + "' since already fading out");
             return;

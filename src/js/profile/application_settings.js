@@ -298,9 +298,9 @@ class SettingsStorage {
         this.refreshRate = "60";
         this.scrollWheelSensitivity = "regular";
         this.movementSpeed = "regular";
-        // Default audience is Russian-speaking (Yandex Games); users can still
-        // switch to auto-detect or any other language in the settings.
-        this.language = "ru";
+        // Yandex Games platform requirement 2.14: language must be
+        // auto-detected from the SDK/browser, not hardcoded.
+        this.language = "auto-detect";
         this.autosaveInterval = "two_minutes";
 
         this.alwaysMultiplace = false;
@@ -327,6 +327,14 @@ class SettingsStorage {
         this.simplifiedBelts = false;
         this.zoomToCursor = true;
         this.mapResourcesScale = 0.5;
+
+        // Not a user-facing toggle (no EnumSetting/BoolSetting entry, so it
+        // never shows in the settings menu) - just remembers a "not now" on
+        // the Yandex sign-in offer so it doesn't nag again. See
+        // requestYandexAuth()/hasDeclinedYandexAuthOffer() and the
+        // requirement this was built for (platform requirement 1.2.1: never
+        // ask again once declined).
+        this.yandexAuthOfferDeclined = false;
 
         /**
          * @type {Object.<string, number>}
@@ -453,11 +461,26 @@ export class ApplicationSettings extends ReadWriteProxy {
         return this.getAllSettings().language;
     }
 
+    /** @returns {boolean} */
+    hasDeclinedYandexAuthOffer() {
+        return Boolean(this.getAllSettings().yandexAuthOfferDeclined);
+    }
+
     // Setters
 
     updateLanguage(id) {
         assert(LANGUAGES[id], "Language not known: " + id);
         return this.updateSetting("language", id);
+    }
+
+    /**
+     * Records that the player dismissed the Yandex sign-in offer, so it's
+     * never shown again this device - bypasses updateSetting() since this
+     * isn't a user-facing EnumSetting/BoolSetting with a validator.
+     */
+    setDeclinedYandexAuthOffer() {
+        this.getAllSettings().yandexAuthOfferDeclined = true;
+        return this.writeAsync();
     }
 
     /**
@@ -551,7 +574,7 @@ export class ApplicationSettings extends ReadWriteProxy {
     }
 
     getCurrentVersion() {
-        return 33;
+        return 34;
     }
 
     /** @param {{settings: SettingsStorage, version: number}} data */
@@ -710,6 +733,14 @@ export class ApplicationSettings extends ReadWriteProxy {
         if (data.version < 33) {
             data.settings.alwaysShowBuildingInfo = true;
             data.version = 33;
+        }
+
+        if (data.version < 34) {
+            // Revert a since-removed hardcoded "ru" default that shipped
+            // between versions 9 and 34 - restores automatic SDK/browser
+            // language detection for saves created during that window.
+            data.settings.language = "auto-detect";
+            data.version = 34;
         }
 
         // MODS

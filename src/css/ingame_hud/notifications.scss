@@ -29,17 +29,13 @@
     }
 
     .notification {
-        background: rgba(#333438, 0.8);
+        background: $ingameHudBg;
         border-radius: $globalBorderRadius;
         margin-top: 0.3rem;
         color: #fff;
         @include SuperSmallText;
         padding: 0.7rem 1rem;
         width: 15rem;
-
-        @include DarkThemeOverride {
-            background-color: rgba(#55595d, 0.8);
-        }
 
         &[data-icon] {
             background-position-x: 0.8rem;

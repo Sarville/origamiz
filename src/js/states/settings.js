@@ -1,3 +1,4 @@
+import { IS_MOBILE } from "../core/config";
 import { TextualGameState } from "../core/textual_game_state";
 import { enumCategories } from "../profile/application_settings";
 import { T } from "../translations";
@@ -28,9 +29,14 @@ export class SettingsState extends TextualGameState {
                     : ""
             }
 
-            <button class="styledButton categoryButton manageMods">
-            ${T.mods.title}
-            </button>
+            ${
+                IS_MOBILE
+                    ? `
+            <button class="styledButton categoryButton mobileControls">
+            ${T.mobileControls.title}
+            </button>`
+                    : ""
+            }
 
             <button class="styledButton categoryButton shapeViewerTool">
             ${T.shapeViewerTool.title}
@@ -98,6 +104,11 @@ export class SettingsState extends TextualGameState {
 
         if (keybindingsButton) {
             this.trackClicks(keybindingsButton, this.onKeybindingsClicked, { preventDefault: false });
+        }
+
+        const mobileControlsButton = this.htmlElement.querySelector(".mobileControls");
+        if (mobileControlsButton) {
+            this.trackClicks(mobileControlsButton, this.onMobileControlsClicked, { preventDefault: false });
         }
 
         this.initSettings();
@@ -180,6 +191,10 @@ export class SettingsState extends TextualGameState {
 
     onKeybindingsClicked() {
         this.moveToStateAddGoBack("KeybindingsState");
+    }
+
+    onMobileControlsClicked() {
+        this.moveToStateAddGoBack("MobileControlsState");
     }
 
     onModsClicked() {

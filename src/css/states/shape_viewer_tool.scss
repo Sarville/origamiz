@@ -1,8 +1,19 @@
 @use "../mixins" as *;
 @use "../variables" as *;
 
-.shapeViewerTool {
-    max-width: 48rem;
+// Scoped to the state root - .shapeViewerTool is also the class name of the
+// settings sidebar button that opens this state (settings.js), and without
+// this these rules (max-width/grid included) leaked onto that button too.
+#state_ShapeViewerToolState .shapeViewerTool {
+    // Fixed baseline instead of the document's dynamic rem (Application.
+    // checkResize ties 1rem to window size - min(width, height) * 1.9/1000
+    // - so on a short-but-wide window this whole text-heavy page rendered
+    // huge). Plain body text here has no font-size of its own - it renders
+    // at exactly this value, so 16px (a normal comfortable reading size),
+    // not this codebase's 10px "1(r)em == 10px at baseline scale"
+    // convention (see main_menu.scss) which was unreadably small for it.
+    font-size: 16px;
+    max-width: 48em;
     margin: 0 auto;
 
     .description,
@@ -12,16 +23,14 @@
 
     .keyLabel {
         display: block;
-        margin-top: 1.5rem;
-        @include Heading;
+        margin-top: 0.75em;
+        font-size: 1.05em;
+        font-weight: 600;
     }
 
-    .keyControls,
-    .actions {
+    .keyControls {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin-top: 0.5rem;
+        margin-top: 0.5em;
     }
 
     .shapeKeyInput {
@@ -30,24 +39,27 @@
         width: 100%;
         box-sizing: border-box;
         font-family: monospace;
-        font-size: 1.1rem;
+        font-size: 1.1em;
     }
 
-    .previewButton {
-        width: 100%;
+    .actions {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75em;
+        margin-top: 1em;
     }
 
     .previewArea {
         display: flex;
-        min-height: 15rem;
-        margin-top: 1rem;
+        min-height: 15em;
+        margin-top: 1em;
         align-items: center;
         justify-content: center;
         border-radius: $globalBorderRadius;
         background: #eee;
 
         canvas {
-            width: min(100%, 22rem);
+            width: min(100%, 22em);
             height: auto;
         }
     }
@@ -60,26 +72,21 @@
         }
     }
 
-    .actions {
-        .randomButton {
-            flex-basis: 100%;
-        }
-    }
-
     .instructions {
-        margin-top: 2rem;
-        padding-top: 1rem;
+        margin-top: 2em;
+        padding-top: 1em;
         border-top: 1px solid rgba(0, 0, 0, 0.15);
 
         h2,
         h3 {
-            margin: 1.25rem 0 0.5rem;
+            margin: 1.25em 0 0.5em;
             @include Heading;
+            font-size: 1.9em;
         }
 
         code {
-            padding: 0.12rem 0.35rem;
-            border-radius: 0.2rem;
+            padding: 0.12em 0.35em;
+            border-radius: 0.2em;
             background: rgba(0, 0, 0, 0.1);
             color: #3b3d46;
             font-size: 0.95em;
@@ -89,24 +96,44 @@
         .legendGrid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 1.5rem;
+            gap: 1.5em;
         }
 
-        dl {
+        .examples {
             display: grid;
-            grid-template-columns: auto 1fr;
-            gap: 0.35rem 0.65rem;
+            gap: 0.5em;
             margin: 0;
+            padding: 0;
+            list-style: none;
         }
 
-        dt,
-        dd {
-            margin: 0;
+        .exampleKey {
+            display: flex;
+            align-items: center;
+            gap: 0.65em;
+            width: 100%;
+            padding: 0.4em 0.65em;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 0.3em;
+            background: rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            text-align: left;
+            font: inherit;
+            color: inherit;
+            transition: background-color 0.12s ease-in-out;
+
+            &:hover {
+                background: rgba(0, 0, 0, 0.08);
+            }
+
+            code {
+                flex: none;
+            }
         }
 
         .legendList {
             display: grid;
-            gap: 0.35rem;
+            gap: 0.35em;
             margin: 0;
             padding: 0;
             list-style: none;
@@ -114,7 +141,7 @@
             li {
                 display: flex;
                 align-items: center;
-                gap: 0.45rem;
+                gap: 0.45em;
             }
         }
 
@@ -140,22 +167,73 @@
         .previewArea {
             background: rgba(0, 10, 20, 0.25);
         }
-    }
 
-    @media screen and (max-width: 35rem) {
-        .actions {
-            > button {
-                flex: 1 1 9rem;
-            }
+        .exampleKey {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.05);
 
-            .randomButton {
-                flex-basis: 100%;
+            &:hover {
+                background: rgba(255, 255, 255, 0.12);
             }
         }
+    }
 
+    // Desktop: the single stacked column reads huge (everything full-width,
+    // key input/preview/actions cascading down a tall page) - split it into
+    // description+controls+actions / preview side by side instead, with the
+    // instructions still spanning the full width below. Breakpoint and cap
+    // are plain px (viewport width), not em/rem - matches this codebase's
+    // own convention for width breakpoints (see StyleBelowWidth(700px) in
+    // mixins.scss) and keeps the 1400px cap exact regardless of the page's
+    // local font-size.
+    @media screen and (min-width: 1024px) {
+        max-width: 1400px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        column-gap: 2em;
+        align-items: start;
+
+        .description {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .keyLabel {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .keyControls {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        .error {
+            grid-column: 1;
+            grid-row: 4;
+        }
+
+        .actions {
+            grid-column: 1;
+            grid-row: 5;
+        }
+
+        .previewArea {
+            grid-column: 2;
+            grid-row: 1 / 6;
+            margin-top: 0;
+            height: 100%;
+        }
+
+        .instructions {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media screen and (max-width: 560px) {
         .instructions .legendGrid {
             grid-template-columns: 1fr;
-            gap: 0.5rem;
+            gap: 0.5em;
         }
     }
 }

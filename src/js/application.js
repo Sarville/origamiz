@@ -16,8 +16,10 @@ import { MODS } from "./mods/modloader";
 import { Sound } from "./platform/sound";
 import { Storage, STORAGE_SAVES } from "./platform/storage";
 import { PlatformWrapperImplBrowser } from "./platform/wrapper";
+import { PlatformWrapperImplYandex } from "./platform/yandex_wrapper";
 import { AchievementsStorage } from "./profile/achievements_storage";
 import { ApplicationSettings } from "./profile/application_settings";
+import { WalletStorage } from "./profile/wallet_storage";
 import { SavegameManager } from "./savegame/savegame_manager";
 import { AboutState } from "./states/about";
 import { AchievementsState } from "./states/achievements";
@@ -25,6 +27,7 @@ import { ChangelogState } from "./states/changelog";
 import { InGameState } from "./states/ingame";
 import { KeybindingsState } from "./states/keybindings";
 import { MainMenuState } from "./states/main_menu";
+import { MobileControlsState } from "./states/mobile_controls";
 import { ModsState } from "./states/mods";
 import { PreloadState } from "./states/preload";
 import { SettingsState } from "./states/settings";
@@ -66,11 +69,14 @@ export class Application {
         this.storage = new Storage(this, STORAGE_SAVES);
         await this.storage.initialize();
 
-        this.platformWrapper = new PlatformWrapperImplBrowser(this);
+        this.platformWrapper = G_IS_YANDEX
+            ? new PlatformWrapperImplYandex(this)
+            : new PlatformWrapperImplBrowser(this);
 
         // Global stuff
         this.settings = new ApplicationSettings(this, this.storage);
         this.achievements = new AchievementsStorage(this, this.storage);
+        this.wallet = new WalletStorage(this);
         this.ticker = new AnimationFrame();
         this.stateMgr = new StateManager(this);
         // NOTE: SavegameManager uses the passed storage, but savegames always
@@ -134,6 +140,7 @@ export class Application {
             ShapeViewerToolState,
             AchievementsState,
             KeybindingsState,
+            MobileControlsState,
             AboutState,
             ChangelogState,
             ModsState,
@@ -254,11 +261,13 @@ export class Application {
             if (currentState) {
                 currentState.onAppPause();
             }
+            this.platformWrapper.onGameplayStop();
         } else {
             if (currentState) {
                 currentState.onAppResume();
             }
             this.checkResize();
+            this.platformWrapper.onGameplayStart();
         }
 
         this.sound.onPageRenderableStateChanged(renderable);

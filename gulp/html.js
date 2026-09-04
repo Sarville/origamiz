@@ -13,7 +13,10 @@ import gulpRename from "gulp-rename";
  * html
  */
 
-async function buildHtml() {
+/**
+ * @param {string} [variant]
+ */
+async function buildHtml(variant) {
     return gulp
         .src("../src/html/index.html")
         .pipe(
@@ -21,6 +24,12 @@ async function buildHtml() {
                 const style = this.createElement("style");
                 style.textContent = fs.readFileSync(path.join("preloader", "preloader.css"), "utf-8");
                 this.head.appendChild(style);
+
+                if (variant === "yandex") {
+                    const sdk = this.createElement("script");
+                    sdk.src = "/sdk.js";
+                    this.head.insertBefore(sdk, this.head.querySelector("script"));
+                }
             })
         )
         .pipe(

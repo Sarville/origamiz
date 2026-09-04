@@ -120,8 +120,18 @@ export class InGameState extends GameState {
         return false;
     }
 
+    /**
+     * Whether the game simulation itself (not just rendering/sound) should
+     * stop advancing while the tab is hidden/backgrounded - see
+     * onBackgroundTick. Browser/Electron builds keep the pre-existing
+     * idle-factory behavior (production keeps running while backgrounded);
+     * the Yandex Games build does not, both to match the platform's own
+     * expected pause-on-background behavior and so currency/production
+     * can't be farmed just by leaving the tab open unfocused (see
+     * WalletStorage's class doc on the account-wide currency wallet).
+     */
     getPauseOnFocusLost() {
-        return false;
+        return G_IS_YANDEX;
     }
 
     getHasUnloadConfirmation() {
@@ -133,6 +143,7 @@ export class InGameState extends GameState {
             this.stageDestroyed();
         }
         this.app.inputMgr.dismountFilter(this.boundInputFilter);
+        this.app.platformWrapper.onGameplayStop();
     }
 
     onResized(w, h) {
@@ -166,6 +177,16 @@ export class InGameState extends GameState {
      */
     goToKeybindings() {
         this.saveThenGoToState("KeybindingsState", {
+            backToStateId: this.key,
+            backToStatePayload: this.creationPayload,
+        });
+    }
+
+    /**
+     * Goes to the mobile controls guide
+     */
+    goToMobileControls() {
+        this.saveThenGoToState("MobileControlsState", {
             backToStateId: this.key,
             backToStatePayload: this.creationPayload,
         });
@@ -387,6 +408,7 @@ export class InGameState extends GameState {
      */
     onEnter(payload) {
         this.app.inputMgr.installFilter(this.boundInputFilter);
+        this.app.platformWrapper.onGameplayStart();
 
         this.creationPayload = payload;
         this.savegame = payload.savegame;
@@ -446,6 +468,12 @@ export class InGameState extends GameState {
     }
 
     onBackgroundTick(dt) {
+        if (this.getPauseOnFocusLost()) {
+            // True pause: skip onRender entirely, so core.tick() (the
+            // actual simulation - belts, production, everything) doesn't
+            // advance either, not just drawing/sound.
+            return;
+        }
         this.onRender(dt);
     }
 

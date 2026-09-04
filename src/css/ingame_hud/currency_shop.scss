@@ -11,6 +11,27 @@
         flex-direction: column;
         width: 50rem;
 
+        .lockedDisclaimer {
+            @include PlainText;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+            padding: 1rem 1.2rem;
+            margin-bottom: 1rem;
+            color: #aaa;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            &.hidden {
+                display: none;
+            }
+        }
+
+        .gatedContent.hidden {
+            display: none;
+        }
+
         .currencyBalance {
             display: flex;
             align-items: center;

@@ -126,7 +126,7 @@ async function serveHTML({ version = "web-dev" }) {
     gulp.watch("../src/css/**", css.dev);
 
     // Watch .html files, those trigger a html rebuild
-    gulp.watch("../src/html/**", html);
+    gulp.watch("../src/html/**", () => html(version));
 
     // Watch translations
     gulp.watch("../translations/*.yaml", translations.convertToJson);
@@ -181,7 +181,7 @@ const prepare = {
                 gulp.series(imgres.buildAtlas, gulp.parallel(imgres.atlasToJson, imgres.atlas)),
                 gulp.series(imgres.copyImageResources, css.dev),
                 imgres.copyNonImageResources,
-                html,
+                () => html(variant),
                 gulp.series(gulp.parallel(sounds.dev, translations.fullBuild), js[variant].dev.build)
             )
         ),
@@ -215,9 +215,9 @@ for (const variant in BUILD_VARIANTS) {
         js[variant].prod.build
     );
 
-    const resourcesAndCode = gulp.parallel(step.baseResources, code);
+    const resourcesAndCode = gulp.parallel(step.baseResources, code, utils.copyAdditionalBuildFiles);
 
-    const all = gulp.series(resourcesAndCode, css.prod, html);
+    const all = gulp.series(resourcesAndCode, css.prod, () => html(variant));
 
     const full = gulp.series(utils.cleanup, all, step.postbuild);
 

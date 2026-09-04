@@ -40,10 +40,9 @@ mainMenu:
     continue: Devam et
     newGame: YENİ OYUN
     savegameUnnamed: İsimsiz
-    mods:
-        warningPuzzleDLC: Modlarla Yapboz DLC'sini oynamak mümkün değil. Lütfen Yapboz
-            DLC'sini oynayabilmek için bütün modları devre dışı bırakınız.
     noActiveSavegames: Aktif kayıtlı oyun bulunamadı - Yeni bir oyun başlatmak için tıkla!
+    importSavegameHint: You can import a savegame from your device
+    achievements: Achievements
 dialogs:
     buttons:
         ok: OK
@@ -72,6 +71,8 @@ dialogs:
         title: Silme İşlemini onayla
         text: Bu kaydı silmek istediğinize emin misiniz?<br><br> '<savegameName>'
             seviyesi <savegameLevel><br><br> Bu işlem geri alınamaz!
+        desc: Are you sure you want to delete this savegame?
+        warningNote: This action cannot be undone.
     savegameDeletionError:
         title: Silme başarısız
         text: "Oyun kaydı silinemedi:"
@@ -148,70 +149,6 @@ dialogs:
             misin?
     editConstantProducer:
         title: Eşya Seç
-    puzzleLoadFailed:
-        title: Yapbozlar yüklenirken hata oluştu
-        desc: "Malesef yapbozlar yüklenemedi:"
-    submitPuzzle:
-        title: Yapboz Yayınla
-        descName: "Yapbozuna bir isim ver:"
-        descIcon: "Lütfen yapbozunun ikonu olacak eşsiz kısa bir anahtar gir. (Anahtarı
-            <link>buradan</link> oluşturabilirsin, yada aşagıdaki şekillerden
-            rastgele birini seçebilirsin):"
-        placeholderName: Yapboz İsmi
-    puzzleResizeBadBuildings:
-        title: Yeniden boyutlandırma mümkün değil
-        desc: Alanı daha fazla küçültemezsin, çünkü bazı yapılar alanın dışında
-            kalabilir.
-    puzzleLoadError:
-        title: Kötü Yapboz
-        desc: "Yapboz yüklenirken hata oluştu:"
-    offlineMode:
-        title: Çevrimdışı Modu
-        desc: Sunuculara ulaşamadık, bu yüzden oyun çevrimdışı modda çalışmak zorunda.
-            Lütfen aktif bir internet bağlantısı olduğundan emin olunuz.
-    puzzleDownloadError:
-        title: İndirme Hatası
-        desc: "Yapboz indirilemedi:"
-    puzzleSubmitError:
-        title: Yayınlama Hatası
-        desc: "Yapboz yayınlanamadı:"
-    puzzleSubmitOk:
-        title: Yapboz Yayınlandı
-        desc: Tebrikler! Yapbozun yayınlandı ve artık başkaları tarafından
-            oynanabilecek. Şimdi yapbozunu "Yapbozlarım" kısmında bulabilirsin.
-    puzzleCreateOffline:
-        title: Çevrimdışı Modu
-        desc: Çevrimdışı olduğundan yapbozunu kayıt edemeyecek veya yayınlayamayacaksın.
-            Devam etmek istediğinize emin misiniz?
-    puzzlePlayRegularRecommendation:
-        title: Öneri
-        desc: Ben <strong>muhakkak</strong> yapboz moduna başlamadan önce normal oyunu
-            seviye 12'ye kadar oynamayı tavsiye ediyorum, aksi takdirde henüz
-            sunulmamış mekaniklerle (yapılar ve oynanış şekilleri)
-            karşılaşabilirsiniz.
-    puzzleShare:
-        title: Kısa Anahtar Kopyalandı
-        desc: Yapbozun kısa anahtarı (<key>) kopyala/yapıştır hafızasına kopyalandı! Bu
-            anahtar yapboz menüsünde, yapboza erişmek için kullanılabilir.
-    puzzleReport:
-        title: Yapbozu Şikayet Et
-        options:
-            profane: Ayrımcılık (din, dil, ırk)
-            unsolvable: Çözülemez Yapboz
-            trolling: Trolleme
-    puzzleReportComplete:
-        title: Geri bildiriminiz için teşekkürler!
-        desc: Yapboz işaretlendi.
-    puzzleReportError:
-        title: Şikayet edilemedi
-        desc: "Şikayetiniz iletilemedi:"
-    puzzleLoadShortKey:
-        title: Kısa anahtar gir
-        desc: Yapbozu yüklemek için kısa anahtarı giriniz
-    puzzleDelete:
-        title: Yapboz silinsin mi?
-        desc: "'<title>' yapbozunu silmek istediğinize emin misiniz? Bu işlem geri
-            alınamaz!"
     modsDifference:
         title: Mod Uyarısı
         desc: Halihazırda kullanılan modlar, kayıtlı oyunun yaratıldığı modlardan
@@ -247,6 +184,10 @@ ingame:
         pipette: Pipet
         switchLayers: Katman değiştir
         clearBelts: Bantları temizle
+        moveBuilding: Transform
+        selectVariant: Select variant
+        undo: Undo
+        redo: Redo
     buildingPlacement:
         cycleBuildingVariants: Yapının farklı türlerine geçmek için <key> tuşuna bas.
         hotkeyLabel: "Kısayol: <key>"
@@ -258,6 +199,7 @@ ingame:
             itemsPerSecondDouble: (x2)
             tiles: <x> karo
             speed: Hız
+        swipeForVariants: Swipe for variants
     levelCompleteNotification:
         levelTitle: SEVİYE <level>
         completed: Tamamlandı
@@ -272,6 +214,10 @@ ingame:
         buttonUnlock: Geliştİr
         tier: Aşama <x>
         maximumLevel: SON SEVİYE (Hız x<currentMult>)
+        researchSectionTitle: Research
+        buttonResearch: Research
+        researchLocked: Locked (Research Tier <tier> required)
+        researchCompleted: Completed
     statistics:
         title: İstatistikler
         dataSources:
@@ -306,6 +252,9 @@ ingame:
             sil.<br><br>Mevcut konumdan yer imi oluşturmak için <keybinding>'a
             bas, <strong>sağ-tık</strong> ile mevcut konumda yer imi oluştur.
         creationSuccessNotification: Yer imi oluşturuldu.
+        descriptionMobile: Tap a marker to jump to it, or hold it to edit. Its edit icon
+            in the list also lets you rename or delete it.<br><br>Tap the marker
+            button below to create one at the current view.
     interactiveTutorial:
         title: Eğitim
         hints:
@@ -347,6 +296,42 @@ ingame:
                 Not: Bütün girişleri bağlamanıza gerek yok! Sadece iki tanesini
                 kabloyla bağlamayı deneyin."
             1_2_hold_and_drag: Tutun ve sürükleyin
+        mobileHints:
+            1_1_extractor: Choose an <strong>extractor</strong> in the toolbar, tap a
+                <strong>circle shape</strong>, then tap <strong>confirm</strong>
+                to extract it!
+            1_2_conveyor: "Connect the extractor to your hub with a <strong>conveyor
+                belt</strong>!<br><br>Tip: <strong>Touch, hold and drag</strong>
+                to place a belt path."
+            1_3_expand: "This is <strong>NOT</strong> an idle game! Build more extractors
+                and belts to finish the goal quicker.<br><br>Tip: Choose a
+                building in the toolbar, tap the map, then tap
+                <strong>confirm</strong>. Use the <strong>rotate</strong> button
+                to turn it."
+            2_1_place_cutter: "Now place a <strong>Cutter</strong> to cut the circles in two
+                halves!<br><br>Tip: The cutter always cuts from <strong>top to
+                bottom</strong> regardless of its orientation."
+            2_2_place_trash: The cutter can <strong>clog and stall</strong>!<br><br>Use a
+                <strong>trash</strong> to get rid of the currently (!) not
+                needed waste.
+            2_3_more_cutters: "Good job! Now place <strong>2 more cutters</strong> to speed
+                up this slow process!<br><br>Tip: Select buildings from the
+                bottom toolbar."
+            3_1_rectangles: "Now let's extract some rectangles! <strong>Build 3
+                extractors</strong> and connect them to the hub.<br><br>Tip:
+                <strong>Touch, hold and drag</strong> to lay a belt path."
+            21_1_place_quad_painter: Place the <strong>quad painter</strong> and get some
+                <strong>circles</strong>, <strong>white</strong> and
+                <strong>red</strong> color!
+            21_2_switch_to_wires: Tap the <strong>wires-layer button</strong> above the
+                toolbar!<br><br>Then <strong>connect all four inputs</strong> of
+                the painter with cables.
+            21_3_place_button: Awesome! Now place a <strong>Switch</strong> and connect it
+                with wires!
+            21_4_press_button: "Tap the switch to make it <strong>emit a truthy
+                signal</strong> and activate the painter.<br><br>Tip: You don't
+                have to connect all inputs! Try wiring only two."
+            1_2_hold_and_drag: Touch, hold and drag
     colors:
         red: Kırmızı
         green: Yeşil
@@ -361,53 +346,66 @@ ingame:
         title: Katmanlar
         empty: Boş
         copyKey: Şekil Kodunu Kopyala
+        pin: Pin
+        unpin: Unpin
     connectedMiners:
         one_miner: 1 Üretici
         n_miners: <amount> Üretici
         limited_items: Sınır <max_throughput>
-    puzzleEditorSettings:
-        zoneTitle: Alan
-        zoneWidth: Genişlik
-        zoneHeight: Yükseklik
-        trimZone: Alanı Sınırlandır
-        clearItems: Eşyaları temizle
-        share: Paylaş
-        report: Şikayet et
-        clearBuildings: Yapıları temizle
-        resetPuzzle: Yapbozu sıfırla
-    puzzleEditorControls:
-        title: Yapboz Oluşturucu
-        instructions:
-            - 1. Oyunculara şekil ve renk sağlamak için <strong>Sabit
-              Üreticileri</strong> yerleştir.
-            - 2. Oyuncuların üretmesi ve bir veya birden fazla <strong>Hedef
-              Merkezine</strong> teslim edebilmeleri için bir veya birden fazla
-              şekil oluştur.
-            - 3. Bir Hedef Merkezine belirli bir zaman içinde şekil teslim
-              edilirse, Hedef Merkezi bunu oyuncuların tekrardan üreteceği bir
-              <strong>hedef olarak kabul eder</strong> (<strong>Yeşil
-              rozetle</strong> gösterilmiş).
-            - 4. Bir yapıyı devre dışı bırakmak için üzerindeki <strong>kilit
-              butonuna</strong> basınız.
-            - 5. Gözat butonuna bastığınız zaman, yapbozunuz onaylanacaktır ve
-              sonra onu yayınlayabileceksiniz.
-            - 6. Yayınlandığı zaman, Sabit Üreticiler ve Hedef Merkezleri
-              dışındaki <strong>bütün yapılar silinecektir</strong> - Bu kısmı
-              oyuncuların kendisi çözmesi gerekecek sonuçta :)
-    puzzleCompletion:
-        title: Yapboz Tamamlandı!
-        titleLike: "Yapbozu beğendiyseniz kalbe tıklayınız:"
-        titleRating: Yapbozu ne kadar zor buldunuz?
-        titleRatingDesc: Değerlendirmeniz size daha iyi öneriler sunmamda yardımcı olacaktır
-        continueBtn: Oynamaya Devam Et
-        menuBtn: Menü
-        nextPuzzle: Sonraki Yapboz
-    puzzleMetadata:
-        author: Yapımcı
-        shortKey: Kısa Anahtar
-        rating: Zorluk
-        averageDuration: Ortamala Süre
-        completionRate: Tamamlama Süresi
+    currencyShop:
+        title: Shop
+        balance: You have <amount> currency shapes
+        lockedDisclaimer: Currency purchases unlock at level <level>. Until then, you
+            can remove ads below.
+        buttonBuy: Buy
+        completed: Purchased
+        buttonExchange: Exchange
+        buttonExchangeLimit: Exchange (<amount>)
+        dailyBonus:
+            title: Daily Bonus
+            description: Come back once a day for free currency.
+            buttonClaim: Claim +<amount>
+            claimed: Come back tomorrow!
+        adReward:
+            title: Watch Ad
+            description: Watch a short video for free currency, every couple hours.
+            buttonClaim: Watch (+<amount>)
+            cooldown: Available in <time>
+        removeAds:
+            title: Remove Ads
+            description: One-time purchase. Removes the banner and video ads shown between
+                actions.
+            buttonBuy: Buy
+            purchased: Purchased
+        exchangeList:
+            title: Exchange
+            empty: You don't have any shapes stored yet.
+            buttonBuy: Buy
+            buttonSell: Sell
+            buttonRates: Rates
+            lockedDescription: Trade currency for shapes and shapes for currency at a fixed
+                rate.
+            buttonUnlock: Buy
+            limitText: "Daily limit: <amount>"
+            buttonRaiseLimit: Raise limit (<price>)
+            limitExhausted: Daily exchange limit reached. Come back tomorrow!
+        exchangeRates:
+            title: Exchange Rates
+            layers: "Layers: <layers>"
+            colored: (painted)
+            buyRate: Buy <currency> currency/shape
+            sellRate: Sell <shapes> shapes/currency
+        exchangeModal:
+            titleBuy: Buy Shapes
+            titleSell: Sell Shapes
+            owned: "In stock: <amount>"
+            rate: Rate <shapes> shapes → <currency> currency
+            stepWarning: Amount must be a multiple of <step>
+            buttonRound: Round
+            buttonMax: MAX
+            buttonConfirmBuy: Buy
+            buttonConfirmSell: Sell
+            buttonCancel: Cancel
 shopUpgrades:
     belt:
         name: Taşıma Bandı, Dağıtıcılar & Tüneller
@@ -611,23 +609,6 @@ buildings:
         painter:
             name: Sanal Boyayıcı
             description: Sanal olarak aşağı girdideki şekli sağ girdideki renk ile boyar.
-    item_producer:
-        default:
-            name: Eşya Üretici
-            description: Sadece kum kutusu modunda açık, kablo katmanındaki sinyali normal
-                katmanda çıktı olarak verir.
-    constant_producer:
-        default:
-            name: Sabİt Üretİcİ
-            description: Sabit olarak belirli bir şekli veya rengi üretir.
-    goal_acceptor:
-        default:
-            name: Hedef Merkezİ
-            description: Şekilleri hedef olarak tanımlamak için hedef merkezine teslim et.
-    block:
-        default:
-            name: Engel
-            description: Bir karoyu kullanıma kapatmayı sağlar.
 storyRewards:
     reward_cutter_and_trash:
         title: Şekilleri Kesmek
@@ -790,6 +771,40 @@ storyRewards:
             eşleşmelerine bağlı olarak eşyaları yukarıdaki yada aşağıdaki çıkışa
             yönlendirir.<br><br> Ayrıca filtreyi tamamen açıp kapatmak için
             ikili sinyal (1 / 0) kullanabilirsin.
+    reward_research:
+        title: Research
+        desc: You have unlocked the <strong>Research</strong> section of the Upgrades
+            window! Spend the shapes you deliver to the Hub on optional building
+            variants there, instead of waiting for them to show up in the level
+            ladder.
+    reward_research_t2:
+        title: Research Tier II
+        desc: <strong>Research Tier II</strong> is now available - more building
+            variants can be researched in the Upgrades window!
+    reward_shop_auto_tunnel:
+        title: Auto-Tunneling
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt across a gap now
+            automatically tunnels under it!
+    reward_shop_overview_building:
+        title: Overview Building
+        desc: Purchased in the <strong>Shop</strong> - you can now place buildings while
+            the map is zoomed out to overview mode!
+    reward_shop_auto_merger:
+        title: Auto-Merging
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt into an existing
+            belt run now automatically inserts a merger!
+    reward_shop_auto_splitter:
+        title: Auto-Splitting
+        desc: Purchased in the <strong>Shop</strong> - starting a new belt from an
+            existing belt run now automatically inserts a splitter!
+    reward_shop_long_route:
+        title: Long-Distance Routing
+        desc: Purchased in the <strong>Shop</strong> - belts dragged across obstacles
+            can now bend around much longer detours!
+    reward_shop_exchange:
+        title: Exchange
+        desc: Purchased in the <strong>Shop</strong> - you can now trade shapes for
+            currency and currency for shapes!
 settings:
     title: Ayarlar
     categories:
@@ -962,6 +977,10 @@ settings:
             title: Şekil İpucu - Her Zaman Göster
             description: Şekil ipuçlarını 'ALT' tuşuna basarak göstermek yerine her zaman
                 gösterir.
+        alwaysShowBuildingInfo:
+            title: Always Show Building Info
+            description: On mobile (no keyboard/hotkey to toggle it), shows the selected
+                building's info panel automatically. Turn off to keep it hidden.
     tickrateHz: <amount> Hz
     newBadge: Yeni!
 keybindings:
@@ -1036,31 +1055,23 @@ keybindings:
         transistor: Transistor
         analyzer: Şekil Analizcisi
         comparator: Karşılaştırıcı
-        item_producer: Eşya Üretici (Kum Kutusu)
         copyWireValue: "Kablo: Fare altındaki değeri kopyala"
         rotateToUp: Yukarı Döndür
         rotateToDown: Aşağı Döndür
         rotateToRight: Sağa Döndür
         rotateToLeft: Sola Döndür
-        constant_producer: Sabit Üretici
-        goal_acceptor: Hedef Merkezi
-        block: Engel
         massSelectClear: Bantları temizle
         showShapeTooltip: Şekil çıkış ipucunu göster
+        menuOpenCurrencyShop: Shop
+        undo: Undo
+        redo: Redo
+        moveBuilding: Transform Building
 about:
     title: Oyun Hakkında
-    body: >-
-        Bu oyun açık kaynaklıdır ve <a href="https://github.com/tobspr"
-        target="_blank">Tobias Springer</a> (bu benim) tarafından
-        geliştirilmektedir. <br><br>
-
-        Eğer katkıda bulunmak istiyorsanız, <a href="<githublink>" target="_blank">shapez.io Github sayfasına</a> göz atın.<br><br>
-
-        Bu oyunu yapmak, oyunlarımın etrafındaki büyük Discord topluluğu olmasaydı mümkün olmayacaktı - Gerçekten <a href="<discordlink>" target="_blank">Discord sunucusuna</a> katılmalısın!<br><br>
-
-        Oyun müzikleri <a href="https://soundcloud.com/pettersumelius" target="_blank">Peppsen</a> tarafından yapıldı - Harika biri. <br><br>
-
-        Son olarak, en iyi arkadaşım <a href="https://github.com/niklas-dahl" target="_blank">Niklas'a</a> büyük teşekkürler. Factorio oyunlarımız olmasaydı bu oyun hiç var olmamış olacaktı.
+    body: This game is a remake of the well-known game shapez, featuring updated
+        mechanics, visual style, and features.
+    currentBody: Origamiz is an open-source factory-building game with its own
+        visual style and mechanics.
 changelog:
     title: Değişiklik Günlüğü
 demo:
@@ -1139,92 +1150,6 @@ tips:
     - Farenizin ve kameranızın sınırlarını göstermek için F4'e iki kez basın.
     - Sol tarafta sabitlenmiş bir şekle tıklayarak sabitlemesini
       kaldırabilirsiniz.
-puzzleMenu:
-    play: Oyna
-    edit: Düzenle
-    title: Yapboz Modu
-    createPuzzle: Yapboz Oluştur
-    loadPuzzle: Yükle
-    reviewPuzzle: Gözat & Yayınla
-    validatingPuzzle: Yapboz onaylanıyor
-    submittingPuzzle: Yapboz yayınlanıyor
-    noPuzzles: Bu kısımda yapboz yok.
-    categories:
-        levels: Seviyeler
-        new: Yeni
-        top-rated: En İyi Değerlendirilen
-        mine: Yapbozlarım
-        easy: Kolay
-        hard: Zor
-        completed: Tamamlanan
-        medium: Orta
-        official: Resmi
-        trending: Bugün öne çıkan
-        trending-weekly: Haftalık öne çıkan
-        categories: Kategoriler
-        difficulties: Zorluğa göre
-        account: Yapbozlarım
-        search: Ara
-    validation:
-        title: Geçersiz Yapboz
-        noProducers: Lütfen bir Sabit Üretici yerleştiriniz!
-        noGoalAcceptors: Lütfen bir Hedef Merkezi yerleştiriniz!
-        goalAcceptorNoItem: Bir veya birden fazla Hedef Merkezine şekil gönderilmedi.
-            Hedef belirlemek için onlara şekil gönderiniz.
-        goalAcceptorRateNotMet: Bir veya birden fazla Hedef Merkezi yeterince eşya
-            almıyor. Hedef Merkezlerindeki bütün göstergelerin yeşil olduğundan
-            emin olunuz.
-        buildingOutOfBounds: Bir veya birden fazla yapı inşa edilebilir alanın dışında.
-            Alanı azaltınız veya yapıları siliniz.
-        autoComplete: Yapbozunuz kendisini çözüyor! Sabit üreticilerin hedef
-            merkezlerine direkt olarak şekil göndermediğinden emin olunuz.
-    difficulties:
-        easy: Kolay
-        medium: Orta
-        hard: Zor
-        unknown: Değerlendirilmemiş
-    dlcHint: Paketi (DLC) çoktan aldın mı? Kütüphanende oyuna sağ tıklayarak,
-        Özellikler > DLC, paketi etkileştirmeyi unutma.
-    search:
-        action: Arama
-        placeholder: Bir yapboz veya tasarımcı adı giriniz.
-        includeCompleted: Tamamlananları Göster
-        difficulties:
-            any: Hepsi
-            easy: Kolay
-            medium: Orta
-            hard: Zor
-        durations:
-            any: Hepsi
-            short: Kısa (< 2 dk)
-            medium: Normal
-            long: Uzun (> 10 dk)
-backendErrors:
-    ratelimit: Çok sık işlem yapıyorsunuz. Biraz bekleyiniz.
-    invalid-api-key: Arka tarafla iletişim kurulamadı, lütfen oyunu
-        güncellemeyi/yeniden başlatmayı deneyiniz (Geçersiz Api Anahtarı).
-    unauthorized: Arka tarafla iletişim kurulamadı, lütfen oyunu
-        güncellemeyi/yeniden başlatmayı deneyiniz (Yetkisiz erişim).
-    bad-token: Arka tarafla iletişim kurulamadı, lütfen oyunu güncellemeyi/yeniden
-        başlatmayı deneyiniz (Kötü Anahtar).
-    bad-id: Geçersiz Yapboz tanımlayıcısı (ID).
-    not-found: İstenilen Yapboz bulunamadı.
-    bad-category: İstenilen kategori bulunamadı.
-    bad-short-key: Girilen kısa anahtar geçersiz.
-    profane-title: Yapboz ismi ayrımcı kelimeler(din,dil,ırk) içeriyor.
-    bad-title-too-many-spaces: Yapboz ismi çok kısa.
-    bad-shape-key-in-emitter: Bir sabit üreticide geçersiz bir eşya mevcut.
-    bad-shape-key-in-goal: Bir hedef merkezinde geçersiz bir eşya mevcut.
-    no-emitters: Yapbozda hiç sabit üretici yok.
-    no-goals: Yapbozda hiç hedef merkezi yok.
-    short-key-already-taken: Bu kısa anahtar kullanılıyor, lütfen başka bir tane kullanınız.
-    can-not-report-your-own-puzzle: Kendi yapbozunuzu şikayet edemezsiniz.
-    bad-payload: İstek geçersiz veri içeriyor.
-    bad-building-placement: Yapbozunuzda uygun yerleştirilmeyen yapılar mevcut.
-    timeout: İstek zaman aşımına uğradı.
-    too-many-likes-already: Yapbozun zaten çok beğenisi var. Yine de silmek
-        istiyorsanız support@shapez.io ile iletişime geçiniz!
-    no-permission: Bu işlemi yapmak için izniniz yok.
 mods:
     title: Modlar
     author: Sahibi
@@ -1235,3 +1160,263 @@ mods:
     modsInfo: Modları yüklemek ve yönetmek için, bunları oyun dizini içerisindeki
         Modlar klasörüne kopyalayın. Ayrıca sağ üstteki 'Modlar Klasörünü Aç'
         düğmesini de kullanabilirsiniz.
+preload:
+    initializingSounds: Initializing sounds
+    initializingSavegames: Initializing savegames
+    checkingChangelog: Checking changelog
+    launching: Launching
+shopItems:
+    autoTunnel:
+        name: Auto-Tunneling
+        description: Dragging a belt across a gap automatically tunnels under it.
+    overviewBuilding:
+        name: Overview Building
+        description: Place buildings while the map is zoomed out to overview mode.
+    autoMerger:
+        name: Auto-Merging
+        description: Dragging a belt into an existing belt run automatically inserts a
+            merger.
+    autoSplitter:
+        name: Auto-Splitting
+        description: Starting a new belt from an existing belt run automatically inserts
+            a splitter.
+    longRoute:
+        name: Long-Distance Routing
+        description: Belts dragged across obstacles can bend around much longer detours.
+shapeViewerTool:
+    title: Shape Viewer
+    description: Create, inspect, and copy shape short keys without leaving the
+        game. Enter a key to preview it, or generate a random shape to use as a
+        starting point.
+    shortKey: Shape short key
+    preview: Preview
+    randomize: Random shape
+    copy: Copy key
+    useKey: Use this key
+    export: Export PNG
+    invalid: Enter a valid shape short key.
+    instructions: >-
+        <h2>How shape keys work</h2> <p>A shape is written as a <strong>short
+        key</strong> with up to four layers. Each layer has four quadrants,
+        starting at the <strong>top right</strong> and moving clockwise.</p>
+        <p>A quadrant is a pair of characters: an uppercase shape letter
+        followed by a lowercase colour letter. Use <code>--</code> for an empty
+        quadrant. Layers are separated by <code>:</code>, with the bottom layer
+        first.</p> <div class="legendGrid">
+            <section><h3>Shapes</h3><ul class="legendList"><li><code>C</code><span>— Circle</span></li><li><code>R</code><span>— Rectangle</span></li><li><code>W</code><span>— Windmill</span></li><li><code>S</code><span>— Star</span></li></ul></section>
+            <section><h3>Colours</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Red</span></li><li><code>g</code><i class="colorDot green"></i><span>Green</span></li><li><code>b</code><i class="colorDot blue"></i><span>Blue</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Yellow</span></li><li><code>p</code><i class="colorDot purple"></i><span>Purple</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Cyan</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Uncoloured</span></li><li><code>w</code><i class="colorDot white"></i><span>White</span></li></ul></section>
+        </div> <h3>Examples</h3> <ul class="examples"><li><button type="button" class="exampleKey" data-key="CwCwCwCw"><code>CwCwCwCw</code><span>White circle</span></button></li><li><button type="button" class="exampleKey" data-key="----RuRu"><code>----RuRu</code><span>Half rectangle</span></button></li><li><button type="button" class="exampleKey" data-key="CgScScCg"><code>CgScScCg</code><span>Circles and stars mixed</span></button></li><li><button type="button" class="exampleKey" data-key="RpRpRpRp:CwCwCwCw"><code>RpRpRpRp:CwCwCwCw</code><span>Layering example</span></button></li><li><button type="button" class="exampleKey" data-key="RwCu--Wu:----Rw--"><code>RwCu--Wu:----Rw--</code><span>Our logo</span></button></li></ul>
+achievements:
+    title: Achievements
+    unlockedOf: <x> / <y> unlocked
+    hiddenName: ???
+    hiddenDescription: Hidden achievement - keep playing to discover it.
+    list:
+        blueprint100k:
+            name: Blueprints are the future
+            description: Have 100k blueprints stored in the hub
+        play10h:
+            name: It's been a long time
+            description: Play for 10 hours
+        play1h:
+            name: Getting into it
+            description: Play for 1 hour
+        blueprint1m:
+            name: I'll use it later
+            description: Have 1 million blueprints stored in the hub
+        richBuratino:
+            name: Rich Buratino
+            description: Have 1 million Shop currency stored in the hub
+        play20h:
+            name: Addicted
+            description: Play for 20 hours
+        throughputBp25:
+            name: Efficiency 1
+            description: Deliver 25 blueprints per second
+        throughputBp50:
+            name: Efficiency 2
+            description: Deliver 50 blueprints per second
+        place5000Wires:
+            name: Computer Guy
+            description: Place 5000 wires
+        placeBlueprint:
+            name: Now it's easy
+            description: Place a blueprint
+        noBeltUpgradesUntilBp:
+            name: It's so slow
+            description: Complete level 12 without any belt upgrades
+        throughputLogo25:
+            name: Branding Specialist 1
+            description: Deliver 25 logos per second
+        throughputLogo50:
+            name: Branding Specialist 2
+            description: Deliver 50 logos per second
+        placeBp1000:
+            name: Copypasta
+            description: Place 1000 buildings at once
+        cutShape:
+            name: Cutter
+            description: Cut a shape
+        darkMode:
+            name: My eyes no longer hurt
+            description: Enable dark mode
+        destroy1000:
+            name: Perfectionist
+            description: Destroy 1000 buildings at once
+        throughputRocket10:
+            name: Preparing to launch
+            description: Deliver 10 rockets per second
+        produceLogo:
+            name: The logo!
+            description: Produce the logo shape
+        level100:
+            name: Is this the end?
+            description: Reach level 100
+        unlockWires:
+            name: Wires
+            description: Beat level 20, unlocking wires
+        completeLvl26:
+            name: Freedom!
+            description: Complete level 26, unlocking freeplay
+        upgradesTier5:
+            name: Faster
+            description: Have all upgrades at tier 5
+        level50:
+            name: Can't Stop
+            description: Reach level 50
+        upgradesTier8:
+            name: Even faster
+            description: Have all upgrades at tier 8
+        mam:
+            name: Make Anything Machine
+            description: Beat any level after level 26 without modifying your factory
+        noInverseRotater:
+            name: King of Inefficiency
+            description: Use no counter-clockwise rotator until level 14
+        openWires:
+            name: The next dimension
+            description: Open the wires layer
+        paintShape:
+            name: Painter
+            description: Paint a shape
+        produceRocket:
+            name: To the moon!
+            description: Produce the rocket shape
+        rotateShape:
+            name: Rotater
+            description: Rotate a shape
+        speedrunBp120:
+            name: Not an idle game
+            description: Reach and complete level 12 in under 120 minutes
+        speedrunBp60:
+            name: Speedrun Novice
+            description: Reach and complete level 12 in under 60 minutes
+        speedrunBp30:
+            name: Speedrun Master
+            description: Reach and complete level 12 in under 30 minutes
+        throughputRocket20:
+            name: SpaceY
+            description: Deliver 20 rockets per second
+        stackShape:
+            name: Wait, they stack?
+            description: Stack a shape
+        stack4Layers:
+            name: Stack Overflow
+            description: Produce a shape with 4 layers
+        storeShape:
+            name: I'm a hoarder
+            description: Store a shape
+        store100Unique:
+            name: It's a mess
+            description: Store 100 unique shapes in the hub
+        trash1000:
+            name: Get rid of them
+            description: Trash 1000 shapes
+        belts10k:
+            name: Belts go brrr
+            description: Place 10k belts
+        freeplayLevel120s:
+            name: It's an improvement
+            description: Beat a freeplay level in under 120 seconds
+        place1mBps:
+            name: I've finally used it
+            description: Spend 1 million blueprints
+        store200k:
+            name: True hoarder
+            description: Store 200k shapes in storages
+        freeplayLevel30s:
+            name: Automation master
+            description: Beat a freeplay level in under 30 seconds
+        freeplayLevel60s:
+            name: I am speed
+            description: Beat a freeplay level in under 60 seconds
+        beltsLvl15:
+            name: Belts go brrrrrrrrrrrrrrrrrrr
+            description: Upgrade belts to level 15
+        bird:
+            name: Flappy Bird
+            description: Produce the bird shape
+        lvl6NoBalancers:
+            name: Unbalanced
+            description: Complete level 6 without using any balancers
+        lvl12NoDestroying:
+            name: Environmentalist
+            description: Complete level 12 without destroying any buildings
+        lvl20NoDoublePainter:
+            name: Emperor of inefficiency
+            description: Complete level 20 without using any double painters
+        noFactoryFreeplay:
+            name: True perfectionist
+            description: Have a completely empty factory at any point after beating level 26
+        lvl12NoTrash:
+            name: Reduce, reuse, recycle
+            description: Complete level 12 without using any trash
+        lvl7NoTunnels:
+            name: Do you enjoy pain?
+            description: Complete level 7 without using any tunnels
+        lvl12NoUpgrades:
+            name: It's even slower
+            description: Complete level 12 without buying any upgrades
+        lvl27NoWires:
+            name: DIY
+            description: Complete level 27 manually, without using any wires
+        rocketBeforeLogo:
+            name: A lot early?
+            description: Produce the rocket shape before producing the logo shape
+        scissors:
+            name: The other cutter
+            description: Produce the scissors shape
+        whoKnows:
+            name: Those who know, know
+            description: Some things are better left unexplained.
+        msLogo:
+            name: I've seen that before...
+            description: Hello, Bill!
+        belt500Tiles:
+            name: I need trains
+            description: Build a single uninterrupted belt line 500 tiles long
+        logoBefore18:
+            name: A bit early?
+            description: Produce the logo shape before reaching level 18
+        mapMarkers15:
+            name: GPS
+            description: Place 15 map markers
+        irrelevantShape:
+            name: Oops
+            description: Deliver a shape to the hub that isn't needed for any level or
+                upgrade
+        notRocket:
+            name: You will not go to space today
+            description: Produce a shape that's almost, but not quite, the rocket
+        stack5thLayer:
+            name: The forbidden layer
+            description: Stack a shape 5 layers high
+errorHandler:
+    title: Unhandled Error!
+    labels:
+        buildInformation: "Build Information:"
+        loadedMods: "Loaded Mods:"
+    actions:
+        copy: Copy
+        copyDone: Copied!
+        restart: Restart

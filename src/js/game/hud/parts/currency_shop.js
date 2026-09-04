@@ -3,6 +3,7 @@ import { SOUNDS } from "../../../platform/sound";
 import { T } from "../../../translations";
 import { KEYMAPPINGS, KeyActionMapper } from "../../key_action_mapper";
 import { InputReceiver } from "../../../core/input_receiver";
+import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
 import { DynamicDomAttach } from "../dynamic_dom_attach";
 
@@ -26,6 +27,24 @@ export class HUDCurrencyShop extends BaseHUDPart {
         this.trackClicks(this.closeButton, this.close);
         this.contentDiv = makeDiv(this.dialogInner, null, ["content"]);
 
+        // Below reward_research (see isShopUnlocked()), currency has nothing
+        // to buy yet - shown instead of the balance/dailyBonus/adReward/items
+        // below, which all revolve around earning or spending currency.
+        // Remove-ads is real-money, not currency, so it stays outside this
+        // gate and is always available.
+        this.lockedDisclaimerElem = makeDiv(this.contentDiv, null, ["lockedDisclaimer"]);
+
+        // Shown instead of a wallet lock reason from another device - see
+        // WalletStorage's class doc on the cross-device session lock.
+        this.sessionLockedDisclaimerElem = makeDiv(
+            this.contentDiv,
+            null,
+            ["lockedDisclaimer"],
+            T.ingame.currencyShop.sessionLocked
+        );
+
+        this.gatedContent = makeDiv(this.contentDiv, null, ["gatedContent"]);
+
         // Balance header - the currency's own shape icon plus how many the
         // player has, exactly the way requirement amounts are shown
         // elsewhere (shop.js's createRequirementElement) - plus the
@@ -34,7 +53,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
         // so its price shows next to the button until bought - wrapped
         // together so the pair moves as one unit regardless of whether the
         // price is visible.
-        this.balanceElem = makeDiv(this.contentDiv, null, ["currencyBalance"]);
+        this.balanceElem = makeDiv(this.gatedContent, null, ["currencyBalance"]);
         this.currencyIconHolder = makeDiv(this.balanceElem, null, ["icon"]);
         this.balanceAmountElem = makeDiv(this.balanceElem, null, ["amount"]);
 
@@ -60,7 +79,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
             }
             const handle = {};
 
-            handle.elem = makeDiv(this.contentDiv, null, ["shopItem"]);
+            handle.elem = makeDiv(this.gatedContent, null, ["shopItem"]);
             handle.elem.setAttribute("data-item-id", itemId);
 
             makeDiv(handle.elem, null, ["title"], T.shopItems[itemId].name);
@@ -78,12 +97,32 @@ export class HUDCurrencyShop extends BaseHUDPart {
     }
 
     /**
+     * Currency has nothing to earn or spend until Research (reward_research)
+     * unlocks - gates the balance/dailyBonus/adReward/items UI, but not
+     * remove-ads (real money, always purchasable).
+     */
+    isShopUnlocked() {
+        return this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_research);
+    }
+
+    /**
+     * The level number that grants reward_research, for the locked-state
+     * disclaimer text - looked up instead of hardcoded so it stays correct
+     * if the level list is ever reordered.
+     */
+    getUnlockLevel() {
+        const levels = this.root.gameMode.getLevelDefinitions();
+        const index = levels.findIndex(level => level.reward === enumHubGoalRewards.reward_research);
+        return index + 1;
+    }
+
+    /**
      * The once-a-day free currency claim - real wall-clock time, works
      * before any ad/IAP integration exists (see hub_goals.js).
      */
     createDailyBonusSection() {
         const daily = T.ingame.currencyShop.dailyBonus;
-        const container = makeDiv(this.contentDiv, null, ["dailyBonus"]);
+        const container = makeDiv(this.gatedContent, null, ["dailyBonus"]);
         makeDiv(container, null, ["title"], daily.title);
         makeDiv(container, null, ["description"], daily.description);
 
@@ -105,7 +144,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
         }
 
         const ad = T.ingame.currencyShop.adReward;
-        const container = makeDiv(this.contentDiv, null, ["dailyBonus"]);
+        const container = makeDiv(this.gatedContent, null, ["dailyBonus"]);
         makeDiv(container, null, ["title"], ad.title);
         makeDiv(container, null, ["description"], ad.description);
 
@@ -151,6 +190,11 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
         this.close();
 
+        this.lockedDisclaimerElem.innerText = T.ingame.currencyShop.lockedDisclaimer.replace(
+            "<level>",
+            `${this.getUnlockLevel()}`
+        );
+
         const currencyDefinition = this.root.hubGoals.getCurrencyShapeDefinition();
         if (currencyDefinition) {
             this.currencyIconHolder.appendChild(currencyDefinition.generateAsCanvas(64));
@@ -160,6 +204,30 @@ export class HUDCurrencyShop extends BaseHUDPart {
     }
 
     renderCountsAndStatus() {
+        // Real-money, not currency - kept updated regardless of the
+        // isShopUnlocked() gate below.
+        if (this.removeAdsButton) {
+            const removeAds = T.ingame.currencyShop.removeAds;
+            const purchased = this.root.app.platformWrapper.getAdsDisabled();
+            this.removeAdsButton.innerText = purchased ? removeAds.purchased : removeAds.buttonBuy;
+            this.removeAdsButton.classList.toggle("buyable", !purchased && !this.purchasingAdRemoval);
+        }
+
+        const unlocked = this.isShopUnlocked();
+        this.gatedContent.classList.toggle("hidden", !unlocked);
+        this.lockedDisclaimerElem.classList.toggle("hidden", unlocked);
+        if (!unlocked) {
+            this.sessionLockedDisclaimerElem.classList.add("hidden");
+            return;
+        }
+
+        const sessionLocked = this.root.app.wallet.locked;
+        this.sessionLockedDisclaimerElem.classList.toggle("hidden", !sessionLocked);
+        this.gatedContent.classList.toggle("hidden", sessionLocked);
+        if (sessionLocked) {
+            return;
+        }
+
         this.balanceAmountElem.innerText = formatBigNumber(this.root.hubGoals.getCurrencyAmount());
 
         const exchangeUnlocked = this.root.hubGoals.isExchangeUnlocked();
@@ -193,13 +261,6 @@ export class HUDCurrencyShop extends BaseHUDPart {
                       formatSeconds(this.root.hubGoals.getAdRewardCooldownSeconds())
                   );
             this.adRewardButton.classList.toggle("buyable", !this.claimingAdReward && canClaimAd);
-        }
-
-        if (this.removeAdsButton) {
-            const removeAds = T.ingame.currencyShop.removeAds;
-            const purchased = this.root.app.platformWrapper.getAdsDisabled();
-            this.removeAdsButton.innerText = purchased ? removeAds.purchased : removeAds.buttonBuy;
-            this.removeAdsButton.classList.toggle("buyable", !purchased && !this.purchasingAdRemoval);
         }
 
         const items = this.root.gameMode.getShopItems();

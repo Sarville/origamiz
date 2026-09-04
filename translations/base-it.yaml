@@ -40,11 +40,10 @@ mainMenu:
     continue: Continua
     newGame: Nuova partita
     savegameUnnamed: Senza nome
-    mods:
-        warningPuzzleDLC: Non è possibile giocare al Puzzle DLC con le mods. Per favore
-            disabilita tutte le mod per poter giocare al DLC.
     noActiveSavegames: Nessun salvataggio trovato - Clicca su gioca per iniziare una
         nuova partita!
+    importSavegameHint: You can import a savegame from your device
+    achievements: Achievements
 dialogs:
     buttons:
         ok: OK
@@ -74,6 +73,8 @@ dialogs:
         text: Sei sicuro di voler eliminare la partita seguente?<br><br>
             '<savegameName>' al livello <savegameLevel><br><br>  Da qui in poi
             non si può più tornare indietro!
+        desc: Are you sure you want to delete this savegame?
+        warningNote: This action cannot be undone.
     savegameDeletionError:
         title: Impossibile eliminare
         text: "Impossibile eliminare il salvataggio:"
@@ -154,71 +155,6 @@ dialogs:
             Inglese. Vorresti dargli un'occhiata?
     editConstantProducer:
         title: Imposta oggetto
-    puzzleLoadFailed:
-        title: Impossibile caricare i puzzle
-        desc: "Sfortunatamente non è stato possibile caricare i puzzle:"
-    submitPuzzle:
-        title: Pubblica il puzzle
-        descName: "Dai un nome al tuo puzzle:"
-        descIcon: "Per favore inserisci un codice per la forma identificativa, che sarà
-            mostrata come icona del tuo puzzle (Pui generarla <link>qui</link>,
-            oppure sceglierne una tra quelle casuali qui sotto):"
-        placeholderName: Nome puzzle
-    puzzleResizeBadBuildings:
-        title: Impossibile ridimensionare
-        desc: Non è possibile ridurre la zona ulteriormente, dato che alcuni edifici
-            sarebbero fuori dalla zona.
-    puzzleLoadError:
-        title: Caricamento fallito
-        desc: "Impossibile caricare il puzzle:"
-    offlineMode:
-        title: Modalità offline
-        desc: Non siamo risciti a contattare i server, quindi il gioco è in modalità
-            offline. Per favore assicurati di avere una connessione internet
-            attiva.
-    puzzleDownloadError:
-        title: Errore di download
-        desc: "Il download del puzzle è fallito:"
-    puzzleSubmitError:
-        title: Errore di pubblicazione
-        desc: "La pubblicazione del puzzle è fallita:"
-    puzzleSubmitOk:
-        title: Puzzle pubblicato
-        desc: Congratulazioni! Il tuo puzzle è stato pubblicato e ora può essere giocato
-            da altri. Puoi trovarlo nella sezione "I miei puzzle".
-    puzzleCreateOffline:
-        title: Modalità offline
-        desc: Dato che sei offline, non potrai salvare e/o pubblicare il tuo puzzle. Sei
-            sicuro di voler contnuare?
-    puzzlePlayRegularRecommendation:
-        title: Raccomandazione
-        desc: Ti raccomando <strong>fortemente</strong> di giocare nella modalità
-            normale fino al livello 12 prima di cimentarti nel puzzle DLC,
-            altrimenti potresti incontrare meccaniche non ancora introdotte. Sei
-            sicuro di voler continuare?
-    puzzleShare:
-        title: Codice copiato
-        desc: Il codice del puzzle (<key>) è stato copiato negli appunti! Può essere
-            inserito nel menù dei puzzle per accedere al puzzle.
-    puzzleReport:
-        title: Segnala puzzle
-        options:
-            profane: Volgare
-            unsolvable: Senza soluzione
-            trolling: Troll
-    puzzleReportComplete:
-        title: Grazie per il tuo feedback!
-        desc: Il puzzle è stato segnalato.
-    puzzleReportError:
-        title: Segnalazione fallita
-        desc: "Non è stato possibile elaborare la tua segnalazione:"
-    puzzleLoadShortKey:
-        title: Inserisci codice
-        desc: Inserisci il codice del puzzle per caricarlo.
-    puzzleDelete:
-        title: Cancellare il puzzle?
-        desc: Sei sicuro di voler cancellare '<title>'? Questa azione non può essere
-            annullata!
     modsDifference:
         title: Attenzione
         desc: Le mod attualmente installate differiscono rispetto alle mod con cui è
@@ -254,6 +190,10 @@ ingame:
         pipette: Contagocce
         switchLayers: Cambia livello
         clearBelts: Sgombra nastri
+        moveBuilding: Transform
+        selectVariant: Select variant
+        undo: Undo
+        redo: Redo
     buildingPlacement:
         cycleBuildingVariants: Premi <key> per cambiare variante.
         hotkeyLabel: "Hotkey: <key>"
@@ -265,6 +205,7 @@ ingame:
             itemsPerSecond: <x> oggetti / secondo
             itemsPerSecondDouble: (x2)
             tiles: <x> caselle
+        swipeForVariants: Swipe for variants
     levelCompleteNotification:
         levelTitle: Livello <level>
         completed: Completato
@@ -279,6 +220,10 @@ ingame:
         buttonUnlock: Sblocca
         tier: Grado <x>
         maximumLevel: GRADO MASSIMO (Velocità x<currentMult>)
+        researchSectionTitle: Research
+        buttonResearch: Research
+        researchLocked: Locked (Research Tier <tier> required)
+        researchCompleted: Completed
     statistics:
         title: Statistiche
         dataSources:
@@ -315,6 +260,9 @@ ingame:
             dalla visuale corrente, oppure <strong>click destro</strong> per
             creare un etichetta nella posizione selezionata.
         creationSuccessNotification: L'etichetta è stata creata.
+        descriptionMobile: Tap a marker to jump to it, or hold it to edit. Its edit icon
+            in the list also lets you rename or delete it.<br><br>Tap the marker
+            button below to create one at the current view.
     interactiveTutorial:
         title: Tutorial
         hints:
@@ -356,6 +304,42 @@ ingame:
                 vernciatore.<br><br> PS: Non c'è bisogno che tu connetta tutti
                 gli input! Prova a collegarne solo due."
             1_2_hold_and_drag: Mantenere e trascinare
+        mobileHints:
+            1_1_extractor: Choose an <strong>extractor</strong> in the toolbar, tap a
+                <strong>circle shape</strong>, then tap <strong>confirm</strong>
+                to extract it!
+            1_2_conveyor: "Connect the extractor to your hub with a <strong>conveyor
+                belt</strong>!<br><br>Tip: <strong>Touch, hold and drag</strong>
+                to place a belt path."
+            1_3_expand: "This is <strong>NOT</strong> an idle game! Build more extractors
+                and belts to finish the goal quicker.<br><br>Tip: Choose a
+                building in the toolbar, tap the map, then tap
+                <strong>confirm</strong>. Use the <strong>rotate</strong> button
+                to turn it."
+            2_1_place_cutter: "Now place a <strong>Cutter</strong> to cut the circles in two
+                halves!<br><br>Tip: The cutter always cuts from <strong>top to
+                bottom</strong> regardless of its orientation."
+            2_2_place_trash: The cutter can <strong>clog and stall</strong>!<br><br>Use a
+                <strong>trash</strong> to get rid of the currently (!) not
+                needed waste.
+            2_3_more_cutters: "Good job! Now place <strong>2 more cutters</strong> to speed
+                up this slow process!<br><br>Tip: Select buildings from the
+                bottom toolbar."
+            3_1_rectangles: "Now let's extract some rectangles! <strong>Build 3
+                extractors</strong> and connect them to the hub.<br><br>Tip:
+                <strong>Touch, hold and drag</strong> to lay a belt path."
+            21_1_place_quad_painter: Place the <strong>quad painter</strong> and get some
+                <strong>circles</strong>, <strong>white</strong> and
+                <strong>red</strong> color!
+            21_2_switch_to_wires: Tap the <strong>wires-layer button</strong> above the
+                toolbar!<br><br>Then <strong>connect all four inputs</strong> of
+                the painter with cables.
+            21_3_place_button: Awesome! Now place a <strong>Switch</strong> and connect it
+                with wires!
+            21_4_press_button: "Tap the switch to make it <strong>emit a truthy
+                signal</strong> and activate the painter.<br><br>Tip: You don't
+                have to connect all inputs! Try wiring only two."
+            1_2_hold_and_drag: Touch, hold and drag
     colors:
         red: Rosso
         green: Verde
@@ -370,54 +354,66 @@ ingame:
         title: Strati
         empty: Vuoto
         copyKey: Copia codice
+        pin: Pin
+        unpin: Unpin
     connectedMiners:
         one_miner: 1 trivella
         n_miners: <amount> trivelle
         limited_items: Limitato a <max_throughput>
-    puzzleEditorSettings:
-        zoneTitle: Zona
-        zoneWidth: Larghezza
-        zoneHeight: Altezza
-        trimZone: Riduci
-        clearItems: Elimina oggetti
-        share: Condividi
-        report: Segnala
-        clearBuildings: Cancella edifici
-        resetPuzzle: Reset Puzzle
-    puzzleEditorControls:
-        title: Creazione puzzle
-        instructions:
-            - 1. Posiziona dei <strong>produttori costanti</strong> per fornire
-              forme e colori al giocatore
-            - 2. Costruisci una o più forme che vuoi che il giocatore costruisca
-              e consegni a uno o più degli <strong>Accettori di
-              obiettivi</strong>
-            - 3. Una volta che un accettore di obiettivi riceve una forma per un
-              certo lasso di tempo, lo <strong>salva come obiettivo</strong> che
-              il giocatore dovrà poi produrre (Indicato dal <strong>simbolo
-              verde</strong>).
-            - 4. Clicca il <strong>bottone di blocco</strong> su un edificio per
-              disabilitarlo.
-            - 5. Una volta che cliccherai verifica, il tuo puzzle sarà
-              convalidato e potrai pubblicarlo.
-            - 6. Una volta rilasciato, <strong>tutti gli edifici saranno
-              rimossi</strong> ad eccezione di produttori e accettori di
-              obiettivi. Quella è la parte che il giocatore deve capire da solo,
-              dopo tutto :)
-    puzzleCompletion:
-        title: Puzzle completato!
-        titleLike: "Clicca il cuore se ti è piaciuto:"
-        titleRating: Quanto è stato difficile il puzzle?
-        titleRatingDesc: La tua valutazione mi aiuterà a darti suggerimenti migliori in futuro
-        continueBtn: Continua a giocare
-        menuBtn: Menù
-        nextPuzzle: Puzzle successivo
-    puzzleMetadata:
-        author: Autore
-        shortKey: Codice
-        rating: Punteggio difficoltà
-        averageDuration: Durata media
-        completionRate: Tasso di completamento
+    currencyShop:
+        title: Shop
+        balance: You have <amount> currency shapes
+        lockedDisclaimer: Currency purchases unlock at level <level>. Until then, you
+            can remove ads below.
+        buttonBuy: Buy
+        completed: Purchased
+        buttonExchange: Exchange
+        buttonExchangeLimit: Exchange (<amount>)
+        dailyBonus:
+            title: Daily Bonus
+            description: Come back once a day for free currency.
+            buttonClaim: Claim +<amount>
+            claimed: Come back tomorrow!
+        adReward:
+            title: Watch Ad
+            description: Watch a short video for free currency, every couple hours.
+            buttonClaim: Watch (+<amount>)
+            cooldown: Available in <time>
+        removeAds:
+            title: Remove Ads
+            description: One-time purchase. Removes the banner and video ads shown between
+                actions.
+            buttonBuy: Buy
+            purchased: Purchased
+        exchangeList:
+            title: Exchange
+            empty: You don't have any shapes stored yet.
+            buttonBuy: Buy
+            buttonSell: Sell
+            buttonRates: Rates
+            lockedDescription: Trade currency for shapes and shapes for currency at a fixed
+                rate.
+            buttonUnlock: Buy
+            limitText: "Daily limit: <amount>"
+            buttonRaiseLimit: Raise limit (<price>)
+            limitExhausted: Daily exchange limit reached. Come back tomorrow!
+        exchangeRates:
+            title: Exchange Rates
+            layers: "Layers: <layers>"
+            colored: (painted)
+            buyRate: Buy <currency> currency/shape
+            sellRate: Sell <shapes> shapes/currency
+        exchangeModal:
+            titleBuy: Buy Shapes
+            titleSell: Sell Shapes
+            owned: "In stock: <amount>"
+            rate: Rate <shapes> shapes → <currency> currency
+            stepWarning: Amount must be a multiple of <step>
+            buttonRound: Round
+            buttonMax: MAX
+            buttonConfirmBuy: Buy
+            buttonConfirmSell: Sell
+            buttonCancel: Cancel
 shopUpgrades:
     belt:
         name: Nastri, distributori e tunnel
@@ -626,24 +622,6 @@ buildings:
             name: Verniciatore virtuale
             description: Vernicia virtualmente la forma dall'ingresso inferiore con il
                 colore dall'ingresso destro.
-    item_producer:
-        default:
-            name: Generatore di oggetti
-            description: Disponibile solo nella modalità sandbox, emette il segnale dal
-                livello elettrico come oggetti sul livello normale.
-    constant_producer:
-        default:
-            name: Produttore costante
-            description: Produce costantemente una forma o un colore specificati.
-    goal_acceptor:
-        default:
-            name: Accettore di obiettivi.
-            description: Consegna forme all'accettore di obiettivi per impostarli come
-                obiettivo.
-    block:
-        default:
-            name: Blocco
-            description: Blocca una casella.
 storyRewards:
     reward_cutter_and_trash:
         title: Taglio forme
@@ -812,6 +790,40 @@ storyRewards:
     reward_demo_end:
         title: Fine della demo
         desc: Hai raggiunto la fine della demo!
+    reward_research:
+        title: Research
+        desc: You have unlocked the <strong>Research</strong> section of the Upgrades
+            window! Spend the shapes you deliver to the Hub on optional building
+            variants there, instead of waiting for them to show up in the level
+            ladder.
+    reward_research_t2:
+        title: Research Tier II
+        desc: <strong>Research Tier II</strong> is now available - more building
+            variants can be researched in the Upgrades window!
+    reward_shop_auto_tunnel:
+        title: Auto-Tunneling
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt across a gap now
+            automatically tunnels under it!
+    reward_shop_overview_building:
+        title: Overview Building
+        desc: Purchased in the <strong>Shop</strong> - you can now place buildings while
+            the map is zoomed out to overview mode!
+    reward_shop_auto_merger:
+        title: Auto-Merging
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt into an existing
+            belt run now automatically inserts a merger!
+    reward_shop_auto_splitter:
+        title: Auto-Splitting
+        desc: Purchased in the <strong>Shop</strong> - starting a new belt from an
+            existing belt run now automatically inserts a splitter!
+    reward_shop_long_route:
+        title: Long-Distance Routing
+        desc: Purchased in the <strong>Shop</strong> - belts dragged across obstacles
+            can now bend around much longer detours!
+    reward_shop_exchange:
+        title: Exchange
+        desc: Purchased in the <strong>Shop</strong> - you can now trade shapes for
+            currency and currency for shapes!
 settings:
     title: Impostazioni
     categories:
@@ -991,6 +1003,10 @@ settings:
             description: Determina se mostrare sempre la forma in uscita da un edificio
                 quando si passa sopra di esso col cursore, invece di dover
                 premere 'ALT'.
+        alwaysShowBuildingInfo:
+            title: Always Show Building Info
+            description: On mobile (no keyboard/hotkey to toggle it), shows the selected
+                building's info panel automatically. Turn off to keep it hidden.
     rangeSliderPercentage: <amount> %
     tickrateHz: <amount> Hz
     newBadge: Novità!
@@ -1066,31 +1082,23 @@ keybindings:
         transistor: Transistore
         analyzer: Analizzatore forme
         comparator: Comparatore
-        item_producer: Generatore di oggetti (Sandbox)
         copyWireValue: "Cavi: Copia valore sotto il cursore"
         rotateToUp: "Ruota: punta in alto"
         rotateToDown: "Ruota: punta in basso"
         rotateToRight: "Ruota: punta a destra"
         rotateToLeft: "Ruota: punta a sinistra"
-        constant_producer: Produttore costante
-        goal_acceptor: Accettore di obiettivi
-        block: Blocco
         massSelectClear: Sgombra nastri
         showShapeTooltip: Mostra forma di uscita di un edificio
+        menuOpenCurrencyShop: Shop
+        undo: Undo
+        redo: Redo
+        moveBuilding: Transform Building
 about:
     title: Riguardo questo gioco
-    body: >-
-        Questo gioco è open source e sviluppato da <a
-        href="https://github.com/tobspr" target="_blank">Tobias Springer</a>
-        (me).<br><br>
-
-        Se vuoi contribuire visita la pagina github di <a href="<githublink>" target="_blank">shapez.io</a>.<br><br>
-
-        Realizzare questo gioco non sarebbe stato possibile senza la grande community di Discord per i miei giochi - Unisciti al <a href="<discordlink>" target="_blank">server di Discord</a>!<br><br>
-
-        La colonna sonora è stata composta da<a href="https://soundcloud.com/pettersumelius" target="_blank"> Peppsen</a> - È un grande.<br><br>
-
-        Per finire, grazie di cuore al mio migliore amico <a href="https://github.com/niklas-dahl" target="_blank">Niklas</a> - Senza le nostre sessioni su factorio questo gioco non sarebbe mai esistito.
+    body: This game is a remake of the well-known game shapez, featuring updated
+        mechanics, visual style, and features.
+    currentBody: Origamiz is an open-source factory-building game with its own
+        visual style and mechanics.
 changelog:
     title: Registro modifiche
 demo:
@@ -1169,93 +1177,6 @@ tips:
     - Premi F4 due volte per mostrare la casella del cursore e della telecamera.
     - Puoi cliccare a sinistra di una forma fermata a schermo per rimuoverla
       dalla lista.
-puzzleMenu:
-    play: Gioca
-    edit: Modifica
-    title: Modalità puzzle
-    createPuzzle: Crea puzzle
-    loadPuzzle: Carica
-    reviewPuzzle: Verifica e pubblica
-    validatingPuzzle: Convalidazione puzzle
-    submittingPuzzle: Pubblicazione puzzle
-    noPuzzles: Al momento non ci sono puzzle in questa sezione.
-    categories:
-        levels: Livelli
-        new: Nuovo
-        top-rated: Più votati
-        mine: I miei puzzle
-        easy: Facili
-        hard: Difficili
-        completed: Completati
-        medium: Medi
-        official: Ufficiali
-        trending: Più popolari di oggi
-        trending-weekly: Più popolari della settimana
-        categories: Categorie
-        difficulties: Per difficoltà
-        account: I miei puzzle
-        search: Cerca
-    validation:
-        title: Puzzle non valido
-        noProducers: Per favore posiziona un Produttore costante!
-        noGoalAcceptors: Per favore posiziona un accettore di obiettivi!
-        goalAcceptorNoItem: Uno o più degli accettori di obiettivi non hanno un oggetto
-            assegnato. Consegna una forma per impostare l'obiettivo.
-        goalAcceptorRateNotMet: Uno o più degli accettori di obiettivi non ricevono
-            abbastanza oggetti. Assicurati che gli indicatori siano verdi per
-            tutti gli accettori.
-        buildingOutOfBounds: Uno o più edifici sono fuori dalla zona di costruzione.
-            Ingrandisci l'area o rimuovili.
-        autoComplete: Il tuo puzzle si autocompleta! Per favore assicurati che i tuoi
-            produttori costanti non consegnino direttamente agli accettori di
-            obiettivi.
-    difficulties:
-        easy: Facile
-        medium: Medio
-        hard: Difficile
-        unknown: Non classificato
-    dlcHint: Hai già acquistato il DLC? Assicurati che sia attivo facendo clic
-        destro su shapez.io nella tua libreria e selezionando Proprietà > DLC.
-    search:
-        action: Cerca
-        placeholder: Inserisci il nome di un puzzle o di un autore
-        includeCompleted: Include Completed
-        difficulties:
-            any: Qualsiasi difficoltà
-            easy: Facile
-            medium: Medio
-            hard: Difficile
-        durations:
-            any: Qualsiasi durata
-            short: Breve (< 2 minuti)
-            medium: Normale
-            long: Lunga (> 10 minuti)
-backendErrors:
-    ratelimit: Stai facendo troppe azioni velocemente. Per favore attendi un attimo.
-    invalid-api-key: Comunicazione con il backend fallita, per favore prova ad
-        aggiornare o riavviare il gioco (Invalid Api Key).
-    unauthorized: Comunicazione con il backend fallita, per favore prova ad
-        aggiornare o riavviare il gioco (Unauthorized).
-    bad-token: Comunicazione con il backend fallita, per favore prova ad aggiornare
-        o riavviare il gioco (Bad Token).
-    bad-id: Identificativo puzzle non valido.
-    not-found: Non è stato possibile trovare il puzzle.
-    bad-category: Non è stato possibile trovare la categoria.
-    bad-short-key: Il codice non è valido.
-    profane-title: Il titolo del tuo puzzle contiene volgarità.
-    bad-title-too-many-spaces: Il titolo del tuo puzzle è troppo breve.
-    bad-shape-key-in-emitter: Un produttore costante ha un oggetto non valido.
-    bad-shape-key-in-goal: Un accettore di obiettivi ha un oggetto non valido.
-    no-emitters: Il tuo puzzle non contiente alcun produttore costante.
-    no-goals: Il tuo puzzle non contiene alcun accettore di obiettivi.
-    short-key-already-taken: Queesto codice forma è già in uso, per favore scegline un altro.
-    can-not-report-your-own-puzzle: Non puoi segnlare il tuo puzzle.
-    bad-payload: La richiesta contiene dati non validi.
-    bad-building-placement: Il tuo puzzle contiene edifici non validi.
-    timeout: La richiesta è scaduta.
-    too-many-likes-already: Questo puzzle ha già ricevuto troppi "mi piace". Se vuoi
-        ancora rimuoverlo, per favore contatta support@shapez.io!
-    no-permission: Non hai i permessi per eseguire questa azione.
 mods:
     title: Mods
     author: Autore
@@ -1266,3 +1187,263 @@ mods:
     modsInfo: Per installare e gestire le mod, copiale nella cartella 'mods'
         all'interno della directory del gioco. Puoi usare anche il tasto 'Apri
         cartella delle Mod' in alto a destra.
+preload:
+    initializingSounds: Initializing sounds
+    initializingSavegames: Initializing savegames
+    checkingChangelog: Checking changelog
+    launching: Launching
+shopItems:
+    autoTunnel:
+        name: Auto-Tunneling
+        description: Dragging a belt across a gap automatically tunnels under it.
+    overviewBuilding:
+        name: Overview Building
+        description: Place buildings while the map is zoomed out to overview mode.
+    autoMerger:
+        name: Auto-Merging
+        description: Dragging a belt into an existing belt run automatically inserts a
+            merger.
+    autoSplitter:
+        name: Auto-Splitting
+        description: Starting a new belt from an existing belt run automatically inserts
+            a splitter.
+    longRoute:
+        name: Long-Distance Routing
+        description: Belts dragged across obstacles can bend around much longer detours.
+shapeViewerTool:
+    title: Shape Viewer
+    description: Create, inspect, and copy shape short keys without leaving the
+        game. Enter a key to preview it, or generate a random shape to use as a
+        starting point.
+    shortKey: Shape short key
+    preview: Preview
+    randomize: Random shape
+    copy: Copy key
+    useKey: Use this key
+    export: Export PNG
+    invalid: Enter a valid shape short key.
+    instructions: >-
+        <h2>How shape keys work</h2> <p>A shape is written as a <strong>short
+        key</strong> with up to four layers. Each layer has four quadrants,
+        starting at the <strong>top right</strong> and moving clockwise.</p>
+        <p>A quadrant is a pair of characters: an uppercase shape letter
+        followed by a lowercase colour letter. Use <code>--</code> for an empty
+        quadrant. Layers are separated by <code>:</code>, with the bottom layer
+        first.</p> <div class="legendGrid">
+            <section><h3>Shapes</h3><ul class="legendList"><li><code>C</code><span>— Circle</span></li><li><code>R</code><span>— Rectangle</span></li><li><code>W</code><span>— Windmill</span></li><li><code>S</code><span>— Star</span></li></ul></section>
+            <section><h3>Colours</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Red</span></li><li><code>g</code><i class="colorDot green"></i><span>Green</span></li><li><code>b</code><i class="colorDot blue"></i><span>Blue</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Yellow</span></li><li><code>p</code><i class="colorDot purple"></i><span>Purple</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Cyan</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Uncoloured</span></li><li><code>w</code><i class="colorDot white"></i><span>White</span></li></ul></section>
+        </div> <h3>Examples</h3> <ul class="examples"><li><button type="button" class="exampleKey" data-key="CwCwCwCw"><code>CwCwCwCw</code><span>White circle</span></button></li><li><button type="button" class="exampleKey" data-key="----RuRu"><code>----RuRu</code><span>Half rectangle</span></button></li><li><button type="button" class="exampleKey" data-key="CgScScCg"><code>CgScScCg</code><span>Circles and stars mixed</span></button></li><li><button type="button" class="exampleKey" data-key="RpRpRpRp:CwCwCwCw"><code>RpRpRpRp:CwCwCwCw</code><span>Layering example</span></button></li><li><button type="button" class="exampleKey" data-key="RwCu--Wu:----Rw--"><code>RwCu--Wu:----Rw--</code><span>Our logo</span></button></li></ul>
+achievements:
+    title: Achievements
+    unlockedOf: <x> / <y> unlocked
+    hiddenName: ???
+    hiddenDescription: Hidden achievement - keep playing to discover it.
+    list:
+        blueprint100k:
+            name: Blueprints are the future
+            description: Have 100k blueprints stored in the hub
+        play10h:
+            name: It's been a long time
+            description: Play for 10 hours
+        play1h:
+            name: Getting into it
+            description: Play for 1 hour
+        blueprint1m:
+            name: I'll use it later
+            description: Have 1 million blueprints stored in the hub
+        richBuratino:
+            name: Rich Buratino
+            description: Have 1 million Shop currency stored in the hub
+        play20h:
+            name: Addicted
+            description: Play for 20 hours
+        throughputBp25:
+            name: Efficiency 1
+            description: Deliver 25 blueprints per second
+        throughputBp50:
+            name: Efficiency 2
+            description: Deliver 50 blueprints per second
+        place5000Wires:
+            name: Computer Guy
+            description: Place 5000 wires
+        placeBlueprint:
+            name: Now it's easy
+            description: Place a blueprint
+        noBeltUpgradesUntilBp:
+            name: It's so slow
+            description: Complete level 12 without any belt upgrades
+        throughputLogo25:
+            name: Branding Specialist 1
+            description: Deliver 25 logos per second
+        throughputLogo50:
+            name: Branding Specialist 2
+            description: Deliver 50 logos per second
+        placeBp1000:
+            name: Copypasta
+            description: Place 1000 buildings at once
+        cutShape:
+            name: Cutter
+            description: Cut a shape
+        darkMode:
+            name: My eyes no longer hurt
+            description: Enable dark mode
+        destroy1000:
+            name: Perfectionist
+            description: Destroy 1000 buildings at once
+        throughputRocket10:
+            name: Preparing to launch
+            description: Deliver 10 rockets per second
+        produceLogo:
+            name: The logo!
+            description: Produce the logo shape
+        level100:
+            name: Is this the end?
+            description: Reach level 100
+        unlockWires:
+            name: Wires
+            description: Beat level 20, unlocking wires
+        completeLvl26:
+            name: Freedom!
+            description: Complete level 26, unlocking freeplay
+        upgradesTier5:
+            name: Faster
+            description: Have all upgrades at tier 5
+        level50:
+            name: Can't Stop
+            description: Reach level 50
+        upgradesTier8:
+            name: Even faster
+            description: Have all upgrades at tier 8
+        mam:
+            name: Make Anything Machine
+            description: Beat any level after level 26 without modifying your factory
+        noInverseRotater:
+            name: King of Inefficiency
+            description: Use no counter-clockwise rotator until level 14
+        openWires:
+            name: The next dimension
+            description: Open the wires layer
+        paintShape:
+            name: Painter
+            description: Paint a shape
+        produceRocket:
+            name: To the moon!
+            description: Produce the rocket shape
+        rotateShape:
+            name: Rotater
+            description: Rotate a shape
+        speedrunBp120:
+            name: Not an idle game
+            description: Reach and complete level 12 in under 120 minutes
+        speedrunBp60:
+            name: Speedrun Novice
+            description: Reach and complete level 12 in under 60 minutes
+        speedrunBp30:
+            name: Speedrun Master
+            description: Reach and complete level 12 in under 30 minutes
+        throughputRocket20:
+            name: SpaceY
+            description: Deliver 20 rockets per second
+        stackShape:
+            name: Wait, they stack?
+            description: Stack a shape
+        stack4Layers:
+            name: Stack Overflow
+            description: Produce a shape with 4 layers
+        storeShape:
+            name: I'm a hoarder
+            description: Store a shape
+        store100Unique:
+            name: It's a mess
+            description: Store 100 unique shapes in the hub
+        trash1000:
+            name: Get rid of them
+            description: Trash 1000 shapes
+        belts10k:
+            name: Belts go brrr
+            description: Place 10k belts
+        freeplayLevel120s:
+            name: It's an improvement
+            description: Beat a freeplay level in under 120 seconds
+        place1mBps:
+            name: I've finally used it
+            description: Spend 1 million blueprints
+        store200k:
+            name: True hoarder
+            description: Store 200k shapes in storages
+        freeplayLevel30s:
+            name: Automation master
+            description: Beat a freeplay level in under 30 seconds
+        freeplayLevel60s:
+            name: I am speed
+            description: Beat a freeplay level in under 60 seconds
+        beltsLvl15:
+            name: Belts go brrrrrrrrrrrrrrrrrrr
+            description: Upgrade belts to level 15
+        bird:
+            name: Flappy Bird
+            description: Produce the bird shape
+        lvl6NoBalancers:
+            name: Unbalanced
+            description: Complete level 6 without using any balancers
+        lvl12NoDestroying:
+            name: Environmentalist
+            description: Complete level 12 without destroying any buildings
+        lvl20NoDoublePainter:
+            name: Emperor of inefficiency
+            description: Complete level 20 without using any double painters
+        noFactoryFreeplay:
+            name: True perfectionist
+            description: Have a completely empty factory at any point after beating level 26
+        lvl12NoTrash:
+            name: Reduce, reuse, recycle
+            description: Complete level 12 without using any trash
+        lvl7NoTunnels:
+            name: Do you enjoy pain?
+            description: Complete level 7 without using any tunnels
+        lvl12NoUpgrades:
+            name: It's even slower
+            description: Complete level 12 without buying any upgrades
+        lvl27NoWires:
+            name: DIY
+            description: Complete level 27 manually, without using any wires
+        rocketBeforeLogo:
+            name: A lot early?
+            description: Produce the rocket shape before producing the logo shape
+        scissors:
+            name: The other cutter
+            description: Produce the scissors shape
+        whoKnows:
+            name: Those who know, know
+            description: Some things are better left unexplained.
+        msLogo:
+            name: I've seen that before...
+            description: Hello, Bill!
+        belt500Tiles:
+            name: I need trains
+            description: Build a single uninterrupted belt line 500 tiles long
+        logoBefore18:
+            name: A bit early?
+            description: Produce the logo shape before reaching level 18
+        mapMarkers15:
+            name: GPS
+            description: Place 15 map markers
+        irrelevantShape:
+            name: Oops
+            description: Deliver a shape to the hub that isn't needed for any level or
+                upgrade
+        notRocket:
+            name: You will not go to space today
+            description: Produce a shape that's almost, but not quite, the rocket
+        stack5thLayer:
+            name: The forbidden layer
+            description: Stack a shape 5 layers high
+errorHandler:
+    title: Unhandled Error!
+    labels:
+        buildInformation: "Build Information:"
+        loadedMods: "Loaded Mods:"
+    actions:
+        copy: Copy
+        copyDone: Copied!
+        restart: Restart

@@ -90,12 +90,24 @@ mainMenu:
 
     achievements: Achievements
 
+yandexAuth:
+    loginButton: Sign in with Yandex ID
+    offerTitle: Sign in with Yandex ID?
+    offerDesc: >-
+        Signing in keeps your achievements, ad-removal purchase, bonuses and currency
+        safe in your Yandex account's cloud, plus notifications about news and
+        promotions.<br><br>
+        Only that account progress is synced - your factory savegames always stay on
+        this device, but you can export any of them to a file from the main menu and
+        import it on another device or browser at any time.
+
 dialogs:
     buttons:
         ok: OK
         delete: Delete
         cancel: Cancel
         later: Later
+        login: Sign In
         restart: Restart
         reset: Reset
         deleteGame: I know what I am doing
@@ -337,6 +349,8 @@ ingame:
     currencyShop:
         title: Shop
         balance: You have <amount> currency shapes
+        lockedDisclaimer: Currency purchases unlock at level <level>. Until then, you can remove ads below.
+        sessionLocked: Your currency is in use on another active device right now. Close the game there, or wait a moment, to earn or spend it here.
 
         buttonBuy: Buy
         completed: Purchased

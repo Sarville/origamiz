@@ -8,9 +8,11 @@ import {
     makeDiv,
     makeDivElement,
     removeAllChildren,
+    waitNextFrame,
 } from "../core/utils";
 import { HUDModalDialogs } from "../game/hud/parts/modal_dialogs";
 import { MODS } from "../mods/modloader";
+import { showYandexAuthOffer, shouldOfferYandexAuth } from "../core/yandex_auth";
 import { Savegame } from "../savegame/savegame";
 import { T } from "../translations";
 
@@ -71,6 +73,7 @@ export class MainMenuState extends GameState {
             <div class="mainWrapper" data-columns="${hasMods ? 2 : 1}">
                 <div class="mainContainer">
                     <div class="buttons"></div>
+                    <div class="yandexAuthMount"></div>
                     <div class="savegamesMount"></div>
                 </div>
 
@@ -104,6 +107,39 @@ export class MainMenuState extends GameState {
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Asks the user to import a savegame
+     */
+    async requestImportSavegame() {
+        const closeLoader = this.dialogs.showLoadingDialog();
+        await waitNextFrame();
+
+        try {
+            const data = await this.app.storage.requestOpenFile("bin");
+            if (data === undefined) {
+                // User canceled the request
+                closeLoader();
+                return;
+            }
+
+            await this.app.savegameMgr.importSavegame(data);
+            closeLoader();
+            this.dialogs.showWarning(
+                T.dialogs.importSavegameSuccess.title,
+                T.dialogs.importSavegameSuccess.text
+            );
+
+            this.renderMainMenu();
+            this.renderSavegames();
+        } catch (err) {
+            closeLoader();
+            this.dialogs.showWarning(
+                T.dialogs.importSavegameError.title,
+                T.dialogs.importSavegameError.text + ":<br><br>" + err
+            );
+        }
     }
 
     onBackButton() {
@@ -161,11 +197,44 @@ export class MainMenuState extends GameState {
 
         this.renderMainMenu();
         this.renderSavegames();
+        this.renderYandexAuth();
+
+        if (shouldOfferYandexAuth(this.app)) {
+            const signals = showYandexAuthOffer(this.app, this.dialogs);
+            signals.login.add(() => this.renderYandexAuth());
+        }
+    }
+
+    /**
+     * Shows the "Sign in with Yandex ID" button below the continue/new-game
+     * row - hidden entirely on platforms without sign-in support, or once
+     * the player is already signed in (see yandex_auth.js for the separate
+     * unsolicited offer modal, shown at most once per device).
+     */
+    renderYandexAuth() {
+        const mount = this.htmlElement.querySelector(".yandexAuthMount");
+        removeAllChildren(mount);
+
+        if (!this.app.platformWrapper.getSupportsAuth() || this.app.platformWrapper.isAuthorized()) {
+            return;
+        }
+
+        this.trackClicks(
+            makeButton(mount, ["yandexAuthButton", "styledButton"], T.yandexAuth.loginButton),
+            this.onYandexAuthButtonClicked
+        );
+    }
+
+    async onYandexAuthButtonClicked() {
+        await this.app.platformWrapper.requestAuth();
+        this.renderYandexAuth();
     }
 
     renderMainMenu() {
         const buttonContainer = this.htmlElement.querySelector(".mainContainer .buttons");
         removeAllChildren(buttonContainer);
+
+        const mainContainer = this.htmlElement.querySelector(".mainContainer");
 
         const outerDiv = makeDivElement(null, ["outer"], null);
 
@@ -195,6 +264,17 @@ export class MainMenuState extends GameState {
                 ),
                 this.onPlayButtonClicked
             );
+
+            // Import - stacked below New Game, sharing .outer's column and
+            // height with it (see .outer/.newGameButton in main_menu.scss).
+            this.trackClicks(
+                makeButton(
+                    outerDiv,
+                    ["importButton", "styledButton", "menu-button"],
+                    `<span class="title">${T.mainMenu.importSavegame}</span>`
+                ),
+                this.requestImportSavegame
+            );
         } else {
             // New game - primary CTA when there's nothing to continue, so it
             // gets the same orange treatment as New Game rather than Continue's
@@ -207,11 +287,24 @@ export class MainMenuState extends GameState {
                 ),
                 this.onPlayButtonClicked
             );
+
+            // Import - own full-width row below Play, with a hint since
+            // there's nothing else here yet (see .importWrap in
+            // main_menu.scss).
+            const importWrap = makeDivElement(null, ["importWrap"], null);
+            this.trackClicks(
+                makeButton(
+                    importWrap,
+                    ["importButton", "styledButton", "menu-button"],
+                    `<span class="title">${T.mainMenu.importSavegame}</span>`
+                ),
+                this.requestImportSavegame
+            );
+            makeDiv(importWrap, null, ["importHint"], T.mainMenu.importSavegameHint);
+            buttonContainer.appendChild(importWrap);
         }
 
-        this.htmlElement
-            .querySelector(".mainContainer")
-            .setAttribute("data-savegames", String(this.savedGames.length));
+        mainContainer.setAttribute("data-savegames", String(this.savedGames.length));
 
         if (outerDiv.childElementCount > 0) {
             buttonContainer.appendChild(outerDiv);

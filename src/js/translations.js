@@ -66,8 +66,13 @@ function mapLanguageCodeToId(languageKey) {
  * Tries to auto-detect a language
  * @returns {string}
  */
-export function autoDetectLanguageId() {
-    const languages = navigator.languages;
+/**
+ * @param {string | null} [sdkLanguage] Language code reported by the platform
+ * SDK (e.g. Yandex Games' ysdk.environment.i18n.lang), checked before the
+ * browser's own language list.
+ */
+export function autoDetectLanguageId(sdkLanguage) {
+    const languages = sdkLanguage ? [sdkLanguage, ...navigator.languages] : navigator.languages;
 
     for (const language of languages) {
         logger.log("Trying to find language target for", language);

@@ -21,6 +21,20 @@ function runRspack(config) {
 }
 
 /**
+ * @param {import("@rspack/core").Configuration} config
+ * @param {string} variant
+ */
+function withVariantDefines(config, variant) {
+    return {
+        ...config,
+        plugins: [
+            ...config.plugins,
+            new rspack.DefinePlugin({ G_IS_YANDEX: JSON.stringify(variant === "yandex") }),
+        ],
+    };
+}
+
+/**
  * PROVIDES (per <variant>)
  *
  * js.<variant>.dev.watch
@@ -34,11 +48,11 @@ function runRspack(config) {
 export default Object.fromEntries(
     Object.keys(BUILD_VARIANTS).map(variant => {
         const dev = {
-            build: () => runRspack(rspackConfig),
+            build: () => runRspack(withVariantDefines(rspackConfig, variant)),
         };
 
         const prod = {
-            build: () => runRspack(rspackProductionConfig),
+            build: () => runRspack(withVariantDefines(rspackProductionConfig, variant)),
         };
 
         return [variant, { dev, prod }];

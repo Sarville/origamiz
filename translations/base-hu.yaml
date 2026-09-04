@@ -40,10 +40,9 @@ mainMenu:
     savegameLevel: <x>. szint
     savegameLevelUnknown: Ismeretlen szint
     savegameUnnamed: Névtelen
-    mods:
-        warningPuzzleDLC: Playing the Puzzle DLC is not possible with mods. Please
-            disable all mods to play the DLC.
     noActiveSavegames: No active savegames found - Click play to start a new game!
+    importSavegameHint: You can import a savegame from your device
+    achievements: Achievements
 dialogs:
     buttons:
         ok: OK
@@ -73,6 +72,8 @@ dialogs:
         text: Biztos hogy törölni akarod a következő mentésedet?<br><br>
             '<savegameName>' <savegameLevel>. szinten<br><br> Ezt nem lehet
             visszacsinálni!
+        desc: Are you sure you want to delete this savegame?
+        warningNote: This action cannot be undone.
     savegameDeletionError:
         title: Sikertelen törlés
         text: "Nem sikerült törölni a mentésed:"
@@ -150,69 +151,6 @@ dialogs:
             Szeretnéd megnézni?
     editConstantProducer:
         title: Elem beállítása
-    puzzleLoadFailed:
-        title: Fejtörő betöltése sikertelen
-        desc: "Sajnos a fejtörőt nem sikerült betölteni:"
-    submitPuzzle:
-        title: Fejtörő Beküldése
-        descName: "Adj nevet a fejtörődnek:"
-        descIcon: "Írj be egy egyedi gyorskódot, ami a fejtörőd ikonja lesz
-            (<link>itt</link> tudod legenerálni, vagy válassz egyet az alábbi
-            random generált alakzatok közül):"
-        placeholderName: Fejtörő Neve
-    puzzleResizeBadBuildings:
-        title: Átméretezés nem lehetséges
-        desc: Nem tudod tovább csökkenteni a zóna méretét, mert bizonyos épületek
-            kilógnának a zónából.
-    puzzleLoadError:
-        title: Hibás Fejtörő
-        desc: "A fejtörőt nem sikerült betölteni:"
-    offlineMode:
-        title: Offline Mód
-        desc: Nem tudjuk elérni a szervereket, így a játék Offline módban fut. Kérlek
-            győződj meg róla, hogy megfelelő az internetkapcsolatod.
-    puzzleDownloadError:
-        title: Letöltési Hiba
-        desc: "Nem sikerült letölteni a fejtörőt:"
-    puzzleSubmitError:
-        title: Beküldési Hiba
-        desc: "Nem sikerült beküldeni a fejtörőt:"
-    puzzleSubmitOk:
-        title: Fejtörő Közzétéve
-        desc: Gratulálunk! A fejtörődet közzétettük, így mások által is játszhatóvá
-            vált. A fejtörőidet a "Fejtörőim" ablakban találod.
-    puzzleCreateOffline:
-        title: Offline Mód
-        desc: Offline módban nem lehet elmenteni és közzétenni a fejtörődet. Szeretnéd
-            így is folytatni?
-    puzzlePlayRegularRecommendation:
-        title: Javaslat
-        desc: A Puzzle DLC előtt <strong>erősen</strong> ajánlott az alapjátékot
-            legalább a 12-dik Szintig kijátszani. Ellenekző esetben olyan
-            mechanikákkal találkozhatsz, amelyeket még nem ismersz. Szeretnéd
-            így is folytatni?
-    puzzleShare:
-        title: Gyorskód Másolva a Vágólapra
-        desc: A fejtörő gyorskódját (<key>) kimásoltad a vágólapra! A Fejtörők menüben
-            beillesztve betöltheted vele a fejtörőt.
-    puzzleReport:
-        title: Fejtörő Jelentése
-        options:
-            profane: Durva
-            unsolvable: Nem megoldható
-            trolling: Trollkodás
-    puzzleReportComplete:
-        title: Köszönjük a visszajelzésedet!
-        desc: A fejtörőt sikeresen jelentetted.
-    puzzleReportError:
-        title: Nem sikerült jelenteni
-        desc: "A jelentésedet nem tudtuk feldolgozni:"
-    puzzleLoadShortKey:
-        title: Gyorskód Beillesztése
-        desc: Illeszd be a gyorskódot, hogy betöltsd a Fejtörőt.
-    puzzleDelete:
-        title: Delete Puzzle?
-        desc: Are you sure you want to delete '<title>'? This can not be undone!
     modsDifference:
         title: Mod Warning
         desc: The currently installed mods differ from the mods the savegame was created
@@ -247,6 +185,10 @@ ingame:
         pipette: Pipetta
         switchLayers: Réteg váltás
         clearBelts: Futószalagok Kiürítése
+        moveBuilding: Transform
+        selectVariant: Select variant
+        undo: Undo
+        redo: Redo
     colors:
         red: Piros
         green: Zöld
@@ -268,6 +210,7 @@ ingame:
             itemsPerSecond: <x> tárgy / mp
             itemsPerSecondDouble: (x2)
             tiles: <x> csempe
+        swipeForVariants: Swipe for variants
     levelCompleteNotification:
         levelTitle: <level>. Szint
         completed: Teljesítve
@@ -282,6 +225,10 @@ ingame:
         buttonUnlock: Fejlesztés
         tier: <x>. Szint
         maximumLevel: LEGMAGASABB SZINT (<currentMult>x Sebesség)
+        researchSectionTitle: Research
+        buttonResearch: Research
+        researchLocked: Locked (Research Tier <tier> required)
+        researchCompleted: Completed
     statistics:
         title: Statisztika
         dataSources:
@@ -318,10 +265,15 @@ ingame:
             jelenlegi nézetből, vagy <strong>jobb klikk</strong> egy jelölő
             készítéséhez a kiválasztott helyre.
         creationSuccessNotification: Jelölő létrehozva.
+        descriptionMobile: Tap a marker to jump to it, or hold it to edit. Its edit icon
+            in the list also lets you rename or delete it.<br><br>Tap the marker
+            button below to create one at the current view.
     shapeViewer:
         title: Rétegek
         empty: Üres
         copyKey: Gyorskód másolása
+        pin: Pin
+        unpin: Unpin
     interactiveTutorial:
         title: Oktatás
         hints:
@@ -361,53 +313,100 @@ ingame:
                 bocsásson ki, ezzel aktiválva a Festőt.<br><br> Tipp: Nem muszáj
                 mindegyik bemenetet bekötni! Próbálj bekötni csak kettőt."
             1_2_hold_and_drag: Tartsa és húzza
+        mobileHints:
+            1_1_extractor: Choose an <strong>extractor</strong> in the toolbar, tap a
+                <strong>circle shape</strong>, then tap <strong>confirm</strong>
+                to extract it!
+            1_2_conveyor: "Connect the extractor to your hub with a <strong>conveyor
+                belt</strong>!<br><br>Tip: <strong>Touch, hold and drag</strong>
+                to place a belt path."
+            1_3_expand: "This is <strong>NOT</strong> an idle game! Build more extractors
+                and belts to finish the goal quicker.<br><br>Tip: Choose a
+                building in the toolbar, tap the map, then tap
+                <strong>confirm</strong>. Use the <strong>rotate</strong> button
+                to turn it."
+            2_1_place_cutter: "Now place a <strong>Cutter</strong> to cut the circles in two
+                halves!<br><br>Tip: The cutter always cuts from <strong>top to
+                bottom</strong> regardless of its orientation."
+            2_2_place_trash: The cutter can <strong>clog and stall</strong>!<br><br>Use a
+                <strong>trash</strong> to get rid of the currently (!) not
+                needed waste.
+            2_3_more_cutters: "Good job! Now place <strong>2 more cutters</strong> to speed
+                up this slow process!<br><br>Tip: Select buildings from the
+                bottom toolbar."
+            3_1_rectangles: "Now let's extract some rectangles! <strong>Build 3
+                extractors</strong> and connect them to the hub.<br><br>Tip:
+                <strong>Touch, hold and drag</strong> to lay a belt path."
+            21_1_place_quad_painter: Place the <strong>quad painter</strong> and get some
+                <strong>circles</strong>, <strong>white</strong> and
+                <strong>red</strong> color!
+            21_2_switch_to_wires: Tap the <strong>wires-layer button</strong> above the
+                toolbar!<br><br>Then <strong>connect all four inputs</strong> of
+                the painter with cables.
+            21_3_place_button: Awesome! Now place a <strong>Switch</strong> and connect it
+                with wires!
+            21_4_press_button: "Tap the switch to make it <strong>emit a truthy
+                signal</strong> and activate the painter.<br><br>Tip: You don't
+                have to connect all inputs! Try wiring only two."
+            1_2_hold_and_drag: Touch, hold and drag
     connectedMiners:
         one_miner: 1 Bánya
         n_miners: <amount> Bánya
         limited_items: Maximum <max_throughput>
-    puzzleEditorSettings:
-        zoneTitle: Zóna
-        zoneWidth: Szélesség
-        zoneHeight: Magasság
-        trimZone: Üres szegélyek levásága
-        clearItems: Elemek eltávolítása
-        share: Megosztás
-        report: Jelentés
-        clearBuildings: Clear Buildings
-        resetPuzzle: Reset Puzzle
-    puzzleEditorControls:
-        title: Fejtörő Készítő
-        instructions:
-            - 1. Helyezz le <strong>Termelőket</strong>, amelyek alakzatokat és
-              színeket generálnak a játékosoknak.
-            - 2. Készíts el egy vagy több alakzatot, amit szeretnél, hogy a
-              játékos később legyártson, és szállítsd el egy vagy több
-              <strong>Elfogadóba</strong>.
-            - 3. Amint az Elfogadóba folyamatosan érkeznek az alakzatok,
-              <strong>elmenti, mint célt</strong>, amit a játékosnak később
-              teljesítenie kell (Ezt a <strong>zöld jelölő</strong> mutatja).
-            - 4. Kattints a <strong>Lezárás gombra</strong> egy épületen, hogy
-              felfüggeszd azt.
-            - 5. A fejtörőd beküldésekor átnézzük azt, majd lehetőséged lesz
-              közzétenni.
-            - 6. A fejtörő kiadásakor, <strong>minden épület törlődik</strong>,
-              kivéve a Termelők és az Elfogadók - a többit ugyebár a játékosnak
-              kell majd kitalálnia :)
-    puzzleCompletion:
-        title: Fejtörő Teljesítve!
-        titleLike: "Kattins a ♥ gombra, ha tetszett a fejtörő:"
-        titleRating: Mennyire találtad nehéznek a fejtörőt?
-        titleRatingDesc: Az értékelésed lehetővé teszi, hogy okosabb javaslatokat kapj a
-            jövőben
-        continueBtn: Játék Folytatása
-        menuBtn: Menü
-        nextPuzzle: Next Puzzle
-    puzzleMetadata:
-        author: Szerző
-        shortKey: Gyorskód
-        rating: Nehézség
-        averageDuration: Átlagos Időtartam
-        completionRate: Teljesítési Arány
+    currencyShop:
+        title: Shop
+        balance: You have <amount> currency shapes
+        lockedDisclaimer: Currency purchases unlock at level <level>. Until then, you
+            can remove ads below.
+        buttonBuy: Buy
+        completed: Purchased
+        buttonExchange: Exchange
+        buttonExchangeLimit: Exchange (<amount>)
+        dailyBonus:
+            title: Daily Bonus
+            description: Come back once a day for free currency.
+            buttonClaim: Claim +<amount>
+            claimed: Come back tomorrow!
+        adReward:
+            title: Watch Ad
+            description: Watch a short video for free currency, every couple hours.
+            buttonClaim: Watch (+<amount>)
+            cooldown: Available in <time>
+        removeAds:
+            title: Remove Ads
+            description: One-time purchase. Removes the banner and video ads shown between
+                actions.
+            buttonBuy: Buy
+            purchased: Purchased
+        exchangeList:
+            title: Exchange
+            empty: You don't have any shapes stored yet.
+            buttonBuy: Buy
+            buttonSell: Sell
+            buttonRates: Rates
+            lockedDescription: Trade currency for shapes and shapes for currency at a fixed
+                rate.
+            buttonUnlock: Buy
+            limitText: "Daily limit: <amount>"
+            buttonRaiseLimit: Raise limit (<price>)
+            limitExhausted: Daily exchange limit reached. Come back tomorrow!
+        exchangeRates:
+            title: Exchange Rates
+            layers: "Layers: <layers>"
+            colored: (painted)
+            buyRate: Buy <currency> currency/shape
+            sellRate: Sell <shapes> shapes/currency
+        exchangeModal:
+            titleBuy: Buy Shapes
+            titleSell: Sell Shapes
+            owned: "In stock: <amount>"
+            rate: Rate <shapes> shapes → <currency> currency
+            stepWarning: Amount must be a multiple of <step>
+            buttonRound: Round
+            buttonMax: MAX
+            buttonConfirmBuy: Buy
+            buttonConfirmSell: Sell
+            buttonCancel: Cancel
 shopUpgrades:
     belt:
         name: Futószalagok, Elosztók & Alagutak
@@ -612,24 +611,6 @@ buildings:
             name: Virtuális Festő
             description: Virtuálisan lefesti az alsó bemeneten érkező alakzatot a jobb
                 oldali bemeneten érkező színnel.
-    item_producer:
-        default:
-            name: Létrehozó
-            description: Csak Homokozó módban elérhető. Létrehozza a Vezeték rétegen
-                beállított jelet a normál rétegen.
-    constant_producer:
-        default:
-            name: Termelő
-            description: Folyamatosan termeli a beállított alakzatot vagy színt.
-    goal_acceptor:
-        default:
-            name: Elfogadó
-            description: Szállíts alakzatoakt az Elfogadóba, hogy beállítsd egy Fejtörő
-                céljaként.
-    block:
-        default:
-            name: Blokkolás
-            description: Lehetővé teszi, hogy leblokkolj egy csempét.
 storyRewards:
     reward_cutter_and_trash:
         title: Alakzatok Vágása
@@ -795,6 +776,40 @@ storyRewards:
             kívánt alakzatot!<br><br> A Központ kiküldi a kívánt alakzatot a
             Vezeték rétegre, szóval annyi a dolgot, hogy megvizsgáld az
             Alakzatvizsgálóval és ez alapján beállítsd a gyáradat.
+    reward_research:
+        title: Research
+        desc: You have unlocked the <strong>Research</strong> section of the Upgrades
+            window! Spend the shapes you deliver to the Hub on optional building
+            variants there, instead of waiting for them to show up in the level
+            ladder.
+    reward_research_t2:
+        title: Research Tier II
+        desc: <strong>Research Tier II</strong> is now available - more building
+            variants can be researched in the Upgrades window!
+    reward_shop_auto_tunnel:
+        title: Auto-Tunneling
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt across a gap now
+            automatically tunnels under it!
+    reward_shop_overview_building:
+        title: Overview Building
+        desc: Purchased in the <strong>Shop</strong> - you can now place buildings while
+            the map is zoomed out to overview mode!
+    reward_shop_auto_merger:
+        title: Auto-Merging
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt into an existing
+            belt run now automatically inserts a merger!
+    reward_shop_auto_splitter:
+        title: Auto-Splitting
+        desc: Purchased in the <strong>Shop</strong> - starting a new belt from an
+            existing belt run now automatically inserts a splitter!
+    reward_shop_long_route:
+        title: Long-Distance Routing
+        desc: Purchased in the <strong>Shop</strong> - belts dragged across obstacles
+            can now bend around much longer detours!
+    reward_shop_exchange:
+        title: Exchange
+        desc: Purchased in the <strong>Shop</strong> - you can now trade shapes for
+            currency and currency for shapes!
 settings:
     title: Beállítások
     categories:
@@ -967,6 +982,10 @@ settings:
             title: Shape Tooltip - Show Always
             description: Whether to always show the shape tooltip when hovering buildings,
                 instead of having to hold 'ALT'.
+        alwaysShowBuildingInfo:
+            title: Always Show Building Info
+            description: On mobile (no keyboard/hotkey to toggle it), shows the selected
+                building's info panel automatically. Turn off to keep it hidden.
     rangeSliderPercentage: <amount> %
     tickrateHz: <amount> Hz
     newBadge: New!
@@ -1026,7 +1045,6 @@ keybindings:
         transistor: Tranzisztor
         analyzer: Alakzatvizsgáló
         comparator: Összehasonlító
-        item_producer: Item Producer (Sandbox)
         pipette: Pipetta
         rotateWhilePlacing: Forgatás
         rotateInverseModifier: "Módosító: Forgass ellenkező irányba"
@@ -1048,24 +1066,18 @@ keybindings:
         rotateToDown: "Forgatás: Lefelé"
         rotateToRight: "Forgatás: Jobbra"
         rotateToLeft: "Forgatás: Balra"
-        constant_producer: Termelő
-        goal_acceptor: Elfogadó
-        block: Blokkolás
         massSelectClear: Futószalagok Kiürítése
         showShapeTooltip: Show shape output tooltip
+        menuOpenCurrencyShop: Shop
+        undo: Undo
+        redo: Redo
+        moveBuilding: Transform Building
 about:
     title: A Játékról
-    body: >-
-        A játékot <a href="https://github.com/tobspr" target="_blank">Tobias
-        Springer</a> készíti, és nyílt forráskódú.<br><br>
-
-        Ha szeretnél hozzájárulni, nézz fel a <a href="<githublink>" target="_blank">shapez.io GitHub oldalára</a>.<br><br>
-
-        Ez a játék nem jöhetett volna létre a játékaimat körülvevő nagyszerű Discord közösség nélkül - Csatlakozz Te is a <a href="<discordlink>" target="_blank">Discord szerverünkhöz</a>!<br><br>
-
-        A játék zenéjét <a href="https://soundcloud.com/pettersumelius" target="_blank">Peppsen</a> készítette - Ő egy remek srác.<br><br>
-
-        Végezetül, hatalmas köszönet a legjobb barátomnak, <a href="https://github.com/niklas-dahl" target="_blank">Niklas</a>nak - A közös Factorio-s játékaink nélkül ez a játék nem jöhetett volna létre.
+    body: This game is a remake of the well-known game shapez, featuring updated
+        mechanics, visual style, and features.
+    currentBody: Origamiz is an open-source factory-building game with its own
+        visual style and mechanics.
 changelog:
     title: Változások
 demo:
@@ -1140,91 +1152,6 @@ tips:
     - You can click a pinned shape on the left side to unpin it.
     - Press F4 twice to show the tile of your mouse and camera.
     - You can click a pinned shape on the left side to unpin it.
-puzzleMenu:
-    play: Játék
-    edit: Szerkesztés
-    title: Fejtörő Mód
-    createPuzzle: Új Fejtörő
-    loadPuzzle: Betöltés
-    reviewPuzzle: Beküldés & Publikálás
-    validatingPuzzle: Fejtörő Validálása
-    submittingPuzzle: Fejtörő Beküldése
-    noPuzzles: Jelenleg nincs fejtörő ebben a szekcióban.
-    categories:
-        levels: Szintek
-        new: Új
-        top-rated: Legjobbra Értékelt
-        mine: Az Én Fejtörőim
-        easy: Könnyű
-        hard: Nehéz
-        completed: Teljesítve
-        medium: Medium
-        official: Official
-        trending: Trending today
-        trending-weekly: Trending weekly
-        categories: Categories
-        difficulties: By Difficulty
-        account: My Puzzles
-        search: Search
-    validation:
-        title: Hibás Fejtörő
-        noProducers: Helyezz le egy Termelőt!
-        noGoalAcceptors: Helyezz le egy Elfogadót!
-        goalAcceptorNoItem: Egy vagy több Elfogadónál nincs beállítva célként alakzat.
-            Szállíts le egy alazkatot a cél beállításához.
-        goalAcceptorRateNotMet: Egy vagy több Elfogadó nem kap elegendő alakzatot.
-            Győződj meg róla, hogy a jelölő minden Elfogadónál zölden világít.
-        buildingOutOfBounds: Egy vagy több épület kívül esik a beépíthető területen.
-            Növeld meg a terület méretét, vagy távolíts el épületeket.
-        autoComplete: A fejtörő automatikusan megoldja magát! Győződj meg róla, hogy a
-            Termelők nem közvetlenül az Elfogadóba termelnek.
-    difficulties:
-        easy: Easy
-        medium: Medium
-        hard: Hard
-        unknown: Unrated
-    dlcHint: Purchased the DLC already? Make sure it is activated by right clicking
-        shapez.io in your library, selecting Properties > DLCs.
-    search:
-        action: Search
-        placeholder: Enter a puzzle or author name
-        includeCompleted: Include Completed
-        difficulties:
-            any: Any Difficulty
-            easy: Easy
-            medium: Medium
-            hard: Hard
-        durations:
-            any: Any Duration
-            short: Short (< 2 min)
-            medium: Normal
-            long: Long (> 10 min)
-backendErrors:
-    ratelimit: Túl gyorsan csinálsz dolgokat. Kérlek, várj egy kicsit.
-    invalid-api-key: Valami nem oké a játékkal. Próbáld meg frissíteni vagy
-        újraindítani. (HIBA - Invalid Api Key).
-    unauthorized: Valami nem oké a játékkal. Próbáld meg frissíteni vagy
-        újraindítani. (HIBA - Unauthorized).
-    bad-token: Valami nem oké a játékkal. Próbáld meg frissíteni vagy újraindítani.
-        (HIBA - Bad Token).
-    bad-id: Helytelen Fejtörő azonosító.
-    not-found: A megadott fejtörőt nem találjuk.
-    bad-category: A megadott kategóriát nem találjuk.
-    bad-short-key: A megadott gyorskód helytelen.
-    profane-title: A fejtörő címe csúnya szavakat tartalmaz.
-    bad-title-too-many-spaces: A fejtörő címe túl rövid.
-    bad-shape-key-in-emitter: Egy Termelőnek helytelen alakzat van beállítva.
-    bad-shape-key-in-goal: Egy Elfogadónak helytelen alakzat van beállítva.
-    no-emitters: A fejtörődben nem szerepel Termelő.
-    no-goals: A fejtörődben nem szerepel Elfogadó.
-    short-key-already-taken: Ez a gyorskód már foglalt, kérlek válassz másikat.
-    can-not-report-your-own-puzzle: Nem jelentheted a saját fejtörődet.
-    bad-payload: A kérés helytelen adatot tartalmaz.
-    bad-building-placement: A fejtörőd helytelenül lehelyezett épületeket tartalmaz.
-    timeout: A kérés időtúllépésbe került.
-    too-many-likes-already: The puzzle alreay got too many likes. If you still want
-        to remove it, please contact support@shapez.io!
-    no-permission: You do not have the permission to perform this action.
 mods:
     title: Mods
     author: Author
@@ -1235,3 +1162,263 @@ mods:
     modsInfo: To install and manage mods, copy them to the mods folder within the
         game directory. You can also use the 'Open Mods Folder' button on the
         top right.
+preload:
+    initializingSounds: Initializing sounds
+    initializingSavegames: Initializing savegames
+    checkingChangelog: Checking changelog
+    launching: Launching
+shopItems:
+    autoTunnel:
+        name: Auto-Tunneling
+        description: Dragging a belt across a gap automatically tunnels under it.
+    overviewBuilding:
+        name: Overview Building
+        description: Place buildings while the map is zoomed out to overview mode.
+    autoMerger:
+        name: Auto-Merging
+        description: Dragging a belt into an existing belt run automatically inserts a
+            merger.
+    autoSplitter:
+        name: Auto-Splitting
+        description: Starting a new belt from an existing belt run automatically inserts
+            a splitter.
+    longRoute:
+        name: Long-Distance Routing
+        description: Belts dragged across obstacles can bend around much longer detours.
+shapeViewerTool:
+    title: Shape Viewer
+    description: Create, inspect, and copy shape short keys without leaving the
+        game. Enter a key to preview it, or generate a random shape to use as a
+        starting point.
+    shortKey: Shape short key
+    preview: Preview
+    randomize: Random shape
+    copy: Copy key
+    useKey: Use this key
+    export: Export PNG
+    invalid: Enter a valid shape short key.
+    instructions: >-
+        <h2>How shape keys work</h2> <p>A shape is written as a <strong>short
+        key</strong> with up to four layers. Each layer has four quadrants,
+        starting at the <strong>top right</strong> and moving clockwise.</p>
+        <p>A quadrant is a pair of characters: an uppercase shape letter
+        followed by a lowercase colour letter. Use <code>--</code> for an empty
+        quadrant. Layers are separated by <code>:</code>, with the bottom layer
+        first.</p> <div class="legendGrid">
+            <section><h3>Shapes</h3><ul class="legendList"><li><code>C</code><span>— Circle</span></li><li><code>R</code><span>— Rectangle</span></li><li><code>W</code><span>— Windmill</span></li><li><code>S</code><span>— Star</span></li></ul></section>
+            <section><h3>Colours</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Red</span></li><li><code>g</code><i class="colorDot green"></i><span>Green</span></li><li><code>b</code><i class="colorDot blue"></i><span>Blue</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Yellow</span></li><li><code>p</code><i class="colorDot purple"></i><span>Purple</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Cyan</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Uncoloured</span></li><li><code>w</code><i class="colorDot white"></i><span>White</span></li></ul></section>
+        </div> <h3>Examples</h3> <ul class="examples"><li><button type="button" class="exampleKey" data-key="CwCwCwCw"><code>CwCwCwCw</code><span>White circle</span></button></li><li><button type="button" class="exampleKey" data-key="----RuRu"><code>----RuRu</code><span>Half rectangle</span></button></li><li><button type="button" class="exampleKey" data-key="CgScScCg"><code>CgScScCg</code><span>Circles and stars mixed</span></button></li><li><button type="button" class="exampleKey" data-key="RpRpRpRp:CwCwCwCw"><code>RpRpRpRp:CwCwCwCw</code><span>Layering example</span></button></li><li><button type="button" class="exampleKey" data-key="RwCu--Wu:----Rw--"><code>RwCu--Wu:----Rw--</code><span>Our logo</span></button></li></ul>
+achievements:
+    title: Achievements
+    unlockedOf: <x> / <y> unlocked
+    hiddenName: ???
+    hiddenDescription: Hidden achievement - keep playing to discover it.
+    list:
+        blueprint100k:
+            name: Blueprints are the future
+            description: Have 100k blueprints stored in the hub
+        play10h:
+            name: It's been a long time
+            description: Play for 10 hours
+        play1h:
+            name: Getting into it
+            description: Play for 1 hour
+        blueprint1m:
+            name: I'll use it later
+            description: Have 1 million blueprints stored in the hub
+        richBuratino:
+            name: Rich Buratino
+            description: Have 1 million Shop currency stored in the hub
+        play20h:
+            name: Addicted
+            description: Play for 20 hours
+        throughputBp25:
+            name: Efficiency 1
+            description: Deliver 25 blueprints per second
+        throughputBp50:
+            name: Efficiency 2
+            description: Deliver 50 blueprints per second
+        place5000Wires:
+            name: Computer Guy
+            description: Place 5000 wires
+        placeBlueprint:
+            name: Now it's easy
+            description: Place a blueprint
+        noBeltUpgradesUntilBp:
+            name: It's so slow
+            description: Complete level 12 without any belt upgrades
+        throughputLogo25:
+            name: Branding Specialist 1
+            description: Deliver 25 logos per second
+        throughputLogo50:
+            name: Branding Specialist 2
+            description: Deliver 50 logos per second
+        placeBp1000:
+            name: Copypasta
+            description: Place 1000 buildings at once
+        cutShape:
+            name: Cutter
+            description: Cut a shape
+        darkMode:
+            name: My eyes no longer hurt
+            description: Enable dark mode
+        destroy1000:
+            name: Perfectionist
+            description: Destroy 1000 buildings at once
+        throughputRocket10:
+            name: Preparing to launch
+            description: Deliver 10 rockets per second
+        produceLogo:
+            name: The logo!
+            description: Produce the logo shape
+        level100:
+            name: Is this the end?
+            description: Reach level 100
+        unlockWires:
+            name: Wires
+            description: Beat level 20, unlocking wires
+        completeLvl26:
+            name: Freedom!
+            description: Complete level 26, unlocking freeplay
+        upgradesTier5:
+            name: Faster
+            description: Have all upgrades at tier 5
+        level50:
+            name: Can't Stop
+            description: Reach level 50
+        upgradesTier8:
+            name: Even faster
+            description: Have all upgrades at tier 8
+        mam:
+            name: Make Anything Machine
+            description: Beat any level after level 26 without modifying your factory
+        noInverseRotater:
+            name: King of Inefficiency
+            description: Use no counter-clockwise rotator until level 14
+        openWires:
+            name: The next dimension
+            description: Open the wires layer
+        paintShape:
+            name: Painter
+            description: Paint a shape
+        produceRocket:
+            name: To the moon!
+            description: Produce the rocket shape
+        rotateShape:
+            name: Rotater
+            description: Rotate a shape
+        speedrunBp120:
+            name: Not an idle game
+            description: Reach and complete level 12 in under 120 minutes
+        speedrunBp60:
+            name: Speedrun Novice
+            description: Reach and complete level 12 in under 60 minutes
+        speedrunBp30:
+            name: Speedrun Master
+            description: Reach and complete level 12 in under 30 minutes
+        throughputRocket20:
+            name: SpaceY
+            description: Deliver 20 rockets per second
+        stackShape:
+            name: Wait, they stack?
+            description: Stack a shape
+        stack4Layers:
+            name: Stack Overflow
+            description: Produce a shape with 4 layers
+        storeShape:
+            name: I'm a hoarder
+            description: Store a shape
+        store100Unique:
+            name: It's a mess
+            description: Store 100 unique shapes in the hub
+        trash1000:
+            name: Get rid of them
+            description: Trash 1000 shapes
+        belts10k:
+            name: Belts go brrr
+            description: Place 10k belts
+        freeplayLevel120s:
+            name: It's an improvement
+            description: Beat a freeplay level in under 120 seconds
+        place1mBps:
+            name: I've finally used it
+            description: Spend 1 million blueprints
+        store200k:
+            name: True hoarder
+            description: Store 200k shapes in storages
+        freeplayLevel30s:
+            name: Automation master
+            description: Beat a freeplay level in under 30 seconds
+        freeplayLevel60s:
+            name: I am speed
+            description: Beat a freeplay level in under 60 seconds
+        beltsLvl15:
+            name: Belts go brrrrrrrrrrrrrrrrrrr
+            description: Upgrade belts to level 15
+        bird:
+            name: Flappy Bird
+            description: Produce the bird shape
+        lvl6NoBalancers:
+            name: Unbalanced
+            description: Complete level 6 without using any balancers
+        lvl12NoDestroying:
+            name: Environmentalist
+            description: Complete level 12 without destroying any buildings
+        lvl20NoDoublePainter:
+            name: Emperor of inefficiency
+            description: Complete level 20 without using any double painters
+        noFactoryFreeplay:
+            name: True perfectionist
+            description: Have a completely empty factory at any point after beating level 26
+        lvl12NoTrash:
+            name: Reduce, reuse, recycle
+            description: Complete level 12 without using any trash
+        lvl7NoTunnels:
+            name: Do you enjoy pain?
+            description: Complete level 7 without using any tunnels
+        lvl12NoUpgrades:
+            name: It's even slower
+            description: Complete level 12 without buying any upgrades
+        lvl27NoWires:
+            name: DIY
+            description: Complete level 27 manually, without using any wires
+        rocketBeforeLogo:
+            name: A lot early?
+            description: Produce the rocket shape before producing the logo shape
+        scissors:
+            name: The other cutter
+            description: Produce the scissors shape
+        whoKnows:
+            name: Those who know, know
+            description: Some things are better left unexplained.
+        msLogo:
+            name: I've seen that before...
+            description: Hello, Bill!
+        belt500Tiles:
+            name: I need trains
+            description: Build a single uninterrupted belt line 500 tiles long
+        logoBefore18:
+            name: A bit early?
+            description: Produce the logo shape before reaching level 18
+        mapMarkers15:
+            name: GPS
+            description: Place 15 map markers
+        irrelevantShape:
+            name: Oops
+            description: Deliver a shape to the hub that isn't needed for any level or
+                upgrade
+        notRocket:
+            name: You will not go to space today
+            description: Produce a shape that's almost, but not quite, the rocket
+        stack5thLayer:
+            name: The forbidden layer
+            description: Stack a shape 5 layers high
+errorHandler:
+    title: Unhandled Error!
+    labels:
+        buildInformation: "Build Information:"
+        loadedMods: "Loaded Mods:"
+    actions:
+        copy: Copy
+        copyDone: Copied!
+        restart: Restart

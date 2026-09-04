@@ -12,6 +12,8 @@
         "gulp": "gulp --cwd gulp",
         "build-web": "gulp --cwd gulp build.web.full",
         "serve-web": "gulp --cwd gulp serve.web",
+        "build-yandex": "gulp --cwd gulp build.yandex.full",
+        "serve-yandex": "gulp --cwd gulp serve.yandex",
         "lint": "eslint .",
         "prettier-all": "prettier --write ."
     },

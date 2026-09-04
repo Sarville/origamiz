@@ -27,8 +27,32 @@ export class AchievementsStorage extends ReadWriteProxy {
         this.app = app;
     }
 
-    initialize() {
-        return this.readAsync();
+    async initialize() {
+        await this.readAsync();
+        await this.syncWithCloud();
+    }
+
+    /**
+     * Merges local unlocks with the platform's cloud copy (if any), so an
+     * achievement unlocked on either side ends up unlocked on both. This is
+     * also what keeps progress alive on iOS, where WebKit can evict this
+     * game's IndexedDB storage (it runs third-party/iframed on Yandex
+     * Games) independently of any local save.
+     */
+    async syncWithCloud() {
+        const cloud = await this.app.platformWrapper.getCloudData();
+        const remoteUnlocked = Array.isArray(cloud?.unlocked) ? cloud.unlocked : [];
+        const localUnlocked = this.currentData.unlocked;
+
+        const merged = Array.from(new Set([...localUnlocked, ...remoteUnlocked]));
+
+        if (merged.length !== localUnlocked.length) {
+            this.currentData.unlocked = merged;
+            await this.writeAsync();
+        }
+        if (merged.length !== remoteUnlocked.length) {
+            await this.app.platformWrapper.setCloudData({ unlocked: merged });
+        }
     }
 
     /**
@@ -50,6 +74,7 @@ export class AchievementsStorage extends ReadWriteProxy {
         }
         this.currentData.unlocked.push(id);
         this.writeAsync();
+        this.app.platformWrapper.setCloudData({ unlocked: this.currentData.unlocked });
         return true;
     }
 

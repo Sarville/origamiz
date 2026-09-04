@@ -73,6 +73,7 @@ export class PreloadState extends GameState {
             })
 
             .then(() => this.app.achievements.initialize())
+            .then(() => this.app.wallet.initialize())
 
             .then(() => {
                 // Initialize fullscreen
@@ -84,7 +85,7 @@ export class PreloadState extends GameState {
             .then(() => this.setStatus("Initializing language", 25))
             .then(() => {
                 if (this.app.settings.getLanguage() === "auto-detect") {
-                    const language = autoDetectLanguageId();
+                    const language = autoDetectLanguageId(this.app.platformWrapper.getPreferredLanguage());
                     logger.log("Setting language to", language);
                     return this.app.settings.updateLanguage(language);
                 }
@@ -194,6 +195,7 @@ export class PreloadState extends GameState {
             .then(() => this.setStatus(T.preload.launching, 99))
             .then(
                 () => {
+                    this.app.platformWrapper.onGameReady();
                     this.moveToState("MainMenuState");
                 },
                 err => {

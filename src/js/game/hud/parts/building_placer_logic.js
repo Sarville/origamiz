@@ -111,15 +111,15 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
 
         /**
-         * Overview-zoom belt click-continuation (mirrors mobile's own
-         * lastBeltTile/item 8): the tile the last belt segment ended at,
-         * kept across separate clicks - unlike beltDragStartTile, never
-         * cleared by abortDragging, only when the selection changes away
-         * from belt (see onSelectedMetaBuildingChanged). Only actually
-         * consulted from onMouseDown while zoomed into map overview - a
-         * precise drag isn't practical at that scale, so overview clicks
-         * are tap-continuation only, same as mobile. At normal zoom desktop
-         * keeps its existing real-time drag placement, untouched.
+         * Mobile parity (mirrors HUDMobileControls's own lastBeltTile/item
+         * 8): the tile the last belt segment ended at, kept across separate
+         * clicks/drags - unlike beltDragStartTile, never cleared by
+         * abortDragging, only when the selection changes away from belt (see
+         * onSelectedMetaBuildingChanged). Consulted both from a plain click
+         * (onMouseUp, via placeBeltTapAt, at any zoom) and as the
+         * continuation fed into every live drag preview (onMouseMove) - a
+         * fresh drag started right where the last one ended welds onto it
+         * instead of starting a disconnected segment, exactly like mobile.
          * @type {Vector}
          */
         this.lastBeltTile = null;
@@ -128,16 +128,17 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
         this.lastBeltIncomingDirection = undefined;
 
         /**
-         * Item 9 (desktop): the tile a belt drag started from - the anchor
-         * tile itself is placed immediately on mouse-down same as any other
-         * building (unchanged), but every tile from here on is only a
-         * *preview* (beltDragPreviewEntries) until mouse-up, unlike every
-         * other building's real-time per-tile Bresenham placement (onMouseMove
-         * below) - a single "resolve the whole path, commit on release" point
-         * is what lets findBeltPath plan a bounded-bend route and bridge
-         * obstacles with a tunnel, which a real-time immediate-placement loop
-         * has no way to do (it only ever sees one tile at a time, with no
-         * "final destination" to route toward until the button is released).
+         * Item 9 (mobile parity): the tile a belt drag started from. Nothing
+         * is placed on the real map for it - beltDragPreviewEntries is only
+         * ever a preview until mouse-up (see onMouseUp), same as mobile's
+         * beginDrag/onMouseUp - a single "resolve the whole path, commit on
+         * release" point is what lets findBeltPath plan a bounded-bend route
+         * and bridge obstacles with a tunnel, which a real-time
+         * immediate-placement loop has no way to do (it only ever sees one
+         * tile at a time, with no "final destination" to route toward until
+         * the button is released), and what lets a plain click (the path
+         * never left length 1) fall back to placeBeltTapAt's own
+         * continuation logic instead of an unconditional single placement.
          * Null whenever no belt drag is in progress.
          * @type {Vector}
          */
@@ -1063,36 +1064,23 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
 
             // Place initial building, but only if direction lock is not active
             if (!this.isDirectionLockActive) {
-                if (this.tryPlaceCurrentBuildingAt(this.lastDragTile)) {
-                    this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
-
-                    // Item 9 (normal zoom): this anchor tile is a genuine
-                    // belt placement too, same as any tap-continuation or
-                    // drag commit below - keep lastBeltTile up to date so a
-                    // later click while zoomed into map overview continues
-                    // from here (placeBeltTapAt) instead of starting a fresh,
-                    // disconnected segment. Previously only overview clicks
-                    // ever wrote this, so normal-zoom activity was invisible
-                    // to it.
-                    if (this.isBeltSelected) {
-                        this.lastBeltTile = this.lastDragTile;
-                        this.lastBeltIncomingDirection = this.root.map.getLayerContentXY(
-                            this.lastDragTile.x,
-                            this.lastDragTile.y,
-                            "regular"
-                        )?.components.StaticMapEntity.rotation;
-                    }
-                }
-
-                // Item 9: belt drags from here on are a preview committed on
-                // release (see beltDragStartTile's doc) instead of the
-                // ordinary real-time Bresenham loop below - the anchor tile
-                // itself is already placed above, same as any other building.
                 if (this.isBeltSelected) {
+                    // Mobile parity (see mobile_controls.js's beginDrag/
+                    // onMouseUp): nothing is placed on the real map yet -
+                    // this is only a preview, committed on release either as
+                    // a path (onMouseMove extended it) or, if the mouse never
+                    // moved, as a single continuation tap (placeBeltTapAt).
+                    // Placing the anchor for real here (the old behavior)
+                    // meant a plain click could never continue lastBeltTile
+                    // (tryPlaceCurrentBuildingAt doesn't know about it) and a
+                    // drag had to route its live preview around an
+                    // already-committed real belt instead of a clean slate.
                     this.beltDragStartTile = this.lastDragTile;
                     this.beltDragPath = [this.lastDragTile];
-                    this.beltDragPreviewEntries = [];
+                    this.beltDragPreviewEntries = this.beltPathPlanner.beltTilesToEntries(this.beltDragPath);
                     this.beltDragPreviewInvalid = false;
+                } else if (this.tryPlaceCurrentBuildingAt(this.lastDragTile)) {
+                    this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
                 }
             }
             return STOP_PROPAGATION;
@@ -1151,12 +1139,17 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                     // (draw() reads beltDragPreviewInvalid and tints
                     // beltDragPath red instead) so release-time feedback
                     // (flashInvalidBelt) isn't the only hint something's wrong.
+                    // Mobile parity: thread lastBeltTile/lastBeltIncomingDirection
+                    // through as the continuation, exactly like mobile_controls.js's
+                    // own findBeltPathToward wrapper always does - lets this drag
+                    // weld onto a previously-committed run instead of only ever
+                    // reasoning about the tiles between beltDragStartTile and here.
                     const { path, resolved } = this.beltPathPlanner.findBeltPathToward(
                         this.beltDragStartTile,
                         newPos,
                         true,
-                        null,
-                        undefined,
+                        this.lastBeltTile,
+                        this.lastBeltIncomingDirection,
                         oldPos
                     );
                     this.beltDragPath = path;
@@ -1256,12 +1249,17 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
             this.executeDirectionLockedPlacement();
         }
 
-        // Item 9: commit (or reject) a completed belt drag - see
-        // beltDragStartTile's doc.
-        if (this.currentlyDragging && this.beltDragStartTile && this.beltDragPath.length > 1) {
-            if (this.beltDragPreviewInvalid) {
-                // Crosses an obstacle no unlocked tunnel can bridge - flash it
-                // red instead of placing a gapped/broken belt.
+        // Item 9 (mobile parity, see mobile_controls.js's own onMouseUp):
+        // commit whatever this belt drag amounted to - a plain click that
+        // never moved continues lastBeltTile the same way a tap does on
+        // mobile (placeBeltTapAt already handles "no lastBeltTile yet"
+        // itself), a completed drag places its resolved path, and one that
+        // couldn't be made contiguous flashes red instead of placing
+        // anything gapped/broken.
+        if (this.currentlyDragging && this.beltDragStartTile) {
+            if (this.beltDragPath.length <= 1) {
+                this.placeBeltTapAt(this.beltDragPath[0] || this.beltDragStartTile);
+            } else if (this.beltDragPreviewInvalid) {
                 this.flashInvalidBelt(this.beltDragPath);
             } else if (this.beltDragPreviewEntries.length > 0) {
                 const releaseWasOccupied = !!this.root.map.getLayerContentXY(

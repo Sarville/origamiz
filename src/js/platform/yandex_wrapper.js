@@ -19,6 +19,12 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
         this.player = null;
         this.payments = null;
         this.adsDisabled = false;
+
+        // Serializes setCloudData calls so each one's read-modify-write
+        // (see setCloudData) can't race a concurrent one and clobber it -
+        // e.g. an achievement unlocking the same tick a wallet credit
+        // flushes.
+        this.cloudWriteQueue = Promise.resolve();
     }
 
     async initialize() {
@@ -48,6 +54,33 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
         return this.ysdk?.environment?.i18n?.lang ?? null;
     }
 
+    getSupportsAuth() {
+        return Boolean(this.ysdk);
+    }
+
+    isAuthorized() {
+        return this.player?.isAuthorized() ?? false;
+    }
+
+    /**
+     * Opens the Yandex sign-in dialog and, on success, re-fetches the
+     * Player object bound to the now-authorized identity (per Yandex's own
+     * docs - the pre-auth Player instance doesn't update itself in place).
+     * @returns {Promise<boolean>}
+     */
+    async requestAuth() {
+        if (!this.ysdk) {
+            return false;
+        }
+        try {
+            await this.ysdk.auth.openAuthDialog();
+            this.player = await this.ysdk.getPlayer();
+        } catch (ex) {
+            logger.error("Yandex auth failed:", ex);
+        }
+        return this.isAuthorized();
+    }
+
     onGameReady() {
         this.ysdk?.features?.LoadingAPI?.ready();
         if (!this.adsDisabled) {
@@ -72,12 +105,28 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
         }
     }
 
-    async setCloudData(data) {
-        try {
-            await this.player?.setData(data, true);
-        } catch (ex) {
-            logger.error("Failed to write Yandex cloud player data:", ex);
-        }
+    /**
+     * Merges `patch` into the player's cloud data instead of replacing it
+     * wholesale - Yandex's own docs never actually specify whether setData
+     * replaces the whole document or merges by key, so every write here
+     * reads the current document first and writes the full merged result
+     * back, which is correct either way. This is what lets independent
+     * features (achievements, the wallet) each own their own top-level key
+     * of the same document without a later write from one clobbering an
+     * earlier one from the other - see cloudWriteQueue for how concurrent
+     * calls are kept from racing each other's read-modify-write.
+     * @param {Record<string, unknown>} patch
+     */
+    async setCloudData(patch) {
+        this.cloudWriteQueue = this.cloudWriteQueue.then(async () => {
+            try {
+                const current = (await this.player?.getData()) ?? {};
+                await this.player?.setData({ ...current, ...patch }, true);
+            } catch (ex) {
+                logger.error("Failed to write Yandex cloud player data:", ex);
+            }
+        });
+        return this.cloudWriteQueue;
     }
 
     getSupportsRewardedAds() {

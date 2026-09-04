@@ -1,4 +1,4 @@
-import { globalConfig } from "../../../core/config";
+import { globalConfig, IS_MOBILE } from "../../../core/config";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { InputReceiver } from "../../../core/input_receiver";
 import { makeDiv } from "../../../core/utils";
@@ -147,7 +147,7 @@ export class HUDUnlockNotification extends BaseHUDPart {
             showUpgrades.add(() => this.root.hud.parts.shop.show());
         }
 
-        if (this.root.hubGoals.level === 5) {
+        if (!IS_MOBILE && this.root.hubGoals.level === 5) {
             const { showKeybindings } = this.root.hud.parts.dialogs.showInfo(
                 T.dialogs.keybindingsIntroduction.title,
                 T.dialogs.keybindingsIntroduction.desc,
