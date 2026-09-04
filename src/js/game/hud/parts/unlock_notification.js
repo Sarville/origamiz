@@ -147,6 +147,20 @@ export class HUDUnlockNotification extends BaseHUDPart {
             showUpgrades.add(() => this.root.hud.parts.shop.show());
         }
 
+        // Mobile has no keybindings to introduce (see the !IS_MOBILE branch
+        // below) - offers the touch controls guide instead. Fires alongside
+        // the upgrades dialog above rather than at level 5 like desktop's
+        // keybindings prompt, since level 3 is also roughly when belt
+        // dragging/tap-continuation and markers start actually mattering.
+        if (IS_MOBILE && this.root.hubGoals.level === 3) {
+            const { showControls } = this.root.hud.parts.dialogs.showInfo(
+                T.dialogs.mobileControlsIntroduction.title,
+                T.dialogs.mobileControlsIntroduction.desc,
+                ["showControls:misc", "ok:good:timeout"]
+            );
+            showControls.add(() => this.root.gameState.goToMobileControls());
+        }
+
         if (!IS_MOBILE && this.root.hubGoals.level === 5) {
             const { showKeybindings } = this.root.hud.parts.dialogs.showInfo(
                 T.dialogs.keybindingsIntroduction.title,
