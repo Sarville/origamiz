@@ -114,6 +114,7 @@ dialogs:
         viewUpdate: View Update
         showUpgrades: Show Upgrades
         showKeybindings: Show Keybindings
+        showControls: Show Controls
         retry: Retry
         continue: Continue
         playOffline: Play Offline
@@ -203,6 +204,14 @@ dialogs:
             <code class='keybinding'>CTRL</code> + Drag: Select an area.<br>
             <code class='keybinding'>SHIFT</code>: Hold to place multiple of one building.<br>
             <code class='keybinding'>ALT</code>: Invert orientation of placed belts.<br>
+
+    mobileControlsIntroduction:
+        title: Touch controls
+        desc: >-
+            This game has a lot of touch gestures which make it easier to build big
+            factories - drag to pan, pinch to zoom, tap-and-hold on a tile or building
+            for quick actions, and more. Be sure to <strong>check out the Mobile
+            Controls guide</strong>!
 
     createMarker:
         title: New Marker
@@ -1287,6 +1296,68 @@ keybindings:
         placeInverse: Invert automatic belt orientation
 
         showShapeTooltip: Show shape output tooltip
+
+mobileControls:
+    title: Touch controls
+
+    sections:
+        camera:
+            title: Moving and zooming
+            desc: >-
+                One finger: drag to pan the map. Two fingers: pinch to zoom in and out -
+                moving both fingers together also pans at the same time.
+        longPress:
+            title: Long press
+            desc: >-
+                With nothing selected, press and hold on the map for a moment. On an
+                empty tile, this opens selection mode. On an existing belt, it continues
+                building from there. On any other building, it picks the building up so
+                you can move it.
+        belts:
+            title: Placing belts
+            desc: >-
+                Select the belt icon, then either drag your finger across the tiles to
+                lay a belt immediately, or tap tiles one at a time - after the first
+                tap, every following tap extends the belt from where it last ended, so a
+                long belt can be built without dragging across the whole screen. If a
+                belt run crosses an obstacle, it's automatically bridged with a tunnel
+                pair once <strong>Auto-Tunnel</strong> is bought in the Shop -
+                <strong>Auto-Merger</strong>, <strong>Auto-Splitter</strong> and
+                <strong>Long-Distance Routing</strong> (also in the Shop) unlock more of
+                this automatic behavior, and <strong>Overview Building</strong> lets you
+                keep placing while the map is zoomed all the way out.
+        buildings:
+            title: Placing other buildings
+            desc: >-
+                Select a building from the toolbar - a ghost preview appears and follows
+                your finger as you touch or drag on the map. Tap Confirm to place it,
+                Rotate to turn it, Variant to cycle its versions, and turn on Multiplace
+                to keep placing the same building after each confirm.
+        markers:
+            title: Map markers
+            desc: >-
+                Tap a marker to jump to it, or press and hold one to rename or delete
+                it. Use the marker button in the corner to drop a new one at the current
+                view - drag the map underneath it to position it, then confirm.
+
+    iconsTitle: Mobile controls icons
+
+    icons:
+        delete: Delete mode - tap a building on the map to remove it
+        pipette: Pipette - tap a building to pick up its type
+        undo: Undo the last action
+        redo: Redo the last undone action
+        layers: Switch layers - toggles the wires layer, once unlocked
+        select: Selection mode - tap or drag to select buildings
+        copy: Copy the current selection into a blueprint
+        eraser: Delete everything currently selected
+        broom: Clear the contents of every selected belt
+        cancel: Cancel / close
+        confirm: Confirm and place
+        rotate: Rotate the building
+        variant: Cycle through the building's variants
+        multiplace: Keep placing after each confirm
+        newBelt: Start a new, unconnected belt segment
 
 about:
     title: About this Game
