@@ -41,6 +41,7 @@ mainMenu:
     continue: Продолжить
     newGame: Новая игра
     importSavegame: Импорт
+    importSavegameHint: Можно импортировать сохранение с вашего устройства
     helpTranslate: Помоги с переводом!
     savegameLevel: Уровень <x>
     savegameLevelUnknown: Неизвестный уровень
@@ -234,6 +235,46 @@ ingame:
         buttonResearch: Исследовать
         researchLocked: Заблокировано (нужен тир исследований <tier>)
         researchCompleted: Исследовано
+    currencyShop:
+        title: Магазин
+        balance: У вас <amount> фигурок-валюты
+        buttonBuy: Купить
+        completed: Куплено
+        buttonExchange: Обмен
+        buttonExchangeLimit: "Обмен (<amount>)"
+        dailyBonus:
+            title: Ежедневный бонус
+            description: Заходите раз в день за бесплатной валютой.
+            buttonClaim: Забрать +<amount>
+            claimed: Приходите завтра!
+        exchangeList:
+            title: Обмен
+            empty: У вас пока нет ни одной фигурки в наличии.
+            buttonBuy: Купить
+            buttonSell: Продать
+            buttonRates: Курс
+            lockedDescription: Обменивайте валюту на фигуры и фигуры на валюту по фиксированному курсу.
+            buttonUnlock: Купить
+            limitText: "Лимит операций: <amount>"
+            buttonRaiseLimit: "Поднять лимит (<price>)"
+            limitExhausted: Лимит операций на сегодня исчерпан. Возвращайтесь завтра!
+        exchangeRates:
+            title: Курсы обмена
+            layers: "Слоёв: <layers>"
+            colored: (крашеная)
+            buyRate: Покупка <currency> валюты/шт.
+            sellRate: Продажа <shapes> фигур/валюта
+        exchangeModal:
+            titleBuy: Покупка фигур
+            titleSell: Продажа фигур
+            owned: "В наличии: <amount>"
+            rate: Курс <shapes> фигур → <currency> валюты
+            stepWarning: Количество должно быть кратно <step>
+            buttonRound: Округлить
+            buttonMax: MAX
+            buttonConfirmBuy: Купить
+            buttonConfirmSell: Продать
+            buttonCancel: Отмена
     statistics:
         title: Статистика
         dataSources:
@@ -350,6 +391,22 @@ shopUpgrades:
     painting:
         name: Смешивание и Покраска
         description: Скорость x<currentMult> → x<newMult>
+shopItems:
+    autoTunnel:
+        name: Автотуннели
+        description: Протяжка ленты через препятствие автоматически прокладывает туннель.
+    overviewBuilding:
+        name: Постройка при отдалении
+        description: Можно строить, даже когда карта отдалена до режима обзора.
+    autoMerger:
+        name: Автообъединитель
+        description: Протяжка ленты на другую ленту автоматически ставит объединитель.
+    autoSplitter:
+        name: Авторазделитель
+        description: Протяжка новой ленты от уже существующей автоматически ставит разделитель.
+    longRoute:
+        name: Дальняя прокладка
+        description: Протяжка лент через препятствия может обходить гораздо более длинные преграды.
 buildings:
     hub:
         deliver: Доставьте
@@ -635,6 +692,30 @@ storyRewards:
         title: Исследования, тир II
         desc: Открыт <strong>второй тир исследований</strong> - в окне улучшений стали
             доступны новые варианты построек!
+    reward_shop_auto_tunnel:
+        title: Автотуннели
+        desc: Куплено в <strong>Магазине</strong> - теперь протяжка ленты через
+            препятствие автоматически прокладывает туннель!
+    reward_shop_overview_building:
+        title: Постройка при отдалении
+        desc: Куплено в <strong>Магазине</strong> - теперь можно строить, даже когда
+            карта отдалена до режима обзора!
+    reward_shop_auto_merger:
+        title: Автообъединитель
+        desc: Куплено в <strong>Магазине</strong> - теперь протяжка ленты на другую
+            ленту автоматически ставит объединитель!
+    reward_shop_auto_splitter:
+        title: Авторазделитель
+        desc: Куплено в <strong>Магазине</strong> - теперь протяжка новой ленты от
+            уже существующей автоматически ставит разделитель!
+    reward_shop_long_route:
+        title: Дальняя прокладка
+        desc: Куплено в <strong>Магазине</strong> - протяжка лент через препятствия
+            теперь может обходить гораздо более длинные преграды!
+    reward_shop_exchange:
+        title: Обмен
+        desc: Куплено в <strong>Магазине</strong> - теперь можно обменивать фигуры на
+            валюту и валюту на фигуры!
     reward_blueprints:
         title: Чертежи
         desc: Теперь вы можете <strong>копировать и вставлять</strong> части вашей
@@ -774,8 +855,7 @@ settings:
                 extremely_fast: Чрезвычайно быстро
         language:
             title: Язык
-            description: Выберите язык. Все переводы сделаны пользователями и могут быть не
-                законченными!
+            description: Выберите язык.
         enableColorBlindHelper:
             title: Режим для дальтоников
             description: Включает различные инструменты, которые позволяют играть в игру
@@ -923,6 +1003,7 @@ keybindings:
         mapZoomOut: Отдалить
         createMarker: Создать Маркер
         menuOpenShop: Улучшения
+        menuOpenCurrencyShop: Магазин
         menuOpenStats: Статистика
         menuClose: Закрыть меню
         toggleHud: Включить/выключить интерфейс
@@ -1025,6 +1106,9 @@ achievements:
         blueprint1m:
             name: Пригодится позже
             description: Накопите 1 000 000 чертежей в хабе
+        richBuratino:
+            name: Богатый Буратино
+            description: Накопите в хабе 1 000 000 валюты Магазина
         play20h:
             name: Зависимость
             description: Играйте 20 часов

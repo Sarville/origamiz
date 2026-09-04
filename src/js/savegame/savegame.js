@@ -43,7 +43,10 @@ export class Savegame extends ReadWriteProxy {
      * @returns {number}
      */
     static getCurrentVersion() {
-        return 1010;
+        // 1012: added HubGoals.exchangeLimitUpgrades/exchangeOperationsRemaining/
+        // exchangeLimitResetAt (Shape Exchange daily limit) - see migrate()
+        // below for the 1011 -> 1012 step.
+        return 1012;
     }
 
     /**
@@ -67,10 +70,36 @@ export class Savegame extends ReadWriteProxy {
     }
 
     /**
-     * Migrates the savegames data
+     * Migrates the savegames data (called by ReadWriteProxy.readAsync when
+     * data.version < getCurrentVersion(), modifies `data` in place - see
+     * that method for the exact call site).
      * @param {SavegameData} data
      */
     migrate(data) {
+        if (data.version === 1010) {
+            // dailyBonusClaimedAt (Shop daily bonus) added in 1011 - a save
+            // from before it existed just never claimed one yet. Saves with
+            // no game started (dump === null) have no HubGoals to patch.
+            if (data.dump && data.dump.hubGoals) {
+                data.dump.hubGoals.dailyBonusClaimedAt = 0;
+            }
+            data.version = 1011;
+        }
+
+        if (data.version === 1011) {
+            // exchangeLimitUpgrades/exchangeOperationsRemaining/exchangeLimitResetAt
+            // (Shape Exchange daily limit) added in 1012 - a save from before
+            // it existed never bought a limit upgrade and hasn't used the
+            // daily limit yet, so it starts at the same defaults the
+            // constructor gives a fresh HubGoals.
+            if (data.dump && data.dump.hubGoals) {
+                data.dump.hubGoals.exchangeLimitUpgrades = 0;
+                data.dump.hubGoals.exchangeOperationsRemaining = 3;
+                data.dump.hubGoals.exchangeLimitResetAt = 0;
+            }
+            data.version = 1012;
+        }
+
         if (data.version !== this.getCurrentVersion()) {
             return ExplainedResult.bad("Savegame upgrade is not supported");
         }

@@ -18,6 +18,10 @@ const MS_LOGO_SHAPE = "RgRyRbRr";
 // throughput, stored shapes, ...) get re-evaluated, in seconds of real time.
 const CHECK_INTERVAL_SECONDS = 2;
 
+// Shop currency granted for each achievement unlocked - a small bonus on top
+// of producing the currency shape directly.
+const ACHIEVEMENT_CURRENCY_REWARD = 50;
+
 /**
  * Tracks achievement progress for the current savegame and unlocks
  * achievements (globally, via app.achievements) as their conditions are met.
@@ -78,6 +82,7 @@ export class HUDAchievementTracker extends BaseHUDPart {
             // Already unlocked before (in this save or an earlier one)
             return;
         }
+        this.root.hubGoals.grantCurrency(ACHIEVEMENT_CURRENCY_REWARD);
         const def = T.achievements.list[id];
         this.root.hud.signals.notification.dispatch(
             "🏆 " + (def ? def.name : id),
@@ -109,6 +114,8 @@ export class HUDAchievementTracker extends BaseHUDPart {
         const storedBlueprints = hubGoals.getShapesStoredByKey(blueprintKey);
         if (storedBlueprints >= 100000) this.unlock("blueprint100k");
         if (storedBlueprints >= 1000000) this.unlock("blueprint1m");
+
+        if (hubGoals.getCurrencyAmount() >= 1000000) this.unlock("richBuratino");
 
         const bpRate = this.currentDeliveryRate(blueprintKey);
         if (bpRate >= 25) this.unlock("throughputBp25");

@@ -20,6 +20,20 @@ export const RESEARCH_TIER_UNLOCK_REWARDS = {
     2: enumHubGoalRewards.reward_research_t2,
 };
 
+// Shop daily bonus - a free once-a-day currency claim, real wall-clock time
+// (not game time), independent of ads/IAP so it works before either exists.
+const DAILY_BONUS_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const DAILY_BONUS_AMOUNT = 250;
+
+// Shape Exchange - a purchasable Shop feature, rate-limited to a handful of
+// buy/sell operations per real-world day (raisable with a repeatable
+// purchase, capped after a few raises).
+const EXCHANGE_LIMIT_RESET_INTERVAL_MS = 24 * 60 * 60 * 1000;
+const EXCHANGE_LIMIT_BASE = 3;
+const EXCHANGE_LIMIT_UPGRADE_AMOUNT = 3;
+const EXCHANGE_LIMIT_MAX_UPGRADES = 3;
+const EXCHANGE_LIMIT_UPGRADE_PRICE = 5000;
+
 export class HubGoals extends BasicSerializableObject {
     static getId() {
         return "HubGoals";
@@ -31,6 +45,10 @@ export class HubGoals extends BasicSerializableObject {
             storedShapes: types.keyValueMap(types.uint),
             upgradeLevels: types.keyValueMap(types.uint),
             gainedRewards: types.set(types.string),
+            dailyBonusClaimedAt: types.uint,
+            exchangeLimitUpgrades: types.uint,
+            exchangeOperationsRemaining: types.uint,
+            exchangeLimitResetAt: types.uint,
         };
     }
 
@@ -57,6 +75,15 @@ export class HubGoals extends BasicSerializableObject {
             if (!enumHubGoalRewards[reward]) {
                 this.gainedRewards.delete(reward);
             }
+        }
+
+        // Backfill rewards for levels already completed in this save. Levels
+        // can get their reward reassigned between versions (e.g. a level that
+        // used to grant a building variant directly now grants
+        // reward_research instead) - saves that cleared those levels before
+        // the change need the new reward too, without redoing the level.
+        for (let i = 0; i < this.level - 1 && i < levels.length; ++i) {
+            this.gainedRewards.add(levels[i].reward);
         }
 
         // Compute upgrade improvements
@@ -98,6 +125,33 @@ export class HubGoals extends BasicSerializableObject {
         this.storedShapes = {};
 
         /**
+         * Wall-clock timestamp (ms) of the last Shop daily-bonus claim, 0 if
+         * never claimed - see canClaimDailyBonus()/tryClaimDailyBonus().
+         * @type {number}
+         */
+        this.dailyBonusClaimedAt = 0;
+
+        /**
+         * How many times the Shape Exchange's daily-limit upgrade was
+         * bought, capped at EXCHANGE_LIMIT_MAX_UPGRADES.
+         * @type {number}
+         */
+        this.exchangeLimitUpgrades = 0;
+
+        /**
+         * How many Exchange buy/sell operations are left for the current
+         * real-world day - see refreshExchangeLimit()/getExchangeOperationsRemaining().
+         * @type {number}
+         */
+        this.exchangeOperationsRemaining = EXCHANGE_LIMIT_BASE;
+
+        /**
+         * Wall-clock timestamp (ms) of the last Exchange daily-limit refill.
+         * @type {number}
+         */
+        this.exchangeLimitResetAt = 0;
+
+        /**
          * Stores the levels for all upgrades
          * @type {Object<string, number>}
          */
@@ -108,6 +162,12 @@ export class HubGoals extends BasicSerializableObject {
          * @type {Object<string, number>}
          */
         this.upgradeImprovements = {};
+
+        /**
+         * Lazily resolved, see getCurrencyShapeDefinition()
+         * @type {ShapeDefinition?}
+         */
+        this.cachedCurrencyShapeDefinition = null;
 
         // Reset levels first
         const upgrades = this.root.gameMode.getUpgrades();
@@ -429,6 +489,350 @@ export class HubGoals extends BasicSerializableObject {
         this.gainedRewards.add(research.reward);
         this.root.signals.researchPurchased.dispatch(researchId);
 
+        return true;
+    }
+
+    /**
+     * The shape definition for the Shop's currency (whatever
+     * gameMode.getCurrencyShapeCode() names) - cached since it never
+     * changes for the lifetime of a game mode instance.
+     * @returns {ShapeDefinition?}
+     */
+    getCurrencyShapeDefinition() {
+        const code = this.root.gameMode.getCurrencyShapeCode();
+        if (!code) {
+            return null;
+        }
+        if (!this.cachedCurrencyShapeDefinition) {
+            this.cachedCurrencyShapeDefinition = this.root.shapeDefinitionMgr.getShapeFromShortKey(code);
+        }
+        return this.cachedCurrencyShapeDefinition;
+    }
+
+    /**
+     * Returns how much Shop currency the player has - simply the count of
+     * however many currency shapes were delivered to the Hub, the same
+     * bookkeeping as any other requested shape (see storedShapes).
+     * @returns {number}
+     */
+    getCurrencyAmount() {
+        const definition = this.getCurrencyShapeDefinition();
+        return definition ? this.getShapesStored(definition) : 0;
+    }
+
+    /**
+     * Grants currency directly (achievements, ads) without going through
+     * shape delivery.
+     * @param {number} amount
+     */
+    grantCurrency(amount) {
+        const definition = this.getCurrencyShapeDefinition();
+        if (!definition) {
+            return;
+        }
+        const hash = definition.getHash();
+        this.storedShapes[hash] = (this.storedShapes[hash] || 0) + amount;
+    }
+
+    /**
+     * Returns whether a given Shop item can be purchased
+     * @param {string} itemId
+     */
+    canPurchaseShopItem(itemId) {
+        const item = this.root.gameMode.getShopItems()[itemId];
+        if (this.isRewardUnlocked(item.reward)) {
+            return false;
+        }
+        if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {
+            return true;
+        }
+        return this.getCurrencyAmount() >= item.price;
+    }
+
+    /**
+     * Tries to purchase the given Shop item
+     * @param {string} itemId
+     * @returns {boolean}
+     */
+    tryPurchaseShopItem(itemId) {
+        if (!this.canPurchaseShopItem(itemId)) {
+            return false;
+        }
+        const item = this.root.gameMode.getShopItems()[itemId];
+        if (!(G_IS_DEV && globalConfig.debug.upgradesNoCost)) {
+            const hash = this.getCurrencyShapeDefinition().getHash();
+            this.storedShapes[hash] -= item.price;
+        }
+        this.gainedRewards.add(item.reward);
+        this.root.signals.shopItemPurchased.dispatch(itemId);
+        return true;
+    }
+
+    /**
+     * Whether the Shape Exchange feature itself was purchased yet.
+     * @returns {boolean}
+     */
+    isExchangeUnlocked() {
+        return this.isRewardUnlocked(enumHubGoalRewards.reward_shop_exchange);
+    }
+
+    /**
+     * The daily Exchange operation limit at the current number of purchased
+     * limit upgrades.
+     * @returns {number}
+     */
+    getExchangeLimitMax() {
+        return EXCHANGE_LIMIT_BASE + this.exchangeLimitUpgrades * EXCHANGE_LIMIT_UPGRADE_AMOUNT;
+    }
+
+    /**
+     * Refills the daily Exchange operation count once a real-world day has
+     * passed since the last refill - called before every read/consume of
+     * exchangeOperationsRemaining so the count is always current.
+     */
+    refreshExchangeLimit() {
+        if (Date.now() - this.exchangeLimitResetAt >= EXCHANGE_LIMIT_RESET_INTERVAL_MS) {
+            this.exchangeLimitResetAt = Date.now();
+            this.exchangeOperationsRemaining = this.getExchangeLimitMax();
+        }
+    }
+
+    /**
+     * How many Exchange buy/sell operations are left today.
+     * @returns {number}
+     */
+    getExchangeOperationsRemaining() {
+        this.refreshExchangeLimit();
+        return this.exchangeOperationsRemaining;
+    }
+
+    /**
+     * Whether an Exchange buy/sell can be performed right now (feature
+     * bought and today's limit not yet used up).
+     * @returns {boolean}
+     */
+    canPerformExchangeOperation() {
+        return this.isExchangeUnlocked() && this.getExchangeOperationsRemaining() > 0;
+    }
+
+    /** Spends one of today's Exchange operations - call after a successful buy/sell. */
+    consumeExchangeOperation() {
+        this.refreshExchangeLimit();
+        this.exchangeOperationsRemaining = Math.max(0, this.exchangeOperationsRemaining - 1);
+    }
+
+    /**
+     * Whether the daily-limit upgrade has been bought the max number of
+     * times already (no more raises possible, regardless of currency).
+     * @returns {boolean}
+     */
+    isExchangeLimitMaxed() {
+        return this.exchangeLimitUpgrades >= EXCHANGE_LIMIT_MAX_UPGRADES;
+    }
+
+    /** @returns {number} */
+    getExchangeLimitUpgradePrice() {
+        return EXCHANGE_LIMIT_UPGRADE_PRICE;
+    }
+
+    /**
+     * Whether the daily-limit upgrade can be bought right now.
+     * @returns {boolean}
+     */
+    canPurchaseExchangeLimitUpgrade() {
+        if (!this.isExchangeUnlocked() || this.isExchangeLimitMaxed()) {
+            return false;
+        }
+        if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {
+            return true;
+        }
+        return this.getCurrencyAmount() >= EXCHANGE_LIMIT_UPGRADE_PRICE;
+    }
+
+    /**
+     * Tries to buy one Exchange daily-limit raise
+     * @returns {boolean}
+     */
+    tryPurchaseExchangeLimitUpgrade() {
+        if (!this.canPurchaseExchangeLimitUpgrade()) {
+            return false;
+        }
+        if (!(G_IS_DEV && globalConfig.debug.upgradesNoCost)) {
+            const hash = this.getCurrencyShapeDefinition().getHash();
+            this.storedShapes[hash] -= EXCHANGE_LIMIT_UPGRADE_PRICE;
+        }
+        this.refreshExchangeLimit();
+        ++this.exchangeLimitUpgrades;
+        this.exchangeOperationsRemaining += EXCHANGE_LIMIT_UPGRADE_AMOUNT;
+        return true;
+    }
+
+    /**
+     * Whether any quadrant of any layer of the shape has an actual color
+     * applied (as opposed to enumColors.uncolored) - painted shapes trade
+     * for more than plain ones at the same layer count.
+     * @param {ShapeDefinition} definition
+     * @returns {boolean}
+     */
+    isShapeColored(definition) {
+        for (const layer of definition.layers) {
+            for (const quadrant of layer) {
+                if (quadrant && quadrant.color !== enumColors.uncolored) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Currency cost to buy a single shape of the given layer count/color -
+     * 2 currency per layer, +1 more if painted (1-layer plain: 2, painted:
+     * 3; 2-layer plain: 4, painted: 5; 3-layer plain: 6, painted: 7; ...).
+     * Always a whole number, so buying has no minimum-amount step.
+     * @param {number} layers
+     * @param {boolean} colored
+     * @returns {number}
+     */
+    getShapeBuyCostPerUnit(layers, colored) {
+        return 2 * layers + (colored ? 1 : 0);
+    }
+
+    /**
+     * The smallest valid shape-amount increment for a sell exchange of the
+     * given layer count/color - the payout isn't whole-number currency per
+     * shape below this. Buying has no such minimum (getShapeBuyCostPerUnit
+     * is always a whole currency amount), so this only matters for
+     * direction "sell"; kept as a function of direction anyway so callers
+     * (the amount-stepper, the "must be a multiple of N" input rule) don't
+     * need to special-case which direction they're in.
+     * @param {number} layers
+     * @param {boolean} colored
+     * @param {"buy"|"sell"} direction
+     * @returns {number}
+     */
+    getShapeAmountStep(layers, colored, direction) {
+        if (direction === "sell") {
+            // Shapes needed for 1 currency: starts at 8 (1-layer plain) and
+            // drops by 2 per extra layer, 1 more for paint - floored at 1
+            // (1-layer painted 4-layer+ shapes and beyond never go below a
+            // 1:1 exchange).
+            return Math.max(1, 10 - 2 * layers - (colored ? 1 : 0));
+        }
+        return 1;
+    }
+
+    /**
+     * How many currency units it costs to buy `amount` shapes of the given
+     * layer count/color.
+     * @param {number} layers
+     * @param {boolean} colored
+     * @param {number} amount
+     * @returns {number}
+     */
+    getShapePurchaseCost(layers, colored, amount) {
+        return amount * this.getShapeBuyCostPerUnit(layers, colored);
+    }
+
+    /**
+     * Tries to buy `amount` of the shape `shapeCode` with currency
+     * @param {string} shapeCode
+     * @param {number} amount
+     * @returns {boolean}
+     */
+    tryPurchaseShapesWithCurrency(shapeCode, amount) {
+        if (!this.canPerformExchangeOperation()) {
+            return false;
+        }
+        if (!ShapeDefinition.isValidShortKey(shapeCode) || amount <= 0) {
+            return false;
+        }
+        const definition = this.root.shapeDefinitionMgr.getShapeFromShortKey(shapeCode);
+        const cost = this.getShapePurchaseCost(
+            definition.layers.length,
+            this.isShapeColored(definition),
+            amount
+        );
+        if (this.getCurrencyAmount() < cost) {
+            return false;
+        }
+        const currencyHash = this.getCurrencyShapeDefinition().getHash();
+        this.storedShapes[currencyHash] -= cost;
+        const shapeHash = definition.getHash();
+        this.storedShapes[shapeHash] = (this.storedShapes[shapeHash] || 0) + amount;
+        this.consumeExchangeOperation();
+        return true;
+    }
+
+    /**
+     * How many currency units a `amount`-shape sale of the given layer
+     * count/color pays out.
+     * @param {number} layers
+     * @param {boolean} colored
+     * @param {number} amount
+     * @returns {number?} null if amount isn't sellable evenly at this layer count/color
+     */
+    getShapeSellPayout(layers, colored, amount) {
+        const step = this.getShapeAmountStep(layers, colored, "sell");
+        if (amount % step !== 0) {
+            return null;
+        }
+        return amount / step;
+    }
+
+    /**
+     * Tries to sell `amount` of the shape `shapeCode` for currency
+     * @param {string} shapeCode
+     * @param {number} amount
+     * @returns {boolean}
+     */
+    sellShapesForCurrency(shapeCode, amount) {
+        if (!this.canPerformExchangeOperation()) {
+            return false;
+        }
+        if (!ShapeDefinition.isValidShortKey(shapeCode) || amount <= 0) {
+            return false;
+        }
+        const definition = this.root.shapeDefinitionMgr.getShapeFromShortKey(shapeCode);
+        const payout = this.getShapeSellPayout(
+            definition.layers.length,
+            this.isShapeColored(definition),
+            amount
+        );
+        const shapeHash = definition.getHash();
+        if (payout === null || (this.storedShapes[shapeHash] || 0) < amount) {
+            return false;
+        }
+        this.storedShapes[shapeHash] -= amount;
+        this.grantCurrency(payout);
+        this.consumeExchangeOperation();
+        return true;
+    }
+
+    /**
+     * Whether the Shop's once-a-day free currency bonus can be claimed
+     * right now.
+     * @returns {boolean}
+     */
+    canClaimDailyBonus() {
+        return Date.now() - this.dailyBonusClaimedAt >= DAILY_BONUS_INTERVAL_MS;
+    }
+
+    /** @returns {number} */
+    getDailyBonusAmount() {
+        return DAILY_BONUS_AMOUNT;
+    }
+
+    /**
+     * Claims the Shop's daily bonus if available
+     * @returns {boolean}
+     */
+    tryClaimDailyBonus() {
+        if (!this.canClaimDailyBonus()) {
+            return false;
+        }
+        this.dailyBonusClaimedAt = Date.now();
+        this.grantCurrency(DAILY_BONUS_AMOUNT);
         return true;
     }
 

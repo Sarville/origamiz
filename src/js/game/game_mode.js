@@ -133,6 +133,16 @@ export class GameMode extends BasicSerializableObject {
         return {};
     }
 
+    /** @returns {Object<string, import("./modes/regular").ShopItemDefinition>} */
+    getShopItems() {
+        return {};
+    }
+
+    /** @returns {string?} */
+    getCurrencyShapeCode() {
+        return null;
+    }
+
     throughputDoesNotMatter() {
         return false;
     }

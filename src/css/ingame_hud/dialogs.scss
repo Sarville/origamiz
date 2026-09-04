@@ -165,7 +165,9 @@ $modalCoralDarkThemeLight: #d17164;
         border-radius: 2rem;
         display: flex;
         flex-direction: column;
-        padding: 1.8rem;
+        // Extra top padding - room for the close X, now pinned to the
+        // corner above the title text instead of sitting inline with it.
+        padding: 3.4rem 1.8rem 1.8rem;
         box-sizing: border-box;
 
         box-shadow:
@@ -174,24 +176,39 @@ $modalCoralDarkThemeLight: #d17164;
             inset 0 0.1rem 0 rgba(255, 255, 255, 0.9);
         pointer-events: all;
 
-        // Same folded-paper corner accent as the main menu's cards - a
-        // subtler, semi-transparent version since it sits on top of dialog
-        // content rather than a solid card.
+        // Same folded-paper corner (dog-ear) as the main menu's cards
+        // (main_menu.scss's .menu-button) - a real fold built from two
+        // clipped triangles (crease shading + the folded-back flap itself),
+        // not the single translucent diagonal smear this used to be, which
+        // read as a smudge rather than a corner.
+        &::before,
         &::after {
             content: "";
             position: absolute;
             right: 0;
             bottom: 0;
-            width: 5rem;
-            height: 5rem;
+            width: 2rem;
+            height: 2rem;
             pointer-events: none;
+        }
+
+        &::before {
+            z-index: 1;
+            clip-path: polygon(100% 0, 100% 100%, 0 100%);
             background: linear-gradient(
                 135deg,
-                transparent 0 49%,
-                rgba(222, 207, 179, 0.55) 50% 72%,
-                rgba(255, 250, 239, 0.55) 73%
+                transparent 0% 40%,
+                rgba(25, 17, 6, 0.35) 50%,
+                rgba(25, 17, 6, 0.16) 62%,
+                rgba(25, 17, 6, 0.08) 100%
             );
-            opacity: 0.55;
+        }
+
+        &::after {
+            z-index: 2;
+            clip-path: polygon(0 0, 100% 0, 0 100%);
+            background: linear-gradient(225deg, $modalPaper 0%, $modalPaperDeep 55%, color.adjust($modalPaperDeep, $lightness: -8%) 100%);
+            filter: drop-shadow(-0.09rem 0.09rem 0.14rem rgba(25, 17, 6, 0.35));
         }
 
         @include DarkThemeOverride {
@@ -205,10 +222,10 @@ $modalCoralDarkThemeLight: #d17164;
 
             &::after {
                 background: linear-gradient(
-                    135deg,
-                    transparent 0 49%,
-                    rgba(0, 0, 0, 0.4) 50% 72%,
-                    rgba(255, 255, 255, 0.04) 73%
+                    225deg,
+                    $modalPaperDark 0%,
+                    $modalPaperDeepDark 55%,
+                    color.adjust($modalPaperDeepDark, $lightness: -6%) 100%
                 );
             }
         }
@@ -302,7 +319,20 @@ $modalCoralDarkThemeLight: #d17164;
                 color: $modalTextMainDark;
             }
 
+            // Pinned to the dialogInner's top-right corner (that's the
+            // nearest positioned ancestor) instead of sitting inline in this
+            // grid - keeps every dialog's X in the same spot regardless of
+            // what else shares the title row (e.g. shape_exchange_list.js's
+            // "Rates" button next to it).
             > .closeButton {
+                position: absolute;
+                // Close to the true corner - dialogInner clips overflow, so
+                // this can't go negative without getting cut off. The
+                // separation from the title row (e.g. shape_exchange_list.js's
+                // "Rates" button) comes from dialogInner's own extra top
+                // padding below instead.
+                top: 0.7rem;
+                right: 0.7rem;
                 opacity: 0.7;
                 width: 2rem;
                 height: 2rem;

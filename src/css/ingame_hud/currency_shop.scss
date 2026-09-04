@@ -1,0 +1,223 @@
+@use "../mixins" as *;
+@use "../ui_resource" as *;
+@use "../variables" as *;
+
+@use "sass:color";
+
+#ingame_HUD_CurrencyShop {
+    .content {
+        padding-right: 1rem;
+        display: flex;
+        flex-direction: column;
+        width: 50rem;
+
+        .currencyBalance {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+            padding: 0.8rem 1.2rem;
+            margin-bottom: 1rem;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            .icon canvas {
+                width: 3.5rem;
+                height: 3.5rem;
+                display: block;
+            }
+
+            .amount {
+                @include PlainText;
+                font-weight: bold;
+                font-size: 1.4rem;
+
+                @include DarkThemeOverride {
+                    color: #fff;
+                }
+            }
+
+            // Wraps the price (shown only until Exchange is bought - see
+            // hub_goals.js's reward_shop_exchange) and the button together,
+            // so the pair keeps moving as one unit at the row's right edge
+            // regardless of whether the price is visible.
+            .exchangeAction {
+                margin-left: auto;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+
+                .price {
+                    @include Heading;
+                    color: $colorGreenBright;
+                    font-weight: bold;
+
+                    &.hidden {
+                        display: none;
+                    }
+                }
+
+                .exchangeButton {
+                    @include ButtonText;
+                    padding: 0.3rem 1rem;
+                    background-color: $colorGreenBright;
+                    color: #fff;
+                    text-transform: none;
+                }
+            }
+        }
+
+        .dailyBonus {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1rem;
+            align-items: center;
+            grid-row-gap: 0.2rem;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            .title {
+                grid-column: 1 / 2;
+                @include PlainText;
+                font-weight: bold;
+
+                @include DarkThemeOverride {
+                    color: #fff;
+                }
+            }
+
+            .description {
+                grid-column: 1 / 2;
+                @include PlainText;
+                color: #aaa;
+            }
+
+            button.buy {
+                grid-column: 2 / 3;
+                grid-row: 1 / 3;
+                background-color: $colorGreenBright;
+                color: #fff;
+                transition: all 0.2s ease-in-out;
+                transition-property: background-color, opacity;
+
+                &:not(.buyable) {
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
+                    cursor: default;
+                    pointer-events: none;
+                    opacity: 0.5;
+                }
+
+                &.buyable {
+                    @include InlineAnimation(1s ease-in-out infinite) {
+                        50% {
+                            background-color: color.adjust($colorGreenBright, $lightness: 10%, $space: hsl);
+                            transform: scale(1.02);
+                        }
+                    }
+                }
+            }
+        }
+
+        .shopItem {
+            display: grid;
+            // 3 columns: text, price, button - each in its own column so
+            // price and button sit side by side (price right before the
+            // button, column-gap between them) and can never overlap
+            // regardless of description length.
+            grid-template-columns: 1fr auto auto;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+            margin-bottom: 0.4rem;
+            padding: 0.8rem 1rem;
+            align-items: center;
+            grid-row-gap: 0.2rem;
+            column-gap: 1rem;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            .title {
+                grid-column: 1 / 2;
+                grid-row: 1;
+                @include PlainText;
+                font-weight: bold;
+
+                @include DarkThemeOverride {
+                    color: #fff;
+                }
+            }
+
+            .description {
+                grid-column: 1 / 2;
+                grid-row: 2;
+                @include PlainText;
+                color: #aaa;
+            }
+
+            .price {
+                grid-column: 2 / 3;
+                grid-row: 1 / 3;
+                justify-self: end;
+                @include Heading;
+                color: $colorGreenBright;
+                font-weight: bold;
+            }
+
+            button.buy {
+                grid-column: 3 / 4;
+                grid-row: 1 / 3;
+                justify-self: center;
+                background-color: $colorGreenBright;
+                color: #fff;
+                transition: all 0.2s ease-in-out;
+                transition-property: background-color, opacity;
+
+                &:not(.buyable) {
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
+                    cursor: default;
+                    pointer-events: none;
+                    opacity: 0.3;
+                }
+
+                &.buyable {
+                    @include InlineAnimation(1s ease-in-out infinite) {
+                        50% {
+                            background-color: color.adjust($colorGreenBright, $lightness: 10%, $space: hsl);
+                            transform: scale(1.02);
+                        }
+                    }
+                }
+            }
+
+            &.completed {
+                button.buy {
+                    display: none;
+                }
+                .price {
+                    color: #aaa;
+                }
+            }
+        }
+
+    }
+}
+
+html.is-mobile #ingame_HUD_CurrencyShop {
+    // Same rationale as shop.scss's mobile override - the desktop layout is
+    // a fixed-width wide grid that doesn't fit a phone screen.
+    .content {
+        width: 100%;
+        max-width: 100%;
+        padding-right: 0;
+        box-sizing: border-box;
+    }
+}

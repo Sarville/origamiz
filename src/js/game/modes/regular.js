@@ -8,6 +8,7 @@ import { MOD_SIGNALS } from "../../mods/mod_signals";
 import { enumGameModeIds, enumGameModeTypes, GameMode } from "../game_mode";
 import { HUDAchievementTracker } from "../hud/parts/achievement_tracker";
 import { HUDConstantSignalEdit } from "../hud/parts/constant_signal_edit";
+import { HUDCurrencyShop } from "../hud/parts/currency_shop";
 import { HUDGameMenu } from "../hud/parts/game_menu";
 import { HUDInteractiveTutorial } from "../hud/parts/interactive_tutorial";
 import { HUDKeybindingOverlay } from "../hud/parts/keybinding_overlay";
@@ -19,6 +20,9 @@ import { HUDMobileControls } from "../hud/parts/mobile_controls";
 import { HUDNotifications } from "../hud/parts/notifications";
 import { HUDPinnedShapes } from "../hud/parts/pinned_shapes";
 import { HUDScreenshotExporter } from "../hud/parts/screenshot_exporter";
+import { HUDShapeExchangeList } from "../hud/parts/shape_exchange_list";
+import { HUDShapeExchangeModal } from "../hud/parts/shape_exchange_modal";
+import { HUDShapeExchangeRates } from "../hud/parts/shape_exchange_rates";
 import { HUDShapeViewer } from "../hud/parts/shape_viewer";
 import { HUDShop } from "../hud/parts/shop";
 import { HUDStatistics } from "../hud/parts/statistics";
@@ -58,6 +62,11 @@ import { finalGameShape, REGULAR_MODE_LEVELS } from "./levels";
  *   reward: enumHubGoalRewards,
  *   required: Array<UpgradeRequirement>
  * }} ResearchDefinition */
+
+/** @typedef {{
+ *   reward: enumHubGoalRewards,
+ *   price: number
+ * }} ShopItemDefinition */
 
 export const rocketShape = "CbCuCbCu:Sr------:--CrSrCr:CwCwCwCw";
 const preparementShape = "CpRpCp--:SwSwSwSw";
@@ -419,6 +428,57 @@ function generateResearch() {
     return research;
 }
 
+// The currency shape itself - doesn't tie into any level, purely a Shop
+// concept: deliver it to the Hub like any other requested shape (the
+// existing storedShapes bookkeeping already counts it, see hub_goals.js)
+// or earn it from achievements/ads.
+const currencyShapeCode = "CgCgCgCg:RwCu--Wu:----Rw--";
+
+let shopItemsCache = null;
+
+/**
+ * Generates the one-off Shop purchases (currency-priced, not shape-priced
+ * like research) - unlockable automation behaviors that are on by default
+ * in a build with no monetization, off by default here until bought.
+ * @returns {Object<string, ShopItemDefinition>}
+ */
+function generateShopItems() {
+    if (shopItemsCache) {
+        return shopItemsCache;
+    }
+
+    shopItemsCache = {
+        autoTunnel: {
+            reward: enumHubGoalRewards.reward_shop_auto_tunnel,
+            price: 8000,
+        },
+        longRoute: {
+            reward: enumHubGoalRewards.reward_shop_long_route,
+            price: 6000,
+        },
+        overviewBuilding: {
+            reward: enumHubGoalRewards.reward_shop_overview_building,
+            price: 2000,
+        },
+        autoMerger: {
+            reward: enumHubGoalRewards.reward_shop_auto_merger,
+            price: 10000,
+        },
+        autoSplitter: {
+            reward: enumHubGoalRewards.reward_shop_auto_splitter,
+            price: 10000,
+        },
+        // Not rendered as a regular .shopItem card - currency_shop.js skips
+        // it there and shows its price/purchase next to the "Exchange"
+        // button and inside shape_exchange_list.js instead.
+        exchange: {
+            reward: enumHubGoalRewards.reward_shop_exchange,
+            price: 5000,
+        },
+    };
+    return shopItemsCache;
+}
+
 export class RegularGameMode extends GameMode {
     static getId() {
         return enumGameModeIds.regular;
@@ -437,6 +497,10 @@ export class RegularGameMode extends GameMode {
             unlockNotification: HUDUnlockNotification,
             massSelector: HUDMassSelector,
             shop: HUDShop,
+            currencyShop: HUDCurrencyShop,
+            shapeExchangeList: HUDShapeExchangeList,
+            shapeExchangeModal: HUDShapeExchangeModal,
+            shapeExchangeRates: HUDShapeExchangeRates,
             statistics: HUDStatistics,
             waypoints: HUDWaypoints,
             wireInfo: HUDWireInfo,
@@ -488,6 +552,19 @@ export class RegularGameMode extends GameMode {
      */
     getResearch() {
         return generateResearch();
+    }
+
+    /**
+     * Should return all available Shop purchases
+     * @returns {Object<string, ShopItemDefinition>}
+     */
+    getShopItems() {
+        return generateShopItems();
+    }
+
+    /** @returns {string} */
+    getCurrencyShapeCode() {
+        return currencyShapeCode;
     }
 
     /**

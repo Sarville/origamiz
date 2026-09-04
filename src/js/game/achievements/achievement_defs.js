@@ -19,6 +19,7 @@ export const ACHIEVEMENTS = [
     { id: "play10h" },
     { id: "play1h" },
     { id: "blueprint1m" },
+    { id: "richBuratino" },
     { id: "play20h" },
     { id: "throughputBp25" },
     { id: "throughputBp50" },

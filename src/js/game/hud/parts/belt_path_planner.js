@@ -1,14 +1,27 @@
 import { globalConfig } from "../../../core/config";
 import { gMetaBuildingRegistry } from "../../../core/global_registries";
 import { enumAngleToDirection, enumDirectionToAngle, enumDirectionToVector, Vector } from "../../../core/vector";
+import { MetaBalancerBuilding, enumBalancerVariants } from "../../buildings/balancer";
 import { MetaUndergroundBeltBuilding, enumUndergroundBeltVariants } from "../../buildings/underground_belt";
 import { enumUndergroundBeltMode } from "../../components/underground_belt";
 import { defaultBuildingVariant } from "../../meta_building";
 import { enumHubGoalRewards } from "../../tutorial_goals";
 
 /**
- * @typedef {{ tile: Vector, rotation: number, rotationVariant: number, isTunnel?: boolean, tunnelVariant?: string }} PathEntry
+ * @typedef {{ tile: Vector, rotation: number, rotationVariant: number, isTunnel?: boolean, tunnelVariant?: string, isMerger?: boolean, mergerVariant?: string, isSplitter?: boolean, splitterVariant?: string }} PathEntry
  */
+
+// Shop auto-merger/auto-splitter: a belt run must have at least this many
+// more straight tiles continuing past the join tile (the drop tile for a
+// merger, the start tile for a splitter) for it to count as a real trunk
+// worth forking, not just the run's own tail - see pickAutoMergerVariant's
+// and pickAutoSplitterVariant's docs.
+const MIN_AUTO_BELT_TRUNK_TILES = 2;
+
+// Shop long-distance routing (reward_shop_long_route): the normal bend cap
+// for the belt auto-router, and the raised one once purchased.
+const MAX_BENDS_DEFAULT = 6;
+const MAX_BENDS_LONG_ROUTE = 20;
 
 /**
  * Item 9's belt auto-tunnel/routing engine: given a `from`/`to` pair, finds a
@@ -46,6 +59,10 @@ export class BeltPathPlanner {
 
     get tunnelMetaBuilding() {
         return gMetaBuildingRegistry.findByClass(MetaUndergroundBeltBuilding);
+    }
+
+    get balancerMetaBuilding() {
+        return gMetaBuildingRegistry.findByClass(MetaBalancerBuilding);
     }
 
     /**
@@ -385,6 +402,9 @@ export class BeltPathPlanner {
         if (!this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_tunnel)) {
             return null;
         }
+        if (!this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_auto_tunnel)) {
+            return null;
+        }
         if (distance <= globalConfig.undergroundBeltMaxTilesByTier[0]) {
             return defaultBuildingVariant;
         }
@@ -451,7 +471,9 @@ export class BeltPathPlanner {
             ];
         }
 
-        const MAX_BENDS = 6;
+        const MAX_BENDS = this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_long_route)
+            ? MAX_BENDS_LONG_ROUTE
+            : MAX_BENDS_DEFAULT;
         const MAX_VISITED = 6000;
         const maxTunnelRange =
             globalConfig.undergroundBeltMaxTilesByTier[globalConfig.undergroundBeltMaxTilesByTier.length - 1];
@@ -797,7 +819,27 @@ export class BeltPathPlanner {
                 });
             } else if (!node.viaTunnel) {
                 const incoming = idx === 0 ? startIncomingDirection : node.dir;
-                entries.push(this.curvedEntry(node.tile, next.dir, incoming));
+
+                const splitterVariant =
+                    idx === 0
+                        ? this.pickAutoSplitterVariant(from, startBelt, startIncomingDirection, next.dir)
+                        : null;
+                if (splitterVariant) {
+                    // Starting a new drag mid-trunk of an existing straight
+                    // belt run with a genuinely different outgoing direction
+                    // - replace the plain curve with a splitter so the
+                    // trunk's own downstream feed isn't severed (mirror of
+                    // pickAutoMergerVariant, see its doc).
+                    entries.push({
+                        tile: node.tile,
+                        rotation: startIncomingDirection,
+                        rotationVariant: 0,
+                        isSplitter: true,
+                        splitterVariant,
+                    });
+                } else {
+                    entries.push(this.curvedEntry(node.tile, next.dir, incoming));
+                }
             }
             // node.viaTunnel && !next.viaTunnel: node.tile is itself a
             // receiver the previous iteration already pushed above - skip
@@ -814,13 +856,153 @@ export class BeltPathPlanner {
         const lastNode = chain[chain.length - 1];
         if (!lastNode.viaTunnel) {
             const lastIncoming = lastNode.dir;
-            const outgoingConflicts = endOutgoingDirection === (lastIncoming + 180) % 360;
-            const lastOutgoing =
-                endOutgoingDirection !== undefined && !outgoingConflicts ? endOutgoingDirection : lastNode.dir;
-            entries.push(this.curvedEntry(lastNode.tile, lastOutgoing, lastIncoming));
+
+            const mergerVariant = this.pickAutoMergerVariant(to, endBelt, endOutgoingDirection, lastIncoming);
+            if (mergerVariant) {
+                // Landing mid-trunk of an existing straight belt run with a
+                // genuinely different incoming direction - replace the plain
+                // curve with a merger so the trunk's own upstream feed isn't
+                // severed (see pickAutoMergerVariant's doc).
+                entries.push({
+                    tile: lastNode.tile,
+                    rotation: endOutgoingDirection,
+                    rotationVariant: 0,
+                    isMerger: true,
+                    mergerVariant,
+                });
+            } else {
+                const outgoingConflicts = endOutgoingDirection === (lastIncoming + 180) % 360;
+                const lastOutgoing =
+                    endOutgoingDirection !== undefined && !outgoingConflicts ? endOutgoingDirection : lastNode.dir;
+                entries.push(this.curvedEntry(lastNode.tile, lastOutgoing, lastIncoming));
+            }
         }
 
         return entries;
+    }
+
+    /**
+     * Shop auto-merger (reward_shop_auto_merger): whether landing on `to`
+     * should insert a merger instead of curving a plain belt into it.
+     *
+     * Only when: the purchase is unlocked; `to` already has a belt; the new
+     * path's incoming direction genuinely differs from the trunk's own
+     * (equal means the same-direction "reuse" case, already handled earlier
+     * by isTileBlockedForBelt waving it through as harmless overlap); `to`
+     * is a *straight* tile (rotationVariant 0) - only then does its
+     * rotation unambiguously give both the trunk's own incoming direction
+     * and the eject direction to preserve, a curved tile's accept/eject
+     * sides don't line up the same way, so those are left to the existing
+     * curve-in behavior; and `to` sits mid-trunk, not at the run's own tail
+     * - see hasStraightBeltRunAhead.
+     * @param {Vector} to
+     * @param {*} endBeltComponent
+     * @param {number=} endOutgoingDirection
+     * @param {number} newIncoming
+     * @returns {string|null} the balancer variant to place, or null
+     */
+    pickAutoMergerVariant(to, endBeltComponent, endOutgoingDirection, newIncoming) {
+        if (!endBeltComponent || endOutgoingDirection === undefined || newIncoming === endOutgoingDirection) {
+            return null;
+        }
+        if (!this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_auto_merger)) {
+            return null;
+        }
+        const staticComp = this.root.map.getLayerContentXY(to.x, to.y, "regular").components.StaticMapEntity;
+        if (staticComp.getRotationVariant() !== 0) {
+            return null;
+        }
+        if (!this.hasStraightBeltRunAhead(to, endOutgoingDirection, MIN_AUTO_BELT_TRUNK_TILES)) {
+            return null;
+        }
+        if (newIncoming === (endOutgoingDirection + 270) % 360) {
+            return enumBalancerVariants.merger;
+        }
+        if (newIncoming === (endOutgoingDirection + 90) % 360) {
+            return enumBalancerVariants.mergerInverse;
+        }
+        // Anything else (a head-on 180deg approach) has no matching
+        // acceptor slot on a merger - leave it to the existing behavior.
+        return null;
+    }
+
+    /**
+     * Shop auto-splitter (reward_shop_auto_splitter): the mirror image of
+     * pickAutoMergerVariant, applied at the *start* of a drag instead of the
+     * end - whether starting a new belt from `from` should insert a
+     * splitter instead of curving a plain belt out of it.
+     *
+     * Same conditions as the merger, mirrored: `from` already has a
+     * *straight* belt (rotationVariant 0) that keeps going for at least
+     * MIN_AUTO_BELT_TRUNK_TILES more tiles past `from` in its own direction
+     * (not the run's own tail), and the new drag's outgoing direction
+     * genuinely differs from that trunk direction (equal means the
+     * same-direction "extend the belt further" case - completely normal,
+     * not a fork).
+     *
+     * The left/right test is the mirror of the merger's: there, an
+     * *incoming* direction of (rotation+270)%360 means "entered from the
+     * right" (curvedEntry's own convention) because direction-of-travel
+     * points away from the entry side. Here it's an *outgoing* direction,
+     * which points straight at the exit side instead, so the sign is
+     * flipped: (rotation+90)%360 is the right-hand branch.
+     * @param {Vector} from
+     * @param {*} startBeltComponent
+     * @param {number=} startIncomingDirection
+     * @param {number} newOutgoing
+     * @returns {string|null} the balancer variant to place, or null
+     */
+    pickAutoSplitterVariant(from, startBeltComponent, startIncomingDirection, newOutgoing) {
+        if (
+            !startBeltComponent ||
+            startIncomingDirection === undefined ||
+            newOutgoing === startIncomingDirection
+        ) {
+            return null;
+        }
+        if (!this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_auto_splitter)) {
+            return null;
+        }
+        const staticComp = this.root.map.getLayerContentXY(from.x, from.y, "regular").components.StaticMapEntity;
+        if (staticComp.getRotationVariant() !== 0) {
+            return null;
+        }
+        if (!this.hasStraightBeltRunAhead(from, startIncomingDirection, MIN_AUTO_BELT_TRUNK_TILES)) {
+            return null;
+        }
+        if (newOutgoing === (startIncomingDirection + 90) % 360) {
+            return enumBalancerVariants.splitter;
+        }
+        if (newOutgoing === (startIncomingDirection + 270) % 360) {
+            return enumBalancerVariants.splitterInverse;
+        }
+        // Anything else (a head-on 180deg branch) has no matching ejector
+        // slot on a splitter - leave it to the existing behavior.
+        return null;
+    }
+
+    /**
+     * Whether at least `count` more belt tiles continue straight past
+     * `tile` in `direction` - see pickAutoMergerVariant's doc.
+     * @param {Vector} tile
+     * @param {number} direction
+     * @param {number} count
+     */
+    hasStraightBeltRunAhead(tile, direction, count) {
+        let cursor = tile;
+        const step = enumDirectionToVector[enumAngleToDirection[direction]];
+        for (let i = 0; i < count; ++i) {
+            cursor = cursor.add(step);
+            const contents = this.root.map.getLayerContentXY(cursor.x, cursor.y, "regular");
+            if (!contents || !contents.components.Belt) {
+                return false;
+            }
+            const staticComp = contents.components.StaticMapEntity;
+            if (staticComp.getRotationVariant() !== 0 || staticComp.rotation !== direction) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -986,8 +1168,18 @@ export class BeltPathPlanner {
                             rotation: entry.rotation,
                             originalRotation: entry.rotation,
                             rotationVariant: entry.rotationVariant,
-                            variant: entry.isTunnel ? entry.tunnelVariant : this.placerLogic.currentVariant.get(),
-                            building: entry.isTunnel ? this.tunnelMetaBuilding : metaBuilding,
+                            variant: entry.isTunnel
+                                ? entry.tunnelVariant
+                                : entry.isMerger
+                                ? entry.mergerVariant
+                                : entry.isSplitter
+                                ? entry.splitterVariant
+                                : this.placerLogic.currentVariant.get(),
+                            building: entry.isTunnel
+                                ? this.tunnelMetaBuilding
+                                : entry.isMerger || entry.isSplitter
+                                ? this.balancerMetaBuilding
+                                : metaBuilding,
                         })
                     ) {
                         anythingPlaced = true;

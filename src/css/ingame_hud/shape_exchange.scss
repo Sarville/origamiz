@@ -1,0 +1,478 @@
+@use "../mixins" as *;
+@use "../variables" as *;
+
+@use "sass:color";
+
+// The "Exchange" list - every shape currently stored, Buy/Sell per row.
+#ingame_HUD_ShapeExchangeList {
+    // "Курс" header button, between the title text and the close X - same
+    // 3rd-column override as currency_shop.scss used to need before its own
+    // exchangeButton moved into the balance row. Neutral cream, not
+    // $colorGreenBright/$colorOrangeBright, so it never gets mistaken for a
+    // Buy/Sell action - same treatment as shape_exchange_modal.js's Cancel
+    // button below, and the same font/padding as the row Buy/Sell buttons.
+    .title {
+        grid-template-columns: 1fr auto auto;
+
+        .ratesButton {
+            @include ButtonText;
+            padding: 0.4rem 1.2rem;
+            background-color: color.adjust($mainBgColor, $lightness: -14%, $space: hsl);
+            color: $themeColor;
+            text-transform: none;
+        }
+    }
+
+    // !important - some of the elements toggling this (.limitBar,
+    // .lockedPanel) already set their own `display` in a rule that comes
+    // later in the cascade, which would otherwise win over this one.
+    .hidden {
+        display: none !important;
+    }
+
+    .content {
+        width: 40rem;
+        padding-right: 1rem;
+
+        // Shown next to the title once Exchange is bought - the daily
+        // operation count plus a repeatable "raise the limit" purchase
+        // (see hub_goals.js's exchangeLimitUpgrades, capped there).
+        .limitBar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+            padding: 0.6rem 1rem;
+            margin-bottom: 0.6rem;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            .limitText {
+                @include PlainText;
+                font-weight: bold;
+
+                @include DarkThemeOverride {
+                    color: #fff;
+                }
+            }
+
+            .raiseLimit {
+                @include ButtonText;
+                padding: 0.4rem 1.2rem;
+                background-color: $colorGreenBright;
+                color: #fff;
+                text-transform: none;
+                transition: all 0.2s ease-in-out;
+                transition-property: background-color, opacity;
+
+                &:not(.buyable) {
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
+                    cursor: default;
+                    pointer-events: none;
+                    opacity: 0.5;
+                }
+
+                &.buyable {
+                    @include InlineAnimation(1s ease-in-out infinite) {
+                        50% {
+                            background-color: color.adjust($colorGreenBright, $lightness: 10%, $space: hsl);
+                            transform: scale(1.02);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Shown instead of everything below until Exchange itself is bought.
+        .lockedPanel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.8rem;
+            padding: 2rem 1rem;
+
+            .description {
+                @include PlainText;
+                color: #aaa;
+                max-width: 28rem;
+            }
+
+            .price {
+                @include SuperHeading;
+                color: $colorGreenBright;
+                font-weight: bold;
+            }
+
+            button.buy {
+                @include ButtonText;
+                padding: 0.5rem 2rem;
+                background-color: $colorGreenBright;
+                color: #fff;
+                text-transform: none;
+                transition: all 0.2s ease-in-out;
+                transition-property: background-color, opacity;
+
+                &:not(.buyable) {
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
+                    cursor: default;
+                    pointer-events: none;
+                    opacity: 0.5;
+                }
+
+                &.buyable {
+                    @include InlineAnimation(1s ease-in-out infinite) {
+                        50% {
+                            background-color: color.adjust($colorGreenBright, $lightness: 10%, $space: hsl);
+                            transform: scale(1.02);
+                        }
+                    }
+                }
+            }
+        }
+
+        .empty {
+            @include PlainText;
+            color: #aaa;
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .rows {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            .icon canvas {
+                width: 3rem;
+                height: 3rem;
+                display: block;
+            }
+
+            .amount {
+                flex: 1;
+                @include Text;
+                font-weight: bold;
+
+                @include DarkThemeOverride {
+                    color: #fff;
+                }
+            }
+
+            button.buy,
+            button.sell {
+                @include ButtonText;
+                padding: 0.4rem 1.2rem;
+                color: #fff;
+                text-transform: none;
+            }
+
+            button.buy {
+                background-color: $colorGreenBright;
+            }
+
+            button.sell {
+                background-color: $colorOrangeBright;
+            }
+        }
+    }
+}
+
+// The small buy/sell amount-entry modal, opened from one row above.
+#ingame_HUD_ShapeExchangeModal {
+    .content {
+        width: 26rem;
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+
+            .icon canvas {
+                width: 4.5rem;
+                height: 4.5rem;
+                display: block;
+            }
+
+            .headerText {
+                display: flex;
+                flex-direction: column;
+                gap: 0.3rem;
+
+                .owned {
+                    @include Text;
+                    font-weight: bold;
+
+                    @include DarkThemeOverride {
+                        color: #fff;
+                    }
+                }
+
+                .rate {
+                    @include PlainText;
+                    color: #aaa;
+                }
+            }
+        }
+
+        // Reactive - only shown while the typed amount isn't a valid
+        // multiple of the step, with a one-click fix (see shape_exchange_modal.js's refresh()/roundAmount()).
+        .warning {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.8rem;
+            background: rgba($colorRedBright, 0.12);
+            border-radius: $globalBorderRadius;
+            padding: 0.5rem 0.6rem 0.5rem 0.8rem;
+            margin-top: 0.6rem;
+            margin-bottom: 1rem;
+
+            &.hidden {
+                display: none;
+            }
+
+            .warningText {
+                @include SuperSmallText;
+                color: $colorRedBright;
+            }
+
+            .round {
+                @include SuperSmallText;
+                padding: 0.3rem 0.8rem;
+                background-color: $colorRedBright;
+                color: #fff;
+                flex: 0 0 auto;
+            }
+        }
+
+        .amountRow {
+            display: flex;
+            align-items: stretch;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+            // Explicit shared height (box-sizing: border-box everywhere below)
+            // instead of relying on flex stretch to match the input's
+            // content-derived height - stretch alone let the stepper's two
+            // buttons (their own content height + gap) round up taller than
+            // the input and poke out past its top/bottom edge.
+            height: 2.8rem;
+
+            .amountInput {
+                flex: 1;
+                // A flex item's default min-height is auto (its content
+                // size), which can win over an explicit height/height:100%
+                // and push the item taller than the row - exactly what let
+                // the Heading-sized text overflow past the row's declared
+                // 2.8rem at some UI scales. min-height: 0 forces the
+                // explicit height to actually be respected.
+                min-height: 0;
+                // dialogs.scss's generic `.content input` rule (for
+                // rename/marker-style dialogs with a label above the field)
+                // sets margin-top: 1.2rem - that selector doesn't carry an
+                // ID so it loses every OTHER property to this rule already,
+                // but margin-top was never restated here, so it was the one
+                // thing still leaking through and throwing this off-center
+                // from the stepper/MAX button next to it.
+                margin-top: 0;
+                box-sizing: border-box;
+                height: 100%;
+                @include Heading;
+                text-align: center;
+                padding: 0 0.6rem;
+                border-radius: $globalBorderRadius;
+                border: none;
+                background: #fff;
+            }
+
+            .stepper {
+                display: flex;
+                flex-direction: column;
+                gap: 0.15rem;
+                flex: 0 0 auto;
+                min-height: 0;
+                height: 100%;
+
+                button {
+                    box-sizing: border-box;
+                    width: 2.6rem;
+                    flex: 1;
+                    min-height: 0;
+                    padding: 0;
+                    margin: 0;
+                    line-height: 1;
+                    font-size: 1rem;
+                    background: color.adjust($mainBgColor, $lightness: -8%, $space: hsl);
+                    color: $themeColor;
+                    border-radius: $globalBorderRadius;
+                    cursor: pointer;
+
+                    &:hover {
+                        background: color.adjust($mainBgColor, $lightness: -14%, $space: hsl);
+                    }
+
+                    @include DarkThemeOverride {
+                        background: color.adjust($darkModeControlsBackground, $lightness: 10%, $space: hsl);
+                        color: #fff;
+
+                        &:hover {
+                            background: color.adjust($darkModeControlsBackground, $lightness: 16%, $space: hsl);
+                        }
+                    }
+                }
+            }
+
+            .maxButton {
+                box-sizing: border-box;
+                min-height: 0;
+                height: 100%;
+                flex: 0 0 auto;
+                @include ButtonText;
+                padding: 0 0.9rem;
+                background-color: color.adjust($mainBgColor, $lightness: -14%, $space: hsl);
+                color: $themeColor;
+                text-transform: none;
+
+                @include DarkThemeOverride {
+                    background: color.adjust($darkModeControlsBackground, $lightness: 10%, $space: hsl);
+                    color: #fff;
+                }
+            }
+        }
+
+        .priceRow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.8rem;
+            margin-bottom: 1.2rem;
+
+            .price {
+                @include SuperHeading;
+                font-weight: bold;
+                color: $colorGreenBright;
+                transition: color 0.15s ease-in-out;
+
+                &.invalid {
+                    color: $colorRedBright;
+                }
+            }
+
+            .priceIcon canvas {
+                width: 3rem;
+                height: 3rem;
+                display: block;
+            }
+        }
+
+        .buttonsRow {
+            display: flex;
+            gap: 0.8rem;
+
+            button {
+                flex: 1;
+                color: #fff;
+                transition: all 0.2s ease-in-out;
+                transition-property: background-color, opacity;
+            }
+
+            .confirm {
+                &.buy {
+                    background-color: $colorGreenBright;
+                }
+
+                &.sell {
+                    background-color: $colorOrangeBright;
+                }
+
+                &:not(.buyable) {
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
+                    cursor: default;
+                    pointer-events: none;
+                    opacity: 0.3;
+                }
+            }
+
+            // Explicit neutral, not the default .styledButton color - that
+            // color is actually orange in this theme (see variables.scss's
+            // $colorBlueBright), which would clash with .confirm.sell.
+            .cancel {
+                background-color: color.adjust($mainBgColor, $lightness: -14%, $space: hsl);
+                color: $themeColor;
+            }
+        }
+    }
+}
+
+// The static rate reference table, opened from shape_exchange_list.js's
+// "Курс" button.
+#ingame_HUD_ShapeExchangeRates {
+    .content {
+        width: 34rem;
+        padding-right: 1rem;
+
+        .rows {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background: color.adjust($mainBgColor, $lightness: 8%, $space: hsl);
+            border-radius: $globalBorderRadius;
+
+            @include DarkThemeOverride {
+                background: $darkModeControlsBackground;
+            }
+
+            .icon canvas {
+                width: 3rem;
+                height: 3rem;
+                display: block;
+            }
+
+            .info {
+                display: flex;
+                flex-direction: column;
+                gap: 0.1rem;
+
+                .label {
+                    @include PlainText;
+                    font-weight: bold;
+
+                    @include DarkThemeOverride {
+                        color: #fff;
+                    }
+                }
+
+                .buyRate,
+                .sellRate {
+                    @include SuperSmallText;
+                    color: #aaa;
+                }
+            }
+        }
+    }
+}

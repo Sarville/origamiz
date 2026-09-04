@@ -20,6 +20,7 @@ export const KEYMAPPINGS = {
 
     ingame: {
         menuOpenShop: { keyCode: keyToKeyCode("F") },
+        menuOpenCurrencyShop: { keyCode: keyToKeyCode("H") },
         menuOpenStats: { keyCode: keyToKeyCode("G") },
         menuClose: { keyCode: keyToKeyCode("Q") },
 

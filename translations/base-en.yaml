@@ -80,6 +80,7 @@ mainMenu:
     continue: Continue
     newGame: New Game
     importSavegame: Import
+    importSavegameHint: You can import a savegame from your device
     helpTranslate: Help translate!
     noActiveSavegames: No active savegames found - Click play to start a new game!
 
@@ -332,6 +333,57 @@ ingame:
         researchLocked: Locked (Research Tier <tier> required)
         researchCompleted: Completed
 
+    # The "Shop" window (currency purchases, separate from Upgrades above)
+    currencyShop:
+        title: Shop
+        balance: You have <amount> currency shapes
+
+        buttonBuy: Buy
+        completed: Purchased
+        buttonExchange: Exchange
+        buttonExchangeLimit: "Exchange (<amount>)"
+
+        dailyBonus:
+            title: Daily Bonus
+            description: Come back once a day for free currency.
+            buttonClaim: Claim +<amount>
+            claimed: Come back tomorrow!
+
+        # The "Exchange" window - lists every shape currently stored, each
+        # with a Buy/Sell button opening exchangeModal below.
+        exchangeList:
+            title: Exchange
+            empty: You don't have any shapes stored yet.
+            buttonBuy: Buy
+            buttonSell: Sell
+            buttonRates: Rates
+            lockedDescription: Trade currency for shapes and shapes for currency at a fixed rate.
+            buttonUnlock: Buy
+            limitText: "Daily limit: <amount>"
+            buttonRaiseLimit: "Raise limit (<price>)"
+            limitExhausted: Daily exchange limit reached. Come back tomorrow!
+
+        # The static rate reference table, opened from exchangeList.
+        exchangeRates:
+            title: Exchange Rates
+            layers: "Layers: <layers>"
+            colored: (painted)
+            buyRate: Buy <currency> currency/shape
+            sellRate: Sell <shapes> shapes/currency
+
+        # The small buy/sell amount-entry modal opened from exchangeList.
+        exchangeModal:
+            titleBuy: Buy Shapes
+            titleSell: Sell Shapes
+            owned: "In stock: <amount>"
+            rate: Rate <shapes> shapes → <currency> currency
+            stepWarning: Amount must be a multiple of <step>
+            buttonRound: Round
+            buttonMax: MAX
+            buttonConfirmBuy: Buy
+            buttonConfirmSell: Sell
+            buttonCancel: Cancel
+
     # The "Statistics" window
     statistics:
         title: Statistics
@@ -467,6 +519,24 @@ shopUpgrades:
     painting:
         name: Mixing & Painting
         description: Speed x<currentMult> → x<newMult>
+
+# The Shop's currency-priced items (src/js/game/hud/parts/currency_shop.js)
+shopItems:
+    autoTunnel:
+        name: Auto-Tunneling
+        description: Dragging a belt across a gap automatically tunnels under it.
+    overviewBuilding:
+        name: Overview Building
+        description: Place buildings while the map is zoomed out to overview mode.
+    autoMerger:
+        name: Auto-Merging
+        description: Dragging a belt into an existing belt run automatically inserts a merger.
+    autoSplitter:
+        name: Auto-Splitting
+        description: Starting a new belt from an existing belt run automatically inserts a splitter.
+    longRoute:
+        name: Long-Distance Routing
+        description: Belts dragged across obstacles can bend around much longer detours.
 
 # Buildings and their name / description
 buildings:
@@ -767,6 +837,30 @@ storyRewards:
             <strong>Research Tier II</strong> is now available - more building variants can be researched in the
             Upgrades window!
 
+    reward_shop_auto_tunnel:
+        title: Auto-Tunneling
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt across a gap now automatically tunnels under it!
+
+    reward_shop_overview_building:
+        title: Overview Building
+        desc: Purchased in the <strong>Shop</strong> - you can now place buildings while the map is zoomed out to overview mode!
+
+    reward_shop_auto_merger:
+        title: Auto-Merging
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt into an existing belt run now automatically inserts a merger!
+
+    reward_shop_auto_splitter:
+        title: Auto-Splitting
+        desc: Purchased in the <strong>Shop</strong> - starting a new belt from an existing belt run now automatically inserts a splitter!
+
+    reward_shop_long_route:
+        title: Long-Distance Routing
+        desc: Purchased in the <strong>Shop</strong> - belts dragged across obstacles can now bend around much longer detours!
+
+    reward_shop_exchange:
+        title: Exchange
+        desc: Purchased in the <strong>Shop</strong> - you can now trade shapes for currency and currency for shapes!
+
     reward_blueprints:
         title: Blueprints
         desc: >-
@@ -926,8 +1020,7 @@ settings:
 
         language:
             title: Language
-            description: >-
-                Change the language. All translations are user-contributed and might be incomplete!
+            description: Choose a language.
 
         enableColorBlindHelper:
             title: Color Blind Mode
@@ -1102,6 +1195,7 @@ keybindings:
         createMarker: Create Marker
 
         menuOpenShop: Upgrades
+        menuOpenCurrencyShop: Shop
         menuOpenStats: Statistics
         menuClose: Close Menu
 
@@ -1216,6 +1310,9 @@ achievements:
         blueprint1m:
             name: I'll use it later
             description: Have 1 million blueprints stored in the hub
+        richBuratino:
+            name: Rich Buratino
+            description: Have 1 million Shop currency stored in the hub
         play20h:
             name: Addicted
             description: Play for 20 hours
