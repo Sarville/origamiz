@@ -8,9 +8,14 @@
 
 - [x] **Chunk 3 — Web build.** Добавлен вариант `web`; `npm run build-web`
       создаёт самостоятельную браузерную сборку в `build/`.
-- [ ] **Chunk 4 — Yandex Games SDK.** Интегрировать `LoadingAPI.ready()`,
-      рекламу, платежи, лидерборд и облачные сохранения. Не начинать без
-      согласованного UX для рекламы и монетизации.
+- [ ] **Chunk 4 — Yandex Games SDK.** `LoadingAPI.ready()`, реклама (rewarded
+      + interstitial + sticky-баннер), IAP `disable_ads`, облачные
+      сохранения — реализованы (`yandex_wrapper.js`, `interstitial_ads.js`,
+      `currency_shop.js`). Лидерборд ещё не тронут. Всё протестировано пока
+      только через dev-заглушку (`debug.rewardedAdsInstant`), не против
+      настоящего Yandex SDK — см.
+      [sessions/2026-09-04-1917-session.md](sessions/2026-09-04-1917-session.md)
+      для того, что именно осталось проверить перед продакшеном.
 - [ ] **Ребрендинг ассетов.** Продолжать по
       [REBRANDING_PLAN.md](REBRANDING_PLAN.md); это единственный источник
       оставшегося перечня графики, звука и текстов.
@@ -67,7 +72,11 @@
 
 ## Dev-инфраструктура
 
-- Dev-сервер: пользовательский сервис `shapez-gulp`, порт `3005`.
+- Dev-сервер: пользовательский сервис `shapez-gulp`, порт `3005`. **TBD:**
+  на 2026-09-04 `systemctl --user status shapez-gulp` отвечает "Unit could
+  not be found" — либо сервис снесли, либо запись тут устарела. Сейчас
+  сервер поднят вручную (`nohup npm run serve-web &`, см. последнюю сессию),
+  не через systemd.
 - Tailscale Serve проксирует `https://localwsl.tail404046.ts.net:8721/` на
   `http://127.0.0.1:3005`.
 - Проверить/перезапустить: `systemctl --user status shapez-gulp` /

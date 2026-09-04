@@ -1,4 +1,4 @@
-import { formatBigNumber, makeDiv } from "../../../core/utils";
+import { formatBigNumber, formatSeconds, makeDiv } from "../../../core/utils";
 import { SOUNDS } from "../../../platform/sound";
 import { T } from "../../../translations";
 import { KEYMAPPINGS, KeyActionMapper } from "../../key_action_mapper";
@@ -46,6 +46,8 @@ export class HUDCurrencyShop extends BaseHUDPart {
         this.trackClicks(this.exchangeButton, () => this.root.hud.parts.shapeExchangeList.show());
 
         this.createDailyBonusSection();
+        this.createAdRewardSection();
+        this.createRemoveAdsSection();
 
         // One-off toggle purchases - "exchange" is deliberately excluded,
         // its purchase UI lives next to the balance row / inside
@@ -89,6 +91,50 @@ export class HUDCurrencyShop extends BaseHUDPart {
         this.dailyBonusButton.classList.add("buy", "styledButton");
         container.appendChild(this.dailyBonusButton);
         this.trackClicks(this.dailyBonusButton, () => this.tryClaimDailyBonus());
+    }
+
+    /**
+     * Rewarded-ad currency claim, on a cooldown (see hub_goals.js's
+     * AD_REWARD_INTERVAL_MS) since the platform itself doesn't limit
+     * rewarded video calls. Skipped entirely on platforms without ad
+     * support (see PlatformWrapperImplBrowser.getSupportsRewardedAds).
+     */
+    createAdRewardSection() {
+        if (!this.root.app.platformWrapper.getSupportsRewardedAds()) {
+            return;
+        }
+
+        const ad = T.ingame.currencyShop.adReward;
+        const container = makeDiv(this.contentDiv, null, ["dailyBonus"]);
+        makeDiv(container, null, ["title"], ad.title);
+        makeDiv(container, null, ["description"], ad.description);
+
+        this.adRewardButton = document.createElement("button");
+        this.adRewardButton.classList.add("buy", "styledButton");
+        container.appendChild(this.adRewardButton);
+        this.trackClicks(this.adRewardButton, () => this.tryClaimAdReward());
+    }
+
+    /**
+     * Real-money ad-removal purchase (Yandex Payments, not our own
+     * currency) - gates every banner/interstitial call site in
+     * yandex_wrapper.js. Skipped entirely where the platform doesn't sell
+     * it (see PlatformWrapperImplBrowser.getSupportsAdRemovalPurchase).
+     */
+    createRemoveAdsSection() {
+        if (!this.root.app.platformWrapper.getSupportsAdRemovalPurchase()) {
+            return;
+        }
+
+        const removeAds = T.ingame.currencyShop.removeAds;
+        const container = makeDiv(this.contentDiv, null, ["dailyBonus"]);
+        makeDiv(container, null, ["title"], removeAds.title);
+        makeDiv(container, null, ["description"], removeAds.description);
+
+        this.removeAdsButton = document.createElement("button");
+        this.removeAdsButton.classList.add("buy", "styledButton");
+        container.appendChild(this.removeAdsButton);
+        this.trackClicks(this.removeAdsButton, () => this.tryPurchaseAdRemoval());
     }
 
     initialize() {
@@ -137,6 +183,25 @@ export class HUDCurrencyShop extends BaseHUDPart {
             : daily.claimed;
         this.dailyBonusButton.classList.toggle("buyable", canClaimDaily);
 
+        if (this.adRewardButton) {
+            const ad = T.ingame.currencyShop.adReward;
+            const canClaimAd = this.root.hubGoals.canClaimAdReward();
+            this.adRewardButton.innerText = canClaimAd
+                ? ad.buttonClaim.replace("<amount>", formatBigNumber(this.root.hubGoals.getAdRewardAmount()))
+                : ad.cooldown.replace(
+                      "<time>",
+                      formatSeconds(this.root.hubGoals.getAdRewardCooldownSeconds())
+                  );
+            this.adRewardButton.classList.toggle("buyable", !this.claimingAdReward && canClaimAd);
+        }
+
+        if (this.removeAdsButton) {
+            const removeAds = T.ingame.currencyShop.removeAds;
+            const purchased = this.root.app.platformWrapper.getAdsDisabled();
+            this.removeAdsButton.innerText = purchased ? removeAds.purchased : removeAds.buttonBuy;
+            this.removeAdsButton.classList.toggle("buyable", !purchased && !this.purchasingAdRemoval);
+        }
+
         const items = this.root.gameMode.getShopItems();
         for (const itemId in this.itemsToElements) {
             const handle = this.itemsToElements[itemId];
@@ -184,6 +249,38 @@ export class HUDCurrencyShop extends BaseHUDPart {
             this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
             this.renderCountsAndStatus();
         }
+    }
+
+    async tryClaimAdReward() {
+        if (this.claimingAdReward || !this.root.hubGoals.canClaimAdReward()) {
+            return;
+        }
+        this.claimingAdReward = true;
+        this.renderCountsAndStatus();
+
+        const watched = await this.root.app.platformWrapper.showRewardedAd();
+
+        this.claimingAdReward = false;
+        if (watched && this.root.hubGoals.grantAdReward()) {
+            this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
+        }
+        this.renderCountsAndStatus();
+    }
+
+    async tryPurchaseAdRemoval() {
+        if (this.purchasingAdRemoval || this.root.app.platformWrapper.getAdsDisabled()) {
+            return;
+        }
+        this.purchasingAdRemoval = true;
+        this.renderCountsAndStatus();
+
+        const purchased = await this.root.app.platformWrapper.purchaseAdRemoval();
+
+        this.purchasingAdRemoval = false;
+        if (purchased) {
+            this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
+        }
+        this.renderCountsAndStatus();
     }
 
     isBlockingOverlay() {

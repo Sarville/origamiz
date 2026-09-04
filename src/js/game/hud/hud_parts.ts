@@ -10,6 +10,7 @@ import type { HUDDebugInfo } from "./parts/debug_info.js";
 import type { HUDEntityDebugger } from "./parts/entity_debugger.js";
 import type { HUDGameMenu } from "./parts/game_menu.js";
 import type { HUDInteractiveTutorial } from "./parts/interactive_tutorial.js";
+import type { HUDInterstitialAds } from "./parts/interstitial_ads.js";
 import type { HUDKeybindingOverlay } from "./parts/keybinding_overlay.js";
 import type { HUDLayerPreview } from "./parts/layer_preview.js";
 import type { HUDLeverToggle } from "./parts/lever_toggle.js";
@@ -86,4 +87,5 @@ export interface HudParts {
     keybindingOverlay?: HUDKeybindingOverlay;
     tutorialHints?: HUDPartTutorialHints;
     interactiveTutorial?: HUDInteractiveTutorial;
+    interstitialAds?: HUDInterstitialAds;
 }

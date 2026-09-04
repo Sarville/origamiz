@@ -349,6 +349,18 @@ ingame:
             buttonClaim: Claim +<amount>
             claimed: Come back tomorrow!
 
+        adReward:
+            title: Watch Ad
+            description: Watch a short video for free currency, every couple hours.
+            buttonClaim: Watch (+<amount>)
+            cooldown: "Available in <time>"
+
+        removeAds:
+            title: Remove Ads
+            description: One-time purchase. Removes the banner and video ads shown between actions.
+            buttonBuy: Buy
+            purchased: Purchased
+
         # The "Exchange" window - lists every shape currently stored, each
         # with a Buy/Sell button opening exchangeModal below.
         exchangeList:

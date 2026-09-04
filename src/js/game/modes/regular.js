@@ -11,6 +11,7 @@ import { HUDConstantSignalEdit } from "../hud/parts/constant_signal_edit";
 import { HUDCurrencyShop } from "../hud/parts/currency_shop";
 import { HUDGameMenu } from "../hud/parts/game_menu";
 import { HUDInteractiveTutorial } from "../hud/parts/interactive_tutorial";
+import { HUDInterstitialAds } from "../hud/parts/interstitial_ads";
 import { HUDKeybindingOverlay } from "../hud/parts/keybinding_overlay";
 import { HUDLayerPreview } from "../hud/parts/layer_preview";
 import { HUDLeverToggle } from "../hud/parts/lever_toggle";
@@ -458,7 +459,7 @@ function generateShopItems() {
         },
         overviewBuilding: {
             reward: enumHubGoalRewards.reward_shop_overview_building,
-            price: 2000,
+            price: 6000,
         },
         autoMerger: {
             reward: enumHubGoalRewards.reward_shop_auto_merger,
@@ -516,6 +517,7 @@ export class RegularGameMode extends GameMode {
             gameMenu: HUDGameMenu,
             constantSignalEdit: HUDConstantSignalEdit,
             achievementTracker: HUDAchievementTracker,
+            interstitialAds: HUDInterstitialAds,
         };
 
         if (!IS_MOBILE) {
@@ -564,6 +566,11 @@ export class RegularGameMode extends GameMode {
 
     /** @returns {string} */
     getCurrencyShapeCode() {
+        return currencyShapeCode;
+    }
+
+    /** @returns {string} */
+    getBlueprintShapeKey() {
         return currencyShapeCode;
     }
 

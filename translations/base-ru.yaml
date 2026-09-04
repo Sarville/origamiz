@@ -247,6 +247,18 @@ ingame:
             description: Заходите раз в день за бесплатной валютой.
             buttonClaim: Забрать +<amount>
             claimed: Приходите завтра!
+
+        adReward:
+            title: Смотреть рекламу
+            description: Смотрите короткий ролик за бесплатную валюту раз в пару часов.
+            buttonClaim: Смотреть (+<amount>)
+            cooldown: "Доступно через <time>"
+
+        removeAds:
+            title: Отключить рекламу
+            description: Разовая покупка. Убирает баннер и ролики, которые показываются между действиями.
+            buttonBuy: Купить
+            purchased: Куплено
         exchangeList:
             title: Обмен
             empty: У вас пока нет ни одной фигурки в наличии.

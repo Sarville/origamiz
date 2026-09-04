@@ -105,7 +105,12 @@ export default {
     // disableSlowAsserts: true,
     // -----------------------------------------------------------------------------------
     // Visualizes the shape grouping on belts
-    // showShapeGrouping: true
+    // showShapeGrouping: true,
+    // -----------------------------------------------------------------------------------
+    // Fakes rewarded-ad platform support outside Yandex, so the Shop's
+    // "watch ad for currency" button appears and instantly grants the
+    // reward on click - lets you test it without the real Yandex SDK.
+    // rewardedAdsInstant: true,
     // -----------------------------------------------------------------------------------
     /* dev:end */
 };

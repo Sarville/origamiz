@@ -23,7 +23,13 @@ export const RESEARCH_TIER_UNLOCK_REWARDS = {
 // Shop daily bonus - a free once-a-day currency claim, real wall-clock time
 // (not game time), independent of ads/IAP so it works before either exists.
 const DAILY_BONUS_INTERVAL_MS = 24 * 60 * 60 * 1000;
-const DAILY_BONUS_AMOUNT = 250;
+const DAILY_BONUS_AMOUNT = 1000;
+
+// Rewarded-ad currency claim - Yandex doesn't rate-limit rewarded video
+// itself, so the cooldown is entirely our own (same claimedAt-timestamp
+// pattern as the Shop daily bonus above, just a shorter interval).
+const AD_REWARD_INTERVAL_MS = 2 * 60 * 60 * 1000;
+const AD_REWARD_AMOUNT = 250;
 
 // Shape Exchange - a purchasable Shop feature, rate-limited to a handful of
 // buy/sell operations per real-world day (raisable with a repeatable
@@ -49,6 +55,7 @@ export class HubGoals extends BasicSerializableObject {
             exchangeLimitUpgrades: types.uint,
             exchangeOperationsRemaining: types.uint,
             exchangeLimitResetAt: types.uint,
+            adRewardClaimedAt: types.uint,
         };
     }
 
@@ -150,6 +157,13 @@ export class HubGoals extends BasicSerializableObject {
          * @type {number}
          */
         this.exchangeLimitResetAt = 0;
+
+        /**
+         * Wall-clock timestamp (ms) of the last rewarded-ad claim, 0 if
+         * never claimed - see canClaimAdReward()/grantAdReward().
+         * @type {number}
+         */
+        this.adRewardClaimedAt = 0;
 
         /**
          * Stores the levels for all upgrades
@@ -833,6 +847,40 @@ export class HubGoals extends BasicSerializableObject {
         }
         this.dailyBonusClaimedAt = Date.now();
         this.grantCurrency(DAILY_BONUS_AMOUNT);
+        return true;
+    }
+
+    /** @returns {boolean} */
+    canClaimAdReward() {
+        return Date.now() - this.adRewardClaimedAt >= AD_REWARD_INTERVAL_MS;
+    }
+
+    /** @returns {number} */
+    getAdRewardAmount() {
+        return AD_REWARD_AMOUNT;
+    }
+
+    /**
+     * Seconds left until the next rewarded-ad claim is available, 0 if
+     * claimable right now.
+     * @returns {number}
+     */
+    getAdRewardCooldownSeconds() {
+        return Math.max(0, AD_REWARD_INTERVAL_MS - (Date.now() - this.adRewardClaimedAt)) / 1000;
+    }
+
+    /**
+     * Grants the rewarded-ad currency claim. Call only after the platform
+     * has confirmed the ad was actually watched (its onRewarded callback
+     * fired) - never speculatively before the ad plays.
+     * @returns {boolean}
+     */
+    grantAdReward() {
+        if (!this.canClaimAdReward()) {
+            return false;
+        }
+        this.adRewardClaimedAt = Date.now();
+        this.grantCurrency(AD_REWARD_AMOUNT);
         return true;
     }
 

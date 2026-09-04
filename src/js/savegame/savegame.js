@@ -43,10 +43,12 @@ export class Savegame extends ReadWriteProxy {
      * @returns {number}
      */
     static getCurrentVersion() {
-        // 1012: added HubGoals.exchangeLimitUpgrades/exchangeOperationsRemaining/
-        // exchangeLimitResetAt (Shape Exchange daily limit) - see migrate()
-        // below for the 1011 -> 1012 step.
-        return 1012;
+        // 1014: HubGoals.adRewardClaimedAt (rewarded-ad cooldown) - see
+        // migrate() below for the 1013 -> 1014 step. (1013 itself briefly
+        // shipped a different, per-day-counter shape for the same feature
+        // during development; 1013 -> 1014 also repairs any save written
+        // during that window.)
+        return 1014;
     }
 
     /**
@@ -98,6 +100,30 @@ export class Savegame extends ReadWriteProxy {
                 data.dump.hubGoals.exchangeLimitResetAt = 0;
             }
             data.version = 1012;
+        }
+
+        if (data.version === 1012) {
+            // adRewardClaimedAt (rewarded-ad cooldown) added in 1013 - a
+            // save from before it existed hasn't watched a rewarded ad yet,
+            // so it starts at the same default the constructor gives a
+            // fresh HubGoals.
+            if (data.dump && data.dump.hubGoals) {
+                data.dump.hubGoals.adRewardClaimedAt = 0;
+            }
+            data.version = 1013;
+        }
+
+        if (data.version === 1013) {
+            // 1013 briefly shipped adRewardClaimedAt as a per-day counter
+            // (adRewardsRemaining/adRewardsResetAt) before being redesigned
+            // as a flat cooldown in 1014 - repair any save written during
+            // that window (the stray old fields are just ignored, harmless
+            // to leave behind). A save that came from the 1012 branch above
+            // already has adRewardClaimedAt set, so this is a no-op for it.
+            if (data.dump && data.dump.hubGoals && data.dump.hubGoals.adRewardClaimedAt === undefined) {
+                data.dump.hubGoals.adRewardClaimedAt = 0;
+            }
+            data.version = 1014;
         }
 
         if (data.version !== this.getCurrentVersion()) {
