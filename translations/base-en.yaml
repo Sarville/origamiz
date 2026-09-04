@@ -376,6 +376,10 @@ ingame:
         description: >-
             Left-click a marker to jump to it, right-click to delete it.<br><br>Press <keybinding> to create a marker from the current view, or <strong>right-click</strong> to create a marker at the
             selected location.
+        descriptionMobile: >-
+            Tap a marker to jump to it, or hold it to edit. Its edit icon in
+            the list also lets you rename or delete it.<br><br>Tap the marker
+            button below to create one at the current view.
         creationSuccessNotification: Marker has been created.
 
     # Shape viewer
@@ -1180,6 +1184,7 @@ shapeViewerTool:
     preview: Preview
     randomize: Random shape
     copy: Copy key
+    useKey: Use this key
     export: Export PNG
     invalid: Enter a valid shape short key.
     instructions: >-
@@ -1191,7 +1196,7 @@ shapeViewerTool:
             <section><h3>Colours</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Red</span></li><li><code>g</code><i class="colorDot green"></i><span>Green</span></li><li><code>b</code><i class="colorDot blue"></i><span>Blue</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Yellow</span></li><li><code>p</code><i class="colorDot purple"></i><span>Purple</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Cyan</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Uncoloured</span></li><li><code>w</code><i class="colorDot white"></i><span>White</span></li></ul></section>
         </div>
         <h3>Examples</h3>
-        <dl class="examples"><dt><code>CwCwCwCw</code></dt><dd>White circle</dd><dt><code>----RuRu</code></dt><dd>Half rectangle</dd><dt><code>CgScScCg</code></dt><dd>Circles and stars mixed</dd><dt><code>RpRpRpRp:CwCwCwCw</code></dt><dd>Layering example</dd></dl>
+        <ul class="examples"><li><button type="button" class="exampleKey" data-key="CwCwCwCw"><code>CwCwCwCw</code><span>White circle</span></button></li><li><button type="button" class="exampleKey" data-key="----RuRu"><code>----RuRu</code><span>Half rectangle</span></button></li><li><button type="button" class="exampleKey" data-key="CgScScCg"><code>CgScScCg</code><span>Circles and stars mixed</span></button></li><li><button type="button" class="exampleKey" data-key="RpRpRpRp:CwCwCwCw"><code>RpRpRpRp:CwCwCwCw</code><span>Layering example</span></button></li><li><button type="button" class="exampleKey" data-key="RwCu--Wu:----Rw--"><code>RwCu--Wu:----Rw--</code><span>Our logo</span></button></li></ul>
 
 achievements:
     title: Achievements

@@ -269,6 +269,11 @@ ingame:
             редактировать. <br><br> Нажмите <keybinding> чтобы создать маркер
             здесь или <strong>ПКМ</strong>, чтобы выбрать другое место для
             создания маркера.
+        descriptionMobile: Нажмите на маркер, чтобы переместиться к нему, или
+            удерживайте, чтобы отредактировать. Значок редактирования в
+            списке справа также позволяет переименовать либо удалить его.
+            <br><br> Нажмите кнопку маркера внизу, чтобы создать его в текущем
+            месте.
         creationSuccessNotification: Маркер создан.
     shapeViewer:
         title: Слои
@@ -989,6 +994,7 @@ shapeViewerTool:
     preview: Предпросмотр
     randomize: Случайная фигура
     copy: Копировать ключ
+    useKey: Использовать этот ключ
     export: Экспорт PNG
     invalid: Введите корректный короткий ключ фигуры.
     instructions: >-
@@ -1000,7 +1006,7 @@ shapeViewerTool:
             <section><h3>Цвета</h3><ul class="legendList"><li><code>r</code><i class="colorDot red"></i><span>Красный</span></li><li><code>g</code><i class="colorDot green"></i><span>Зелёный</span></li><li><code>b</code><i class="colorDot blue"></i><span>Синий</span></li><li><code>y</code><i class="colorDot yellow"></i><span>Жёлтый</span></li><li><code>p</code><i class="colorDot purple"></i><span>Фиолетовый</span></li><li><code>c</code><i class="colorDot cyan"></i><span>Голубой</span></li><li><code>u</code><i class="colorDot uncolored"></i><span>Без цвета</span></li><li><code>w</code><i class="colorDot white"></i><span>Белый</span></li></ul></section>
         </div>
         <h3>Примеры</h3>
-        <dl class="examples"><dt><code>CwCwCwCw</code></dt><dd>Белый круг</dd><dt><code>----RuRu</code></dt><dd>Половина прямоугольника</dd><dt><code>CgScScCg</code></dt><dd>Смешанные круги и звёзды</dd><dt><code>RpRpRpRp:CwCwCwCw</code></dt><dd>Два наложенных слоя</dd></dl>
+        <ul class="examples"><li><button type="button" class="exampleKey" data-key="CwCwCwCw"><code>CwCwCwCw</code><span>Белый круг</span></button></li><li><button type="button" class="exampleKey" data-key="----RuRu"><code>----RuRu</code><span>Половина прямоугольника</span></button></li><li><button type="button" class="exampleKey" data-key="CgScScCg"><code>CgScScCg</code><span>Смешанные круги и звёзды</span></button></li><li><button type="button" class="exampleKey" data-key="RpRpRpRp:CwCwCwCw"><code>RpRpRpRp:CwCwCwCw</code><span>Два наложенных слоя</span></button></li><li><button type="button" class="exampleKey" data-key="RwCu--Wu:----Rw--"><code>RwCu--Wu:----Rw--</code><span>Наш логотип</span></button></li></ul>
 achievements:
     title: Достижения
     unlockedOf: Открыто <x> из <y>

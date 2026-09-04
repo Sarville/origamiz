@@ -114,6 +114,24 @@ $modalCoralDarkThemeLight: #d17164;
         display: none;
     }
 
+    // Same shared markup carries titles/button rows far longer than English
+    // (e.g. "РЕДАКТИРОВАНИЕ МАРКЕРА") into mobile's narrower width - the
+    // desktop-sized SuperHeading/Text wrap to two lines there (title) or
+    // overflow their column (a 3-button row like delete/cancel/ok).
+    html.is-mobile & > .dialogInner {
+        > .title {
+            font-size: 1.6rem;
+            line-height: 1.9rem;
+        }
+
+        > .buttons > button {
+            font-size: 1.1rem;
+            line-height: 1.4rem;
+            padding: 0 0.6rem;
+            min-width: 0;
+        }
+    }
+
     .dialogInner {
         transition: opacity 0.2s ease-in-out;
         opacity: 0;
