@@ -1,4 +1,5 @@
 import { SOUNDS } from "@/platform/sound";
+import { IS_MOBILE } from "../../../core/config";
 import { DrawParameters } from "../../../core/draw_parameters";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import { TrackedState } from "../../../core/tracked_state";
@@ -10,6 +11,7 @@ import { enumMouseButton } from "../../camera";
 import { KEYMAPPINGS } from "../../key_action_mapper";
 import { BaseHUDPart } from "../base_hud_part";
 import { DynamicDomAttach } from "../dynamic_dom_attach";
+import { OverviewBuildingPolicy } from "./overview_building";
 
 export class HUDBlueprintPlacer extends BaseHUDPart {
     createElements(parent) {
@@ -48,6 +50,7 @@ export class HUDBlueprintPlacer extends BaseHUDPart {
 
         this.domAttach = new DynamicDomAttach(this.root, this.costDisplayParent);
         this.trackedCanAfford = new TrackedState(this.onCanAffordChanged, this);
+        this.overviewBuildingPolicy = new OverviewBuildingPolicy(this.root);
     }
 
     getHasFreeCopyPaste() {
@@ -107,6 +110,20 @@ export class HUDBlueprintPlacer extends BaseHUDPart {
      * @param {enumMouseButton} button
      */
     onMouseDown(pos, button) {
+        if (IS_MOBILE) {
+            // Mobile owns blueprint placement entirely through
+            // HUDMobileControls (finger-follow + an explicit confirm
+            // button, see its copiedBlueprintTile/onCopyClicked) - this
+            // handler must never place on its own there. It used to: when
+            // HUDMobileControls' own overview-mode gate fell through (no
+            // regular MetaBuilding selected, which is always the case while
+            // a blueprint - not a building - is armed) without stopping
+            // propagation, a plain touch-down reached here and placed
+            // (and paid for) the blueprint instantly under that finger -
+            // most noticeably the first finger of what was meant to be a
+            // two-finger pinch/pan gesture while zoomed into map overview.
+            return;
+        }
         if (button === enumMouseButton.right) {
             if (this.currentBlueprint.get()) {
                 this.abortPlacement();
@@ -115,6 +132,14 @@ export class HUDBlueprintPlacer extends BaseHUDPart {
         } else if (button === enumMouseButton.left) {
             const blueprint = this.currentBlueprint.get();
             if (!blueprint) {
+                return;
+            }
+
+            // Same rule regular buildings already follow (see
+            // building_placer_logic.js) - without it, a plain click meant to
+            // pan/look around the zoomed-out map overview silently placed
+            // (and paid for) the armed blueprint instead of being a no-op.
+            if (this.root.camera.getIsMapOverlayActive() && !this.overviewBuildingPolicy.isAllowed()) {
                 return;
             }
 
@@ -196,8 +221,19 @@ export class HUDBlueprintPlacer extends BaseHUDPart {
      * @param {DrawParameters} parameters
      */
     draw(parameters) {
+        if (IS_MOBILE) {
+            // HUDMobileControls draws its own ghost, following the finger
+            // via copiedBlueprintTile, instead of app.mousePosition below
+            // (which touch doesn't meaningfully set).
+            return;
+        }
         const blueprint = this.currentBlueprint.get();
         if (!blueprint) {
+            return;
+        }
+        if (this.root.camera.getIsMapOverlayActive() && !this.overviewBuildingPolicy.isAllowed()) {
+            // Don't show a ghost that a click can't actually place - same
+            // rule building_placer.js's draw() already follows.
             return;
         }
         const mousePosition = this.root.app.mousePosition;

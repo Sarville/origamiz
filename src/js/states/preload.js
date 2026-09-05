@@ -74,6 +74,7 @@ export class PreloadState extends GameState {
 
             .then(() => this.app.achievements.initialize())
             .then(() => this.app.wallet.initialize())
+            .then(() => this.app.blueprintLibrary.initialize())
 
             .then(() => {
                 // Initialize fullscreen

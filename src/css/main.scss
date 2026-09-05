@@ -24,6 +24,7 @@
 @use "ingame_hud/unlock_notification";
 @use "ingame_hud/shop";
 @use "ingame_hud/currency_shop";
+@use "ingame_hud/blueprint_library";
 @use "ingame_hud/shape_exchange";
 @use "ingame_hud/game_menu";
 @use "ingame_hud/mobile_controls";
@@ -87,6 +88,7 @@ ingame_HUD_ShapeExchangeList,
 ingame_HUD_ShapeExchangeRates,
 ingame_HUD_ShapeExchangeModal,
 ingame_HUD_Statistics,
+ingame_HUD_BlueprintLibrary,
 ingame_HUD_ShapeViewer,
 ingame_HUD_UnlockNotification,
 ingame_HUD_SettingsMenu,

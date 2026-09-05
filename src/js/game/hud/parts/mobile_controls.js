@@ -122,6 +122,15 @@ export class HUDMobileControls extends BaseHUDPart {
         this.selectPanel.appendChild(this.copyButton);
         this.trackClicks(this.copyButton, this.onCopyClicked);
 
+        // Saves the selection straight into the Blueprint Library (desktop
+        // equivalent: KEYMAPPINGS.massSelect.saveSelectionToLibrary) -
+        // there's no keyboard here to hold a modifier for a second copy
+        // action, so it gets its own button next to copy.
+        this.saveToLibraryButton = document.createElement("button");
+        this.saveToLibraryButton.classList.add("saveToLibrary");
+        this.selectPanel.appendChild(this.saveToLibraryButton);
+        this.trackClicks(this.saveToLibraryButton, this.onSaveToLibraryClicked);
+
         this.eraserButton = document.createElement("button");
         this.eraserButton.classList.add("eraser");
         this.selectPanel.appendChild(this.eraserButton);
@@ -695,15 +704,34 @@ export class HUDMobileControls extends BaseHUDPart {
      */
     onCopyClicked() {
         this.massSelector.startCopy();
-        const blueprint = this.blueprintPlacer.currentBlueprint.get();
-        if (!blueprint) {
+        if (!this.blueprintPlacer.currentBlueprint.get()) {
             // Nothing selected, or blueprints not unlocked yet (dialog
             // already shown by startCopy) - stay in select mode.
             return;
         }
+        this.enterCopiedBlueprintMode();
+    }
+
+    /**
+     * Switches into the copied-blueprint placement row (confirm/rotate/
+     * cancel) for whatever blueprint is currently armed on
+     * blueprintPlacer.currentBlueprint - shared by onCopyClicked (mass-
+     * select copy) and the blueprint library's EQUIP action, which arms a
+     * blueprint the same way but skips mass-select entirely.
+     */
+    enterCopiedBlueprintMode() {
         this.selectModeActive = false;
         this.selectButton.classList.remove("active");
         this.copiedBlueprintTile = this.root.camera.center.toTileSpace();
+    }
+
+    /**
+     * Opens the Blueprint Library's save dialog for the current mass
+     * selection - stays in select mode afterward (unlike copy), so the
+     * player can keep adjusting the selection or copy it too.
+     */
+    onSaveToLibraryClicked() {
+        this.root.hud.parts.blueprintLibrary.trySaveSelection(Array.from(this.massSelector.selectedUids));
     }
 
     exitCopiedBlueprintMode() {

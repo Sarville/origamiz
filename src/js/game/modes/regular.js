@@ -7,6 +7,7 @@ import { findNiceIntegerValue } from "../../core/utils";
 import { MOD_SIGNALS } from "../../mods/mod_signals";
 import { enumGameModeIds, enumGameModeTypes, GameMode } from "../game_mode";
 import { HUDAchievementTracker } from "../hud/parts/achievement_tracker";
+import { HUDBlueprintLibrary } from "../hud/parts/blueprint_library";
 import { HUDConstantSignalEdit } from "../hud/parts/constant_signal_edit";
 import { HUDCurrencyShop } from "../hud/parts/currency_shop";
 import { HUDGameMenu } from "../hud/parts/game_menu";
@@ -55,7 +56,8 @@ import { finalGameShape, REGULAR_MODE_LEVELS } from "./levels";
  *   shape: string,
  *   required: number,
  *   reward: enumHubGoalRewards,
- *   throughputOnly?: boolean
+ *   throughputOnly?: boolean,
+ *   currencyBonus?: number
  * }} LevelDefinition */
 
 /** @typedef {{
@@ -66,7 +68,8 @@ import { finalGameShape, REGULAR_MODE_LEVELS } from "./levels";
 
 /** @typedef {{
  *   reward: enumHubGoalRewards,
- *   price: number
+ *   price: number,
+ *   minLevel?: number
  * }} ShopItemDefinition */
 
 export const rocketShape = "CbCuCbCu:Sr------:--CrSrCr:CwCwCwCw";
@@ -476,6 +479,15 @@ function generateShopItems() {
             reward: enumHubGoalRewards.reward_shop_exchange,
             price: 5000,
         },
+        // Copy/paste (see blueprint.ts / blueprint_library.js) - no longer a
+        // free level reward, bought here instead. Gated to level 13 (see
+        // levels.js) since that's also when the currency head-start toward
+        // it is granted.
+        blueprints: {
+            reward: enumHubGoalRewards.reward_blueprints,
+            price: 3000,
+            minLevel: 13,
+        },
     };
     return shopItemsCache;
 }
@@ -499,6 +511,7 @@ export class RegularGameMode extends GameMode {
             massSelector: HUDMassSelector,
             shop: HUDShop,
             currencyShop: HUDCurrencyShop,
+            blueprintLibrary: HUDBlueprintLibrary,
             shapeExchangeList: HUDShapeExchangeList,
             shapeExchangeModal: HUDShapeExchangeModal,
             shapeExchangeRates: HUDShapeExchangeRates,

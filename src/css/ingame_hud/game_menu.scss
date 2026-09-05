@@ -7,7 +7,7 @@
     top: 1rem;
     right: 1rem;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr;
     grid-gap: 0.6rem;
 
     backdrop-filter: blur(0.1rem);
@@ -83,9 +83,16 @@
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Crect%20x%3D%224%22%20y%3D%2213%22%20width%3D%224%22%20height%3D%228%22%20rx%3D%220.5%22%20fill%3D%22%236b5636%22%2F%3E%3Crect%20x%3D%2210%22%20y%3D%228%22%20width%3D%224%22%20height%3D%2213%22%20rx%3D%220.5%22%20fill%3D%22%236b5636%22%2F%3E%3Crect%20x%3D%2216%22%20y%3D%223%22%20width%3D%224%22%20height%3D%2218%22%20rx%3D%220.5%22%20fill%3D%22%236b5636%22%2F%3E%3C%2Fsvg%3E");
         }
 
+        &.blueprintLibrary {
+            grid-column: 4;
+            // Simple open-book silhouette, same 2-tone treatment (dark brown
+            // outline, cream page fill) as the .save icon next to it.
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22%236b5636%22%20d%3D%22M12%205.2C10.3%203.9%207.9%203.2%205%203.2c-0.6%200-1%200.4-1%201v13.4c0%200.6%200.4%201%201%201c2.7%200%205%200.7%206.3%201.7c0.4%200.3%201%200.3%201.4%200c1.3-1%203.6-1.7%206.3-1.7c0.6%200%201-0.4%201-1V4.2c0-0.6-0.4-1-1-1c-2.9%200-5.3%200.7-7%202z%22%2F%3E%3Cpath%20fill%3D%22%23f2e8d5%22%20d%3D%22M11%207.4C9.6%206.6%207.6%206.1%205.5%206v10.7c1.9%200.1%203.9%200.6%205.5%201.4V7.4z%20M13%207.4v10.7c1.6-0.8%203.6-1.3%205.5-1.4V6c-2.1%200.1-4.1%200.6-5.5%201.4z%22%2F%3E%3C%2Fsvg%3E");
+        }
+
         &.save {
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22%236b5636%22%20d%3D%22M5%203h11l3%203v15a1%201%200%200%201-1%201H5a1%201%200%200%201-1-1V4a1%201%200%200%201%201-1z%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%224.5%22%20width%3D%228%22%20height%3D%225%22%20fill%3D%22%23f2e8d5%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%2214%22%20width%3D%2210%22%20height%3D%227%22%20fill%3D%22%23f2e8d5%22%2F%3E%3C%2Fsvg%3E");
-            grid-column: 4;
+            grid-column: 5;
             @include MakeAnimationWrappedEvenOdd(0.5s ease-in-out) {
                 0% {
                     transform: scale(1, 1);
@@ -119,7 +126,7 @@
         }
 
         &.settings {
-            grid-column: 5;
+            grid-column: 6;
             background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22%236b5636%22%20d%3D%22M19.14%2C12.94c0.04%2C-0.3%2C0.06%2C-0.61%2C0.06%2C-0.94c0%2C-0.32%2C-0.02%2C-0.64%2C-0.07%2C-0.94l2.03%2C-1.58c0.18%2C-0.14%2C0.23%2C-0.41%2C0.12%2C-0.61l-1.92%2C-3.32c-0.12%2C-0.22%2C-0.37%2C-0.29%2C-0.59%2C-0.22l-2.39%2C0.96c-0.5%2C-0.38%2C-1.03%2C-0.7%2C-1.62%2C-0.94L14.4%2C2.81c-0.04%2C-0.24%2C-0.24%2C-0.41%2C-0.48%2C-0.41h-3.84c-0.24%2C0%2C-0.43%2C0.17%2C-0.47%2C0.41L9.25%2C5.35C8.66%2C5.59%2C8.12%2C5.92%2C7.63%2C6.29L5.24%2C5.33c-0.22%2C-0.08%2C-0.47%2C0%2C-0.59%2C0.22L2.74%2C8.87C2.62%2C9.08%2C2.66%2C9.34%2C2.86%2C9.48l2.03%2C1.58C4.84%2C11.36%2C4.8%2C11.69%2C4.8%2C12s0.02%2C0.64%2C0.07%2C0.94l-2.03%2C1.58c-0.18%2C0.14%2C-0.23%2C0.41%2C-0.12%2C0.61l1.92%2C3.32c0.12%2C0.22%2C0.37%2C0.29%2C0.59%2C0.22l2.39%2C-0.96c0.5%2C0.38%2C1.03%2C0.7%2C1.62%2C0.94l0.36%2C2.54c0.05%2C0.24%2C0.24%2C0.41%2C0.48%2C0.41h3.84c0.24%2C0%2C0.44%2C-0.17%2C0.47%2C-0.41l0.36%2C-2.54c0.59%2C-0.24%2C1.13%2C-0.56%2C1.62%2C-0.94l2.39%2C0.96c0.22%2C0.08%2C0.47%2C0%2C0.59%2C-0.22l1.92%2C-3.32c0.12%2C-0.22%2C0.07%2C-0.47%2C-0.12%2C-0.61L19.14%2C12.94zM12%2C15.6c-1.98%2C0%2C-3.6%2C-1.62%2C-3.6%2C-3.6s1.62%2C-3.6%2C3.6%2C-3.6s3.6%2C1.62%2C3.6%2C3.6S13.98%2C15.6%2C12%2C15.6z%22%2F%3E%3C%2Fsvg%3E");
         }
 

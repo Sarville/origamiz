@@ -1,0 +1,267 @@
+@use "../mixins" as *;
+@use "../ui_resource" as *;
+@use "../variables" as *;
+
+@use "sass:color";
+
+// Matches dialogs.scss's shared `.dialogInner > .content input` treatment
+// (soft warm gradient + thin border, big radius) - hardcoded here rather
+// than importing that module, same as the rest of this file's palette
+// choices, so the search box, tag chips and cards all read as the same
+// family of control as the native form dialogs (Save/Edit) instead of a
+// competing, plainer style.
+$blueprintCardBg: linear-gradient(145deg, #fffaf0 0%, #f7eddc 100%);
+$blueprintCardBgDark: linear-gradient(145deg, #3a352b 0%, #2c2822 100%);
+$blueprintBorder: rgba(160, 137, 102, 0.35);
+$blueprintBorderDark: rgba(0, 0, 0, 0.4);
+$blueprintTextMain: #454644;
+$blueprintTextMainDark: #ece6d8;
+$blueprintTextSecondary: #817b70;
+$blueprintTextSecondaryDark: #b6ab96;
+
+#ingame_HUD_BlueprintLibrary {
+    .content {
+        padding-right: 1rem;
+        display: flex;
+        flex-direction: column;
+        width: 50rem;
+        max-height: 70vh;
+        overflow-x: hidden;
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+
+        .search {
+            flex: 0 0 16rem;
+            // Padding/border/background/font all come from dialogs.scss's
+            // shared `.dialogInner > .content input` rule - this input just
+            // sits one level deeper, inside .toolbar. Don't redeclare them
+            // here: an earlier version did, and being more specific
+            // (#id .toolbar .search) than that shared rule, it silently
+            // won and replaced the nice big native input look with a
+            // smaller, plainer one.
+        }
+
+        .tagFilter {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+
+            button {
+                @include PlainText;
+                padding: 0.4rem 1.1rem;
+                border: 0.1rem solid $blueprintBorder;
+                border-radius: 1.4rem;
+                background: transparent;
+                color: $blueprintTextMain;
+                cursor: pointer;
+                transition: background-color 0.12s ease-in-out, color 0.12s ease-in-out;
+
+                @include DarkThemeOverride {
+                    border-color: $blueprintBorderDark;
+                    color: $blueprintTextMainDark;
+                }
+
+                &:hover {
+                    background: rgba(160, 137, 102, 0.12);
+                }
+
+                &.active {
+                    border-color: $colorGreenBright;
+                    background: $colorGreenBright;
+                    color: #fff;
+                }
+            }
+        }
+    }
+
+    .empty {
+        @include PlainText;
+        color: $blueprintTextSecondary;
+        text-align: center;
+        padding: 2rem;
+
+        @include DarkThemeOverride {
+            color: $blueprintTextSecondaryDark;
+        }
+
+        &.hidden {
+            display: none;
+        }
+    }
+
+    .grid {
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.8rem;
+
+        &.hidden {
+            display: none;
+        }
+    }
+
+    .blueprintCard {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        column-gap: 1rem;
+        row-gap: 0.4rem;
+        align-items: center;
+        background: $blueprintCardBg;
+        border: 0.1rem solid $blueprintBorder;
+        border-radius: 1.4rem;
+        padding: 1rem 1.4rem;
+        box-sizing: border-box;
+        max-width: 100%;
+
+        @include DarkThemeOverride {
+            background: $blueprintCardBgDark;
+            border-color: $blueprintBorderDark;
+        }
+
+        .info {
+            grid-column: 1 / 2;
+            grid-row: 1 / 3;
+            min-width: 0;
+
+            .name {
+                @include Text;
+                font-weight: bold;
+                color: $blueprintTextMain;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+
+                @include DarkThemeOverride {
+                    color: $blueprintTextMainDark;
+                }
+            }
+
+            .tags,
+            .meta {
+                @include PlainText;
+                color: $blueprintTextSecondary;
+
+                @include DarkThemeOverride {
+                    color: $blueprintTextSecondaryDark;
+                }
+            }
+        }
+
+        .cost {
+            grid-column: 2 / 3;
+            grid-row: 1 / 2;
+            justify-self: end;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+
+            .icon canvas {
+                width: 2rem;
+                height: 2rem;
+                display: block;
+            }
+
+            .amount {
+                @include Text;
+                font-weight: bold;
+                color: $colorGreenBright;
+            }
+        }
+
+        .lockedWarning {
+            grid-column: 1 / 3;
+            @include PlainText;
+            color: #c66f61;
+        }
+
+        .actions {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            justify-self: end;
+            display: flex;
+            gap: 0.6rem;
+
+            button {
+                @include ButtonText;
+                padding: 0.5rem 1.2rem;
+            }
+
+            .equip {
+                background-color: $colorGreenBright;
+                color: #fff;
+
+                &.disabled {
+                    background-color: color.adjust($mainBgColor, $lightness: -20%, $space: hsl);
+                    cursor: not-allowed;
+                    opacity: 0.5;
+                }
+            }
+        }
+    }
+}
+
+html.is-mobile #ingame_HUD_BlueprintLibrary {
+    // Same rationale as currency_shop.scss's mobile override - the desktop
+    // layout is a fixed-width wide grid that doesn't fit a phone screen.
+    // Font sizes are NOT re-declared here - they already come from the same
+    // Text/PlainText/ButtonText mixins used everywhere else, which respond
+    // to the shared root/UI-scale sizing on their own; redeclaring smaller
+    // rem values here is what made this dialog's text look undersized
+    // next to every other (native) dialog in the game.
+    .content {
+        width: 100%;
+        max-width: 100%;
+        padding-right: 0;
+        box-sizing: border-box;
+        max-height: 78vh;
+    }
+
+    .toolbar .search {
+        flex: 1 1 auto;
+    }
+
+    .blueprintCard {
+        grid-template-columns: 1fr;
+        // Every row gets an explicit index below - .info alone spanning
+        // rows 1-2 (its desktop span) while .cost/.actions each claim a
+        // single row would otherwise overlap it, which is exactly the bug
+        // this replaced (cost/building-count text rendering on top of each
+        // other).
+        grid-template-rows: auto auto auto auto;
+        row-gap: 0.7rem;
+
+        .info {
+            grid-column: 1 / 2;
+            grid-row: 1 / 2;
+        }
+
+        .cost {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+            justify-self: start;
+        }
+
+        .lockedWarning {
+            grid-row: 3 / 4;
+        }
+
+        .actions {
+            grid-column: 1 / 2;
+            grid-row: 4 / 5;
+            justify-self: stretch;
+            flex-wrap: wrap;
+
+            button {
+                flex: 1 1 auto;
+                white-space: nowrap;
+            }
+        }
+    }
+}

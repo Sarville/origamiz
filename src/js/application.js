@@ -19,6 +19,7 @@ import { PlatformWrapperImplBrowser } from "./platform/wrapper";
 import { PlatformWrapperImplYandex } from "./platform/yandex_wrapper";
 import { AchievementsStorage } from "./profile/achievements_storage";
 import { ApplicationSettings } from "./profile/application_settings";
+import { BlueprintLibraryStorage } from "./profile/blueprint_library_storage";
 import { WalletStorage } from "./profile/wallet_storage";
 import { SavegameManager } from "./savegame/savegame_manager";
 import { AboutState } from "./states/about";
@@ -77,6 +78,7 @@ export class Application {
         this.settings = new ApplicationSettings(this, this.storage);
         this.achievements = new AchievementsStorage(this, this.storage);
         this.wallet = new WalletStorage(this);
+        this.blueprintLibrary = new BlueprintLibraryStorage(this, this.storage);
         this.ticker = new AnimationFrame();
         this.stateMgr = new StateManager(this);
         // NOTE: SavegameManager uses the passed storage, but savegames always

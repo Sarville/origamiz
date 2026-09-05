@@ -227,6 +227,14 @@
                     color: #aaa;
                 }
             }
+
+            // Not yet purchasable because of a minLevel gate (e.g.
+            // blueprints, level 13) - the price column shows "Unlocks at
+            // level N" instead of a buyable amount, so it shouldn't read as
+            // green/urgent the way an affordable price does.
+            &.levelLocked .price {
+                color: #aaa;
+            }
         }
 
     }

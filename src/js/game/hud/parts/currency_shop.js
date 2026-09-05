@@ -268,11 +268,20 @@ export class HUDCurrencyShop extends BaseHUDPart {
             const handle = this.itemsToElements[itemId];
             const item = items[itemId];
             const completed = this.root.hubGoals.isRewardUnlocked(item.reward);
+            const levelLocked = !completed && item.minLevel && this.root.hubGoals.level < item.minLevel;
 
             handle.elem.classList.toggle("completed", completed);
-            handle.elemPrice.innerText = completed
-                ? T.ingame.currencyShop.completed
-                : formatBigNumber(item.price);
+            handle.elem.classList.toggle("levelLocked", levelLocked);
+            if (completed) {
+                handle.elemPrice.innerText = T.ingame.currencyShop.completed;
+            } else if (levelLocked) {
+                handle.elemPrice.innerText = T.ingame.currencyShop.lockedUntilLevel.replace(
+                    "<level>",
+                    "" + item.minLevel
+                );
+            } else {
+                handle.elemPrice.innerText = formatBigNumber(item.price);
+            }
             handle.buyButton.classList.toggle(
                 "buyable",
                 !completed && this.root.hubGoals.canPurchaseShopItem(itemId)

@@ -2,6 +2,7 @@ import { globalConfig } from "../core/config";
 import type { DrawParameters } from "../core/draw_parameters";
 import { findNiceIntegerValue } from "../core/utils";
 import { Vector } from "../core/vector";
+import { buildEntityFromSerialized } from "../savegame/serializer_internal";
 import type { Entity } from "./entity";
 import type { GameRoot } from "./root";
 
@@ -53,6 +54,45 @@ export class Blueprint {
 
         // Now, make sure the origin is 0,0
         return new Blueprint(newEntities);
+    }
+
+    /**
+     * Rebuilds a blueprint from entities serialized by {@link serializeEntities}
+     * (the blueprint library's storage format) - entities come back detached,
+     * the same way fromUids's clones are, not registered on any map/entityMgr.
+     */
+    static fromSerializedEntities(root: GameRoot, payload: unknown[]): Blueprint {
+        const entities = payload.map(entry => buildEntityFromSerialized(root, entry as Entity));
+        return new Blueprint(entities);
+    }
+
+    /**
+     * Serializes this blueprint's entities for persistent storage (the
+     * blueprint library) - the same per-entity format savegames use.
+     */
+    serializeEntities() {
+        return this.entities.map(entity => entity.serialize());
+    }
+
+    get entityCount() {
+        return this.entities.length;
+    }
+
+    /**
+     * Buildings/variants in this blueprint the player hasn't unlocked yet.
+     * Placing such a blueprint would place content the player has no
+     * business having yet - used to keep a stored blueprint's EQUIP action
+     * disabled and to warn before that happens.
+     */
+    getLockedEntities(root: GameRoot): Entity[] {
+        return this.entities.filter(entity => {
+            const staticComp = entity.components.StaticMapEntity;
+            const metaBuilding = staticComp.getMetaBuilding();
+            if (!metaBuilding.getIsUnlocked(root)) {
+                return true;
+            }
+            return !metaBuilding.getAvailableVariants(root).includes(staticComp.getVariant());
+        });
     }
 
     /**
@@ -159,7 +199,12 @@ export class Blueprint {
             return true;
         }
 
-        return root.hubGoals.getShapesStoredByKey(root.gameMode.getBlueprintShapeKey()) >= this.getCost();
+        // Blueprint cost is paid in the account-wide currency (see
+        // getBlueprintShapeKey - it's the same shape as the Shop's
+        // currency), not a per-save shape balance. Currency shapes never
+        // enter storedShapes (see hub_goals.js's handleDefinitionDelivered),
+        // so this must check the wallet, not getShapesStoredByKey.
+        return root.app.wallet.canSpend(this.getCost());
     }
 
     /**
@@ -192,8 +237,7 @@ export class Blueprint {
 
         if (consumed) {
             if (!this.getIsEffectivelyFree(root)) {
-                const blueprintShape = root.gameMode.getBlueprintShapeKey();
-                root.hubGoals.takeShapeByKey(blueprintShape, this.getCost());
+                root.app.wallet.debit(this.getCost());
             }
 
             this.isNextPasteFree = false;

@@ -86,17 +86,21 @@ export const REGULAR_MODE_LEVELS = [
     },
 
     // 12
-    // Blueprints
     {
         shape: "CbCbCbRb:CwCwCwCw",
         required: 1000,
-        reward: enumHubGoalRewards.reward_blueprints,
+        reward: enumHubGoalRewards.no_reward,
     },
     // 13
+    // Blueprints are no longer a free level reward - this just grants a
+    // currency head start toward buying them in the Shop (see
+    // generateShopItems()'s "blueprints" item, gated to minLevel: 13, in
+    // regular.js).
     {
         shape: "RpRpRpRp:CwCwCwCw", // painting t3
         required: 3800,
-        reward: enumHubGoalRewards.no_reward,
+        reward: enumHubGoalRewards.reward_blueprints_shop_unlock,
+        currencyBonus: 1000,
     },
 
     // 14

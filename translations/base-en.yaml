@@ -194,7 +194,7 @@ dialogs:
     blueprintsNotUnlocked:
         title: Not unlocked yet
         desc: >-
-            Complete level 12 to unlock Blueprints!
+            Buy Blueprints in the Shop (unlocks at level 13) to use copy/paste!
 
     keybindingsIntroduction:
         title: Useful keybindings
@@ -363,6 +363,7 @@ ingame:
 
         buttonBuy: Buy
         completed: Purchased
+        lockedUntilLevel: "Unlocks at level <level>"
         buttonExchange: Exchange
         buttonExchangeLimit: "Exchange (<amount>)"
 
@@ -455,6 +456,39 @@ ingame:
     # When placing a blueprint
     blueprintPlacer:
         cost: Cost
+
+    # The Blueprint Library window - saved, reusable blueprints
+    blueprintLibrary:
+        title: Blueprint Library
+        searchPlaceholder: Search blueprints...
+        allTagsFilter: All
+        empty: No blueprints saved yet. Select some buildings and press <keybinding> to save your first one.
+        emptyMobile: No blueprints saved yet. Select some buildings, then tap the save-to-library button to save your first one.
+        buildingCount: "<count> buildings"
+        lockedWarning: Contains buildings you haven't unlocked yet
+        cloudBackupStale: Library too large for cloud backup - only local copy is up to date
+        buttonEquip: Equip
+        buttonEdit: Edit
+        buttonDelete: Delete
+
+        saveDialog:
+            title: Save Blueprint
+            desc: Give your blueprint a name and, optionally, some tags to help find it again.
+            nameLabel: Name
+            namePlaceholder: New Blueprint
+            tagsLabel: Tags (comma-separated)
+            tagsPlaceholder: Belt, Factory
+
+        editDialog:
+            title: Edit Blueprint
+
+        deleteConfirm:
+            title: Delete Blueprint
+            desc: Are you sure you want to delete '<name>'?
+
+        savedNotification: Blueprint saved to library!
+        deletedNotification: Blueprint deleted
+        emptySelectionError: Select some buildings first
 
     # Map markers
     waypoints:
@@ -572,6 +606,9 @@ shopItems:
     longRoute:
         name: Long-Distance Routing
         description: Belts dragged across obstacles can bend around much longer detours.
+    blueprints:
+        name: Blueprints
+        description: Copy and paste parts of your factory. Select an area (hold CTRL, then drag), press 'C' to copy, 'V' to paste.
 
 # Buildings and their name / description
 buildings:
@@ -817,7 +854,10 @@ storyRewards:
         title: Research
         desc: >-
             You have unlocked the <strong>Research</strong> section of the Upgrades window! Spend the shapes you deliver
-            to the Hub on optional building variants there, instead of waiting for them to show up in the level ladder.
+            to the Hub on optional building variants there, instead of waiting for them to show up in the level ladder.<br><br>
+            The <strong>Shop</strong> is open too - you can now buy some upgrades there for currency, and exchange shapes
+            for currency (and back). Currency comes from a distinct <strong>green circle</strong> shape (shown at the top
+            of the Shop) - deliver it to the Hub to earn currency, and keep an eye out for deposits of it on the map!
 
     reward_rotator_ccw:
         title: CCW Rotating
@@ -900,7 +940,13 @@ storyRewards:
         title: Blueprints
         desc: >-
             You can now <strong>copy and paste</strong> parts of your factory! Select an area (Hold CTRL, then drag with your mouse), and press 'C' to copy it.<br><br>Pasting it is
-            <strong>not free</strong>, you need to produce <strong>blueprint shapes</strong> to afford it! (Those you just delivered).
+            <strong>not free</strong>, it costs <strong>currency</strong> to afford - the same currency you just delivered!
+
+    reward_blueprints_shop_unlock:
+        title: Currency Bonus
+        desc: >-
+            Here's <strong>1,000 currency</strong> as a head start! <strong>Blueprints</strong> (copy/paste for your factory) are no longer a free level reward - you can now buy them in
+            the <strong>Shop</strong> for <strong>3,000 currency</strong>.
 
     reward_rotator_180:
         title: Rotator (180°)
@@ -1232,6 +1278,7 @@ keybindings:
         menuOpenShop: Upgrades
         menuOpenCurrencyShop: Shop
         menuOpenStats: Statistics
+        menuOpenBlueprintLibrary: Blueprint Library
         menuClose: Close Menu
 
         toggleHud: Toggle HUD
@@ -1290,6 +1337,7 @@ keybindings:
         massSelectCopy: Copy area
         massSelectCut: Cut area
         massSelectClear: Clear belts
+        saveSelectionToLibrary: Save area to Blueprint Library
 
         placementDisableAutoOrientation: Disable automatic orientation
         placeMultiple: Stay in placement mode
@@ -1397,7 +1445,7 @@ achievements:
     list:
         blueprint100k:
             name: Blueprints are the future
-            description: Have 100k blueprints stored in the hub
+            description: Have 100k currency
         play10h:
             name: It's been a long time
             description: Play for 10 hours
@@ -1406,7 +1454,7 @@ achievements:
             description: Play for 1 hour
         blueprint1m:
             name: I'll use it later
-            description: Have 1 million blueprints stored in the hub
+            description: Have 1 million currency
         richBuratino:
             name: Rich Buratino
             description: Have 1 million Shop currency stored in the hub

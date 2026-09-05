@@ -309,13 +309,14 @@ export class HubGoals extends BasicSerializableObject {
         const storyIndex = this.level - 1;
         const levels = this.root.gameMode.getLevelDefinitions();
         if (storyIndex < levels.length) {
-            const { shape, required, reward, throughputOnly } = levels[storyIndex];
+            const { shape, required, reward, throughputOnly, currencyBonus } = levels[storyIndex];
             this.currentGoal = {
                 /** @type {ShapeDefinition} */
                 definition: this.root.shapeDefinitionMgr.getShapeFromShortKey(shape),
                 required,
                 reward,
                 throughputOnly,
+                currencyBonus,
             };
             return;
         }
@@ -334,8 +335,11 @@ export class HubGoals extends BasicSerializableObject {
      * Called when the level was completed
      */
     onGoalCompleted() {
-        const reward = this.currentGoal.reward;
+        const { reward, currencyBonus } = this.currentGoal;
         this.gainedRewards.add(reward);
+        if (currencyBonus) {
+            this.root.app.wallet.credit(currencyBonus);
+        }
 
         ++this.level;
         this.computeNextGoal();
@@ -558,6 +562,9 @@ export class HubGoals extends BasicSerializableObject {
     canPurchaseShopItem(itemId) {
         const item = this.root.gameMode.getShopItems()[itemId];
         if (this.isRewardUnlocked(item.reward)) {
+            return false;
+        }
+        if (item.minLevel && this.level < item.minLevel) {
             return false;
         }
         if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {

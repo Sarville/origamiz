@@ -39,6 +39,12 @@ export class HUDGameMenu extends BaseHUDPart {
                 visible: () =>
                     !this.root.app.settings.getAllSettings().offerHints || this.root.hubGoals.level >= 3,
             },
+            {
+                id: "blueprintLibrary",
+                label: "Blueprint Library",
+                handler: () => this.root.hud.parts.blueprintLibrary.show(),
+                keybinding: KEYMAPPINGS.ingame.menuOpenBlueprintLibrary,
+            },
         ];
 
         /** @type {Array<{

@@ -22,6 +22,7 @@ export const KEYMAPPINGS = {
         menuOpenShop: { keyCode: keyToKeyCode("F") },
         menuOpenCurrencyShop: { keyCode: keyToKeyCode("H") },
         menuOpenStats: { keyCode: keyToKeyCode("G") },
+        menuOpenBlueprintLibrary: { keyCode: keyToKeyCode("L") },
         menuClose: { keyCode: keyToKeyCode("Q") },
 
         toggleHud: { keyCode: KEYCODES.F2 },
@@ -103,6 +104,7 @@ export const KEYMAPPINGS = {
         massSelectClear: { keyCode: keyToKeyCode("B") },
         confirmMassDelete: { keyCode: KEYCODES.Delete },
         pasteLastBlueprint: { keyCode: keyToKeyCode("V") },
+        saveSelectionToLibrary: { keyCode: keyToKeyCode("K") },
     },
 
     placementModifiers: {

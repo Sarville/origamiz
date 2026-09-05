@@ -1,4 +1,5 @@
 import type { HUDBetaOverlay } from "./parts/beta_overlay.js";
+import type { HUDBlueprintLibrary } from "./parts/blueprint_library.js";
 import type { HUDBlueprintPlacer } from "./parts/blueprint_placer.js";
 import type { HUDBuildingsToolbar } from "./parts/buildings_toolbar.js";
 import type { HUDBuildingPlacer } from "./parts/building_placer.js";
@@ -16,6 +17,7 @@ import type { HUDLayerPreview } from "./parts/layer_preview.js";
 import type { HUDLeverToggle } from "./parts/lever_toggle.js";
 import type { HUDMassSelector } from "./parts/mass_selector.js";
 import type { HUDMinerHighlight } from "./parts/miner_highlight.js";
+import type { HUDMobileControls } from "./parts/mobile_controls.js";
 import type { HUDModalDialogs } from "./parts/modal_dialogs.js";
 import type { HUDNotifications } from "./parts/notifications.js";
 import type { HUDPinnedShapes } from "./parts/pinned_shapes.js";
@@ -68,6 +70,7 @@ export interface HudParts {
     unlockNotification?: HUDUnlockNotification;
     shop?: HUDShop;
     currencyShop?: HUDCurrencyShop;
+    blueprintLibrary?: HUDBlueprintLibrary;
     shapeExchangeList?: HUDShapeExchangeList;
     shapeExchangeModal?: HUDShapeExchangeModal;
     shapeExchangeRates?: HUDShapeExchangeRates;
@@ -85,6 +88,7 @@ export interface HudParts {
     tutorialVideoOffer?: HUDTutorialVideoOffer;
     gameMenu?: HUDGameMenu;
     keybindingOverlay?: HUDKeybindingOverlay;
+    mobileControls?: HUDMobileControls;
     tutorialHints?: HUDPartTutorialHints;
     interactiveTutorial?: HUDInteractiveTutorial;
     interstitialAds?: HUDInterstitialAds;

@@ -110,12 +110,17 @@ export class HUDAchievementTracker extends BaseHUDPart {
         if (hours >= 10) this.unlock("play10h");
         if (hours >= 20) this.unlock("play20h");
 
+        // The blueprint-cost shape and the Shop's currency are the same
+        // shape (see getBlueprintShapeKey) and currency shapes never enter
+        // storedShapes - they credit the wallet directly on delivery (see
+        // hub_goals.js's handleDefinitionDelivered) - so "stored" here means
+        // the wallet balance, same source richBuratino below already uses.
         const blueprintKey = root.gameMode.getBlueprintShapeKey();
-        const storedBlueprints = hubGoals.getShapesStoredByKey(blueprintKey);
-        if (storedBlueprints >= 100000) this.unlock("blueprint100k");
-        if (storedBlueprints >= 1000000) this.unlock("blueprint1m");
+        const currencyAmount = hubGoals.getCurrencyAmount();
+        if (currencyAmount >= 100000) this.unlock("blueprint100k");
+        if (currencyAmount >= 1000000) this.unlock("blueprint1m");
 
-        if (hubGoals.getCurrencyAmount() >= 1000000) this.unlock("richBuratino");
+        if (currencyAmount >= 1000000) this.unlock("richBuratino");
 
         const bpRate = this.currentDeliveryRate(blueprintKey);
         if (bpRate >= 25) this.unlock("throughputBp25");
