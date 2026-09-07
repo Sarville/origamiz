@@ -28,10 +28,13 @@ export class HUDCurrencyShop extends BaseHUDPart {
         this.contentDiv = makeDiv(this.dialogInner, null, ["content"]);
 
         // Below reward_research (see isShopUnlocked()), currency has nothing
-        // to buy yet - shown instead of the balance/dailyBonus/adReward/items
-        // below, which all revolve around earning or spending currency.
+        // to earn or spend yet - shown instead of the balance/dailyBonus/
+        // adReward below, which all revolve around earning or spending it.
         // Remove-ads is real-money, not currency, so it stays outside this
-        // gate and is always available.
+        // gate and is always available - and so do the item cards
+        // themselves (itemsSection below): shown with their price from the
+        // start so the player can see what's coming, just with no buy
+        // button until this same level (see renderCountsAndStatus).
         this.lockedDisclaimerElem = makeDiv(this.contentDiv, null, ["lockedDisclaimer"]);
 
         // Shown instead of a wallet lock reason from another device - see
@@ -70,7 +73,11 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
         // One-off toggle purchases - "exchange" is deliberately excluded,
         // its purchase UI lives next to the balance row / inside
-        // shape_exchange_list.js instead of a generic card here.
+        // shape_exchange_list.js instead of a generic card here. Its own
+        // section, outside gatedContent, since the cards stay visible (price
+        // only, no buy button) even before isShopUnlocked() - see
+        // renderCountsAndStatus.
+        this.itemsSection = makeDiv(this.contentDiv, null, ["itemsSection"]);
         this.itemsToElements = {};
         const items = this.root.gameMode.getShopItems();
         for (const itemId in items) {
@@ -79,7 +86,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
             }
             const handle = {};
 
-            handle.elem = makeDiv(this.gatedContent, null, ["shopItem"]);
+            handle.elem = makeDiv(this.itemsSection, null, ["shopItem"]);
             handle.elem.setAttribute("data-item-id", itemId);
 
             makeDiv(handle.elem, null, ["title"], T.shopItems[itemId].name);
@@ -213,6 +220,53 @@ export class HUDCurrencyShop extends BaseHUDPart {
             this.removeAdsButton.classList.toggle("buyable", !purchased && !this.purchasingAdRemoval);
         }
 
+        // Item cards themselves are never part of the isShopUnlocked() gate
+        // below - shown with their price from level 1 so the player knows
+        // what's coming, just with no buy button (canPurchaseShopItem's own
+        // reward_research check) until the same level that unlocks the rest
+        // of the Shop.
+        const items = this.root.gameMode.getShopItems();
+        for (const itemId in this.itemsToElements) {
+            const handle = this.itemsToElements[itemId];
+            const item = items[itemId];
+            const completed = this.root.hubGoals.isRewardUnlocked(item.reward);
+            const levelLocked = !completed && item.minLevel && this.root.hubGoals.level < item.minLevel;
+            // ShopItemDefinition's `requires` (longRoute/autoTunnel/autoMerger/
+            // autoSplitter all requiring autoPath) - unlike levelLocked, the
+            // price still shows normally (it's a real, currently-unspendable
+            // price, not a "not yet available" placeholder); the button's own
+            // label carries the prerequisite message instead.
+            const requiresLocked =
+                !completed && !levelLocked && item.requires && !this.root.hubGoals.isRewardUnlocked(item.requires);
+
+            handle.elem.classList.toggle("completed", completed);
+            handle.elem.classList.toggle("levelLocked", levelLocked);
+            handle.elem.classList.toggle("requiresLocked", requiresLocked);
+            if (completed) {
+                handle.elemPrice.innerText = T.ingame.currencyShop.completed;
+            } else if (levelLocked) {
+                handle.elemPrice.innerText = T.ingame.currencyShop.lockedUntilLevel.replace(
+                    "<level>",
+                    "" + item.minLevel
+                );
+            } else {
+                handle.elemPrice.innerText = formatBigNumber(item.price);
+            }
+            if (requiresLocked) {
+                const requiredItemId = Object.keys(items).find(id => items[id].reward === item.requires);
+                handle.buyButton.innerText = T.ingame.currencyShop.requiresItem.replace(
+                    "<item>",
+                    T.shopItems[requiredItemId].name
+                );
+            } else {
+                handle.buyButton.innerText = T.ingame.currencyShop.buttonBuy;
+            }
+            handle.buyButton.classList.toggle(
+                "buyable",
+                !completed && this.root.hubGoals.canPurchaseShopItem(itemId)
+            );
+        }
+
         const unlocked = this.isShopUnlocked();
         this.gatedContent.classList.toggle("hidden", !unlocked);
         this.lockedDisclaimerElem.classList.toggle("hidden", unlocked);
@@ -261,31 +315,6 @@ export class HUDCurrencyShop extends BaseHUDPart {
                       formatSeconds(this.root.hubGoals.getAdRewardCooldownSeconds())
                   );
             this.adRewardButton.classList.toggle("buyable", !this.claimingAdReward && canClaimAd);
-        }
-
-        const items = this.root.gameMode.getShopItems();
-        for (const itemId in this.itemsToElements) {
-            const handle = this.itemsToElements[itemId];
-            const item = items[itemId];
-            const completed = this.root.hubGoals.isRewardUnlocked(item.reward);
-            const levelLocked = !completed && item.minLevel && this.root.hubGoals.level < item.minLevel;
-
-            handle.elem.classList.toggle("completed", completed);
-            handle.elem.classList.toggle("levelLocked", levelLocked);
-            if (completed) {
-                handle.elemPrice.innerText = T.ingame.currencyShop.completed;
-            } else if (levelLocked) {
-                handle.elemPrice.innerText = T.ingame.currencyShop.lockedUntilLevel.replace(
-                    "<level>",
-                    "" + item.minLevel
-                );
-            } else {
-                handle.elemPrice.innerText = formatBigNumber(item.price);
-            }
-            handle.buyButton.classList.toggle(
-                "buyable",
-                !completed && this.root.hubGoals.canPurchaseShopItem(itemId)
-            );
         }
     }
 

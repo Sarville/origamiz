@@ -373,6 +373,18 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
     }
 
     /**
+     * Shop item "autoPath" - see BeltPathPlanner.isAutoPathUnlocked. Gates
+     * the bounded-bend drag/tap-continuation branches below; unlocked,
+     * belt falls back to the same real-time Bresenham drag every other
+     * building already uses (onMouseMove's "else" branch), which follows
+     * the mouse tile-by-tile instead of routing to a distant release point.
+     * @returns {boolean}
+     */
+    get autoPathUnlocked() {
+        return this.beltPathPlanner.isAutoPathUnlocked;
+    }
+
+    /**
      * Item 9: momentarily tints the given (unplaceable) belt drag red
      * instead of placing anything. Cleared automatically in update().
      * @param {Array<Vector>} path
@@ -397,7 +409,7 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
      */
     placeBeltTapAt(tile) {
         const metaBuilding = this.currentMetaBuilding.get();
-        if (this.lastBeltTile) {
+        if (this.lastBeltTile && this.autoPathUnlocked) {
             const { path, resolved } = this.beltPathPlanner.findBeltPathToward(
                 this.lastBeltTile,
                 tile,
@@ -1064,7 +1076,7 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
 
             // Place initial building, but only if direction lock is not active
             if (!this.isDirectionLockActive) {
-                if (this.isBeltSelected) {
+                if (this.isBeltSelected && this.autoPathUnlocked) {
                     // Mobile parity (see mobile_controls.js's beginDrag/
                     // onMouseUp): nothing is placed on the real map yet -
                     // this is only a preview, committed on release either as

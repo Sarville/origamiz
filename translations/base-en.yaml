@@ -364,6 +364,7 @@ ingame:
         buttonBuy: Buy
         completed: Purchased
         lockedUntilLevel: "Unlocks at level <level>"
+        requiresItem: "Requires <item>"
         buttonExchange: Exchange
         buttonExchangeLimit: "Exchange (<amount>)"
 
@@ -591,6 +592,9 @@ shopUpgrades:
 
 # The Shop's currency-priced items (src/js/game/hud/parts/currency_shop.js)
 shopItems:
+    autoPath:
+        name: Auto-Pathing
+        description: Dragging a belt no longer has to be a straight line - it automatically bends around corners and obstacles toward wherever you release.
     autoTunnel:
         name: Auto-Tunneling
         description: Dragging a belt across a gap automatically tunnels under it.
@@ -911,6 +915,10 @@ storyRewards:
         desc: >-
             <strong>Research Tier II</strong> is now available - more building variants can be researched in the
             Upgrades window!
+
+    reward_shop_auto_path:
+        title: Auto-Pathing
+        desc: Purchased in the <strong>Shop</strong> - dragging a belt is no longer a straight line only, it now automatically bends around corners and obstacles toward wherever you release!
 
     reward_shop_auto_tunnel:
         title: Auto-Tunneling

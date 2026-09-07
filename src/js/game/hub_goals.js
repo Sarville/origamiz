@@ -564,7 +564,21 @@ export class HubGoals extends BasicSerializableObject {
         if (this.isRewardUnlocked(item.reward)) {
             return false;
         }
+        // The Shop itself only opens for business at reward_research (see
+        // currency_shop.js's isShopUnlocked) - item cards are visible with
+        // their price before that (currency_shop.js's itemsSection), but
+        // nothing is buyable yet.
+        if (!this.isRewardUnlocked(enumHubGoalRewards.reward_research)) {
+            return false;
+        }
         if (item.minLevel && this.level < item.minLevel) {
+            return false;
+        }
+        // longRoute/autoTunnel/autoMerger/autoSplitter only take effect
+        // inside BeltPathPlanner's own bounded-bend search, which itself
+        // only runs once autoPath is bought - see ShopItemDefinition's
+        // `requires` doc.
+        if (item.requires && !this.isRewardUnlocked(item.requires)) {
             return false;
         }
         if (G_IS_DEV && globalConfig.debug.upgradesNoCost) {

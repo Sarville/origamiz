@@ -69,7 +69,8 @@ import { finalGameShape, REGULAR_MODE_LEVELS } from "./levels";
 /** @typedef {{
  *   reward: enumHubGoalRewards,
  *   price: number,
- *   minLevel?: number
+ *   minLevel?: number,
+ *   requires?: enumHubGoalRewards
  * }} ShopItemDefinition */
 
 export const rocketShape = "CbCuCbCu:Sr------:--CrSrCr:CwCwCwCw";
@@ -452,32 +453,26 @@ function generateShopItems() {
     }
 
     shopItemsCache = {
-        autoTunnel: {
-            reward: enumHubGoalRewards.reward_shop_auto_tunnel,
-            price: 8000,
+        // Belt auto-routing itself (BeltPathPlanner's bounded-bend search) -
+        // until bought, belt dragging/tapping falls back to a plain
+        // straight-line placement (see building_placer_logic.js/
+        // mobile_controls.js's autoPathUnlocked gates), so every other item
+        // below (which all extend that search) stays listed after it.
+        autoPath: {
+            reward: enumHubGoalRewards.reward_shop_auto_path,
+            price: 1000,
         },
+        // longRoute/autoTunnel/autoMerger/autoSplitter all only ever kick in
+        // from *inside* BeltPathPlanner.findBeltPathSearch (raised bend cap,
+        // pickTunnelTier, pickAutoMergerVariant, pickAutoSplitterVariant) -
+        // that search itself only runs once autoPath is bought (see
+        // building_placer_logic.js's/mobile_controls.js's autoPathUnlocked
+        // gates), so buying any of these first would just be currency spent
+        // on a purchase with no effect yet. `requires` blocks that.
         longRoute: {
             reward: enumHubGoalRewards.reward_shop_long_route,
             price: 6000,
-        },
-        overviewBuilding: {
-            reward: enumHubGoalRewards.reward_shop_overview_building,
-            price: 6000,
-        },
-        autoMerger: {
-            reward: enumHubGoalRewards.reward_shop_auto_merger,
-            price: 10000,
-        },
-        autoSplitter: {
-            reward: enumHubGoalRewards.reward_shop_auto_splitter,
-            price: 10000,
-        },
-        // Not rendered as a regular .shopItem card - currency_shop.js skips
-        // it there and shows its price/purchase next to the "Exchange"
-        // button and inside shape_exchange_list.js instead.
-        exchange: {
-            reward: enumHubGoalRewards.reward_shop_exchange,
-            price: 5000,
+            requires: enumHubGoalRewards.reward_shop_auto_path,
         },
         // Copy/paste (see blueprint.ts / blueprint_library.js) - no longer a
         // free level reward, bought here instead. Gated to level 13 (see
@@ -487,6 +482,32 @@ function generateShopItems() {
             reward: enumHubGoalRewards.reward_blueprints,
             price: 3000,
             minLevel: 13,
+        },
+        autoTunnel: {
+            reward: enumHubGoalRewards.reward_shop_auto_tunnel,
+            price: 8000,
+            requires: enumHubGoalRewards.reward_shop_auto_path,
+        },
+        overviewBuilding: {
+            reward: enumHubGoalRewards.reward_shop_overview_building,
+            price: 6000,
+        },
+        autoMerger: {
+            reward: enumHubGoalRewards.reward_shop_auto_merger,
+            price: 10000,
+            requires: enumHubGoalRewards.reward_shop_auto_path,
+        },
+        autoSplitter: {
+            reward: enumHubGoalRewards.reward_shop_auto_splitter,
+            price: 10000,
+            requires: enumHubGoalRewards.reward_shop_auto_path,
+        },
+        // Not rendered as a regular .shopItem card - currency_shop.js skips
+        // it there and shows its price/purchase next to the "Exchange"
+        // button and inside shape_exchange_list.js instead.
+        exchange: {
+            reward: enumHubGoalRewards.reward_shop_exchange,
+            price: 5000,
         },
     };
     return shopItemsCache;

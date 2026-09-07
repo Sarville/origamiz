@@ -490,6 +490,18 @@ export class HUDMobileControls extends BaseHUDPart {
         return !!metaBuilding && metaBuilding.getId() === "belt";
     }
 
+    /**
+     * Shop item "autoPath" - see BeltPathPlanner.isAutoPathUnlocked. Gates
+     * both the bounded-bend drag routing below and tap-continuation
+     * (placeBeltTapAt); unlike desktop this has no non-belt Bresenham
+     * fallback to defer to, so it's a straight single-axis line via
+     * straightDragPath instead.
+     * @returns {boolean}
+     */
+    get autoPathUnlocked() {
+        return this.beltPathPlanner.isAutoPathUnlocked;
+    }
+
     onRotateClicked() {
         this.placerLogic.tryRotate();
     }
@@ -966,7 +978,7 @@ export class HUDMobileControls extends BaseHUDPart {
      * @param {Vector} tile
      */
     placeBeltTapAt(tile) {
-        if (this.lastBeltTile) {
+        if (this.lastBeltTile && this.autoPathUnlocked) {
             const { path, resolved } = this.findBeltPathToward(this.lastBeltTile, tile, false);
             if (!resolved) {
                 // Item 9: crosses an obstacle no unlocked tunnel can bridge -
@@ -1176,16 +1188,24 @@ export class HUDMobileControls extends BaseHUDPart {
                 // Always recomputed from the press point to the current finger position -
                 // not accumulated along wherever the finger physically travelled, which
                 // just traces every wobble of a real finger instead of a clean path.
-                // Item 9: live auto-tunnel planning while dragging, trying the
-                // other L-corner too if the dominant-axis one can't be made
-                // contiguous (findBeltPathToward) - if neither works, show
-                // nothing here (draw() reads dragPreviewInvalid and tints
-                // dragPath red instead) so release-time feedback
-                // (flashInvalidBelt) isn't the only hint something's wrong.
-                const { path, resolved } = this.findBeltPathToward(this.dragStartTile, tile, true, lastTile);
-                this.dragPath = path;
-                this.dragPreviewEntries = resolved || [];
-                this.dragPreviewInvalid = !resolved;
+                if (this.autoPathUnlocked) {
+                    // Item 9: live auto-tunnel planning while dragging, trying
+                    // the other L-corner too if the dominant-axis one can't be
+                    // made contiguous (findBeltPathToward) - if neither works,
+                    // show nothing here (draw() reads dragPreviewInvalid and
+                    // tints dragPath red instead) so release-time feedback
+                    // (flashInvalidBelt) isn't the only hint something's wrong.
+                    const { path, resolved } = this.findBeltPathToward(this.dragStartTile, tile, true, lastTile);
+                    this.dragPath = path;
+                    this.dragPreviewEntries = resolved || [];
+                    this.dragPreviewInvalid = !resolved;
+                } else {
+                    // Shop item "autoPath" not bought yet - straight single-axis
+                    // line only, no bends, no obstacle-crossing.
+                    this.dragPath = this.beltPathPlanner.straightDragPath(this.dragStartTile, tile);
+                    this.dragPreviewEntries = this.beltPathPlanner.beltTilesToEntries(this.dragPath);
+                    this.dragPreviewInvalid = false;
+                }
             }
             return STOP_PROPAGATION;
         }

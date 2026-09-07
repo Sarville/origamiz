@@ -321,22 +321,47 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
 
                     const target = staticComp.rotation === 0 ? new Vector(-2.1, 0.5) : new Vector(-0.5, 2.1);
 
+                    // Item 2: with belt dragging straight-only until the "autoPath"
+                    // Shop item is bought (see building_placer_logic.js's/
+                    // mobile_controls.js's autoPathUnlocked), the player lays this
+                    // corner in two separate holds/drags - so the hint shows only
+                    // one leg at a time instead of the whole bent path at once
+                    // (which used to visibly disagree with wherever the old
+                    // auto-router actually landed). The corner tile itself is the
+                    // hand-off point: once it has a belt, the first leg is done.
+                    const cornerTile =
+                        staticComp.rotation === 0
+                            ? new Vector(staticComp.origin.x, 0)
+                            : new Vector(-1, staticComp.origin.y);
+                    const legOneDone = !!this.root.map.getLayerContentXY(
+                        cornerTile.x,
+                        cornerTile.y,
+                        "regular"
+                    )?.components.Belt;
+
                     parameters.context.globalAlpha = 0.1 + animation * 0.1;
                     parameters.context.strokeStyle = "rgb(74, 237, 134)";
                     parameters.context.lineWidth = globalConfig.tileSize / 2;
                     parameters.context.beginPath();
-                    parameters.context.moveTo(
-                        (staticComp.origin.x + offset.x) * globalConfig.tileSize,
-                        (staticComp.origin.y + offset.y) * globalConfig.tileSize
-                    );
-                    parameters.context.lineTo(
-                        anchor.x * globalConfig.tileSize,
-                        anchor.y * globalConfig.tileSize
-                    );
-                    parameters.context.lineTo(
-                        target.x * globalConfig.tileSize,
-                        target.y * globalConfig.tileSize
-                    );
+                    if (!legOneDone) {
+                        parameters.context.moveTo(
+                            (staticComp.origin.x + offset.x) * globalConfig.tileSize,
+                            (staticComp.origin.y + offset.y) * globalConfig.tileSize
+                        );
+                        parameters.context.lineTo(
+                            anchor.x * globalConfig.tileSize,
+                            anchor.y * globalConfig.tileSize
+                        );
+                    } else {
+                        parameters.context.moveTo(
+                            anchor.x * globalConfig.tileSize,
+                            anchor.y * globalConfig.tileSize
+                        );
+                        parameters.context.lineTo(
+                            target.x * globalConfig.tileSize,
+                            target.y * globalConfig.tileSize
+                        );
+                    }
                     parameters.context.stroke();
                     parameters.context.globalAlpha = 1;
 
@@ -344,28 +369,31 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
 
                     let arrows = [];
 
-                    let pos = staticComp.origin.add(offset);
-                    let delta = anchor.sub(pos).normalize();
-                    let maxIter = 999;
+                    if (!legOneDone) {
+                        let pos = staticComp.origin.add(offset);
+                        let delta = anchor.sub(pos).normalize();
+                        let maxIter = 999;
 
-                    while (pos.distanceSquare(anchor) > 1 && maxIter-- > 0) {
-                        pos = pos.add(delta);
-                        arrows.push({
-                            pos: pos.sub(offset),
-                            rotation: staticComp.rotation,
-                        });
-                    }
-
-                    pos = anchor.copy();
-                    delta = target.sub(pos).normalize();
-                    const localDelta =
-                        staticComp.rotation === 0 ? new Vector(-1.5, -0.5) : new Vector(-0.5, 0.5);
-                    while (pos.distanceSquare(target) > 1 && maxIter-- > 0) {
-                        pos = pos.add(delta);
-                        arrows.push({
-                            pos: pos.add(localDelta),
-                            rotation: 90 - staticComp.rotation,
-                        });
+                        while (pos.distanceSquare(anchor) > 1 && maxIter-- > 0) {
+                            pos = pos.add(delta);
+                            arrows.push({
+                                pos: pos.sub(offset),
+                                rotation: staticComp.rotation,
+                            });
+                        }
+                    } else {
+                        let pos = anchor.copy();
+                        let delta = target.sub(pos).normalize();
+                        let maxIter = 999;
+                        const localDelta =
+                            staticComp.rotation === 0 ? new Vector(-1.5, -0.5) : new Vector(-0.5, 0.5);
+                        while (pos.distanceSquare(target) > 1 && maxIter-- > 0) {
+                            pos = pos.add(delta);
+                            arrows.push({
+                                pos: pos.add(localDelta),
+                                rotation: 90 - staticComp.rotation,
+                            });
+                        }
                     }
 
                     for (let i = 0; i < arrows.length; i++) {
@@ -394,8 +422,19 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
                     parameters.context.fillStyle = THEME.map.tutorialDragText;
                     parameters.context.font = "15px GameFont";
 
-                    if (staticComp.rotation === 0) {
-                        const pos = staticComp.origin.toWorldSpace().subScalars(2, 10);
+                    // Leg 2 always runs along the axis perpendicular to leg 1
+                    // (that's the whole point of the corner) - so its label uses
+                    // the opposite of leg 1's own rotated-vs-horizontal choice
+                    // below, anchored at the corner tile instead of the miner.
+                    const labelVertical = legOneDone
+                        ? staticComp.rotation !== 0
+                        : staticComp.rotation === 0;
+                    const labelOrigin = legOneDone
+                        ? new Vector(anchor.x * globalConfig.tileSize, anchor.y * globalConfig.tileSize)
+                        : staticComp.origin.toWorldSpace();
+
+                    if (labelVertical) {
+                        const pos = labelOrigin.subScalars(2, 10);
                         parameters.context.translate(pos.x, pos.y);
                         parameters.context.rotate(-Math.radians(90));
                         parameters.context.fillText(
@@ -406,7 +445,7 @@ export class HUDInteractiveTutorial extends BaseHUDPart {
                         parameters.context.rotate(Math.radians(90));
                         parameters.context.translate(-pos.x, -pos.y);
                     } else {
-                        const pos = staticComp.origin.toWorldSpace().addScalars(40, 50);
+                        const pos = labelOrigin.addScalars(40, 50);
                         parameters.context.fillText(
                             getHintText("1_2_hold_and_drag"),
                             pos.x,

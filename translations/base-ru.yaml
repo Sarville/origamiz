@@ -263,6 +263,7 @@ ingame:
         buttonBuy: Купить
         completed: Куплено
         lockedUntilLevel: "Открывается на <level> уровне"
+        requiresItem: "Требуется: <item>"
         buttonExchange: Обмен
         buttonExchangeLimit: Обмен (<amount>)
         dailyBonus:
@@ -485,6 +486,10 @@ shopUpgrades:
         name: Смешивание и Покраска
         description: Скорость x<currentMult> → x<newMult>
 shopItems:
+    autoPath:
+        name: Автопуть
+        description: Протяжка ленты больше не ограничена прямой линией - лента сама
+            огибает повороты и препятствия до места отпускания.
     autoTunnel:
         name: Автотуннели
         description: Протяжка ленты через препятствие автоматически прокладывает туннель.
@@ -797,6 +802,11 @@ storyRewards:
         title: Исследования, тир II
         desc: Открыт <strong>второй тир исследований</strong> - в окне улучшений стали
             доступны новые варианты построек!
+    reward_shop_auto_path:
+        title: Автопуть
+        desc: Куплено в <strong>Магазине</strong> - теперь протяжка ленты больше не
+            ограничена прямой линией, она сама огибает повороты и препятствия до
+            места отпускания!
     reward_shop_auto_tunnel:
         title: Автотуннели
         desc: Куплено в <strong>Магазине</strong> - теперь протяжка ленты через

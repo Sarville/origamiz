@@ -66,6 +66,42 @@ export class BeltPathPlanner {
     }
 
     /**
+     * Shop item "autoPath" (reward_shop_auto_path): whether the bounded-bend
+     * search below (findBeltPath/findBeltPathToward) may run at all. Until
+     * bought, both callers (building_placer_logic.js's drag/tap,
+     * mobile_controls.js's drag/tap) fall back to straightDragPath instead -
+     * a plain single-axis line, no bends, no tunnel-bridging, no
+     * continuation onto a previous run.
+     * @returns {boolean}
+     */
+    get isAutoPathUnlocked() {
+        return this.root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_auto_path);
+    }
+
+    /**
+     * The pre-purchase fallback for findBeltPathToward: a straight run from
+     * `from` toward `to`, locked to whichever axis has the larger delta -
+     * never a corner, never routed around obstacles. Recomputed fresh from
+     * `from` every call (same "always from the anchor, not accumulated"
+     * convention findBeltPathToward's own callers already use), so it can't
+     * drift onto the other axis mid-drag as long as the caller keeps
+     * re-deriving `to` from the live cursor/finger position.
+     * @param {Vector} from
+     * @param {Vector} to
+     * @returns {Array<Vector>}
+     */
+    straightDragPath(from, to) {
+        if (from.equals(to)) {
+            return [from];
+        }
+        const dx = to.x - from.x;
+        const dy = to.y - from.y;
+        return Math.abs(dx) >= Math.abs(dy)
+            ? this.axisSegment(from, new Vector(to.x, from.y))
+            : this.axisSegment(from, new Vector(from.x, to.y));
+    }
+
+    /**
      * All tiles on a straight run between two tiles that already share an axis (same
      * x or same y) - a single leg of an L-shaped corner path.
      * @param {Vector} from

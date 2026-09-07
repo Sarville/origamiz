@@ -37,6 +37,7 @@ export const enumHubGoalRewards = {
     reward_research: "reward_research",
     reward_research_t2: "reward_research_t2",
 
+    reward_shop_auto_path: "reward_shop_auto_path",
     reward_shop_auto_tunnel: "reward_shop_auto_tunnel",
     reward_shop_overview_building: "reward_shop_overview_building",
     reward_shop_auto_merger: "reward_shop_auto_merger",

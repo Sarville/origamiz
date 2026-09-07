@@ -235,6 +235,20 @@
             &.levelLocked .price {
                 color: #aaa;
             }
+
+            // Not yet purchasable because its own prerequisite item (e.g.
+            // longRoute/autoTunnel/autoMerger/autoSplitter needing autoPath)
+            // isn't bought yet - the price stays visible/normal (it's a real
+            // price, not a placeholder), the button's own label names the
+            // prerequisite instead of "Buy", so it needs more room and a
+            // smaller size than the other (short) button labels.
+            &.requiresLocked button.buy {
+                font-size: 0.75rem;
+                padding-left: 0.6rem;
+                padding-right: 0.6rem;
+                white-space: normal;
+                text-align: center;
+            }
         }
 
     }
