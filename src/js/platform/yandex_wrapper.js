@@ -7,6 +7,12 @@ import { PlatformWrapperImplBrowser } from "./wrapper";
 
 const logger = new Logger("yandex-wrapper");
 
+// Must match the consumable product configured in the Yandex Games dev
+// console - unlike "disable_ads" (a one-time permanent purchase), this one
+// has to be consumed after every purchase (see purchaseCurrencyPack) so the
+// player can buy it again.
+const CURRENCY_PACK_PRODUCT_ID = "currency_pack_10k";
+
 // Loaded onto window by the SDK <script> tag the "yandex" build variant
 // injects into index.html (see gulp/html.js) - not present in other builds.
 /** @typedef {{ init: () => Promise<any> }} YaGamesGlobal */
@@ -173,6 +179,32 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
             return true;
         } catch (ex) {
             logger.error("Ad-removal purchase failed:", ex);
+            return false;
+        }
+    }
+
+    getSupportsCurrencyPackPurchase() {
+        return Boolean(this.payments);
+    }
+
+    /**
+     * Buys the consumable currency pack. Unlike purchaseAdRemoval, the
+     * purchase must be explicitly consumed afterwards - Yandex otherwise
+     * keeps treating the product as "owned" and blocks buying it again.
+     * Crediting the wallet itself is the caller's job (see hub_goals.js's
+     * grantCurrencyPackPurchase) - this only confirms and consumes payment.
+     * @returns {Promise<boolean>}
+     */
+    async purchaseCurrencyPack() {
+        if (!this.payments) {
+            return false;
+        }
+        try {
+            const purchase = await this.payments.purchase({ id: CURRENCY_PACK_PRODUCT_ID });
+            await this.payments.consumePurchase(purchase.purchaseToken);
+            return true;
+        } catch (ex) {
+            logger.error("Currency pack purchase failed:", ex);
             return false;
         }
     }

@@ -29,6 +29,12 @@ const DAILY_BONUS_AMOUNT = 1000;
 // video itself, so the cooldown (see WalletStorage) is entirely our own.
 const AD_REWARD_AMOUNT = 250;
 
+// Real-money currency pack (Yandex Payments, consumable - see
+// yandex_wrapper.js's purchaseCurrencyPack) - amount credited is entirely
+// our own choice, unrelated to the product's price (set in the Yandex dev
+// console).
+const CURRENCY_PACK_AMOUNT = 10000;
+
 // Shape Exchange - a purchasable Shop feature, rate-limited to a handful of
 // buy/sell operations per real-world day (raisable with a repeatable
 // purchase, capped after a few raises).
@@ -903,6 +909,24 @@ export class HubGoals extends BasicSerializableObject {
      */
     grantAdReward() {
         return this.root.app.wallet.grantAdReward(AD_REWARD_AMOUNT);
+    }
+
+    /** @returns {number} */
+    getCurrencyPackAmount() {
+        return CURRENCY_PACK_AMOUNT;
+    }
+
+    /**
+     * Grants the currency-pack IAP. Call only after the platform confirmed
+     * the purchase actually went through (see purchaseCurrencyPack).
+     * @returns {boolean}
+     */
+    grantCurrencyPackPurchase() {
+        if (!this.root.app.wallet.canEarn()) {
+            return false;
+        }
+        this.root.app.wallet.credit(CURRENCY_PACK_AMOUNT);
+        return true;
     }
 
     /**

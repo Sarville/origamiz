@@ -266,6 +266,26 @@ export class PlatformWrapperImplBrowser {
     }
 
     /**
+     * Whether this platform sells the real-money currency pack IAP - same
+     * dev-only fake support as getSupportsAdRemovalPurchase, for testing the
+     * button/flow without deploying anywhere.
+     */
+    getSupportsCurrencyPackPurchase() {
+        return Boolean(G_IS_DEV && globalConfig.debug.rewardedAdsInstant);
+    }
+
+    /**
+     * Starts the currency-pack purchase flow. Resolves true if the purchase
+     * succeeded, false otherwise (cancelled, failed, or unsupported here).
+     * Crediting the currency itself is the caller's job (see
+     * hub_goals.js's grantCurrencyPackPurchase) - this only confirms payment.
+     * @returns {Promise<boolean>}
+     */
+    async purchaseCurrencyPack() {
+        return this.getSupportsCurrencyPackPurchase();
+    }
+
+    /**
      * Shows a fullscreen interstitial ad. Resolves true if an ad was
      * actually shown, false otherwise (throttled by the platform, ads
      * disabled, or unsupported here). Never call this while the player is

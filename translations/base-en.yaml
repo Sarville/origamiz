@@ -380,9 +380,16 @@ ingame:
             buttonClaim: Watch (+<amount>)
             cooldown: "Available in <time>"
 
+        currencyPack:
+            title: Currency Pack
+            description: One-time purchase. Instantly adds 10,000 currency shapes to your wallet.
+            price: "100 ₽"
+            buttonBuy: Buy
+
         removeAds:
             title: Remove Ads
             description: One-time purchase. Removes the banner and video ads shown between actions.
+            price: "150 ₽"
             buttonBuy: Buy
             purchased: Purchased
 

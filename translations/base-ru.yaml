@@ -276,10 +276,17 @@ ingame:
             description: Смотрите короткий ролик за бесплатную валюту раз в пару часов.
             buttonClaim: Смотреть (+<amount>)
             cooldown: Доступно через <time>
+        currencyPack:
+            title: Пак валюты
+            description: Разовая покупка. Мгновенно добавляет 10 000 фигурок-валюты
+                в ваш кошелёк.
+            price: "100 ₽"
+            buttonBuy: Купить
         removeAds:
             title: Отключить рекламу
             description: Разовая покупка. Убирает баннер и ролики, которые показываются
                 между действиями.
+            price: "150 ₽"
             buttonBuy: Купить
             purchased: Куплено
         exchangeList:

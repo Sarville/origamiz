@@ -30,8 +30,8 @@ export class HUDCurrencyShop extends BaseHUDPart {
         // Below reward_research (see isShopUnlocked()), currency has nothing
         // to earn or spend yet - shown instead of the balance/dailyBonus/
         // adReward below, which all revolve around earning or spending it.
-        // Remove-ads is real-money, not currency, so it stays outside this
-        // gate and is always available - and so do the item cards
+        // Remove-ads and the currency pack are real-money, not currency, so
+        // they stay outside this gate and are always available - and so do the item cards
         // themselves (itemsSection below): shown with their price from the
         // start so the player can see what's coming, just with no buy
         // button until this same level (see renderCountsAndStatus).
@@ -69,6 +69,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
         this.createDailyBonusSection();
         this.createAdRewardSection();
+        this.createCurrencyPackSection();
         this.createRemoveAdsSection();
 
         // One-off toggle purchases - "exchange" is deliberately excluded,
@@ -162,6 +163,29 @@ export class HUDCurrencyShop extends BaseHUDPart {
     }
 
     /**
+     * Real-money currency pack purchase (Yandex Payments, consumable - see
+     * yandex_wrapper.js's purchaseCurrencyPack). Skipped entirely where the
+     * platform doesn't sell it, same as remove-ads.
+     */
+    createCurrencyPackSection() {
+        if (!this.root.app.platformWrapper.getSupportsCurrencyPackPurchase()) {
+            return;
+        }
+
+        const pack = T.ingame.currencyShop.currencyPack;
+        const container = makeDiv(this.contentDiv, null, ["dailyBonus", "hasPrice"]);
+        makeDiv(container, null, ["title"], pack.title);
+        makeDiv(container, null, ["description"], pack.description);
+        makeDiv(container, null, ["priceRub"], pack.price);
+
+        this.currencyPackButton = document.createElement("button");
+        this.currencyPackButton.classList.add("buy", "styledButton", "buyable");
+        this.currencyPackButton.innerText = pack.buttonBuy;
+        container.appendChild(this.currencyPackButton);
+        this.trackClicks(this.currencyPackButton, () => this.tryPurchaseCurrencyPack());
+    }
+
+    /**
      * Real-money ad-removal purchase (Yandex Payments, not our own
      * currency) - gates every banner/interstitial call site in
      * yandex_wrapper.js. Skipped entirely where the platform doesn't sell
@@ -173,9 +197,10 @@ export class HUDCurrencyShop extends BaseHUDPart {
         }
 
         const removeAds = T.ingame.currencyShop.removeAds;
-        const container = makeDiv(this.contentDiv, null, ["dailyBonus"]);
+        const container = makeDiv(this.contentDiv, null, ["dailyBonus", "hasPrice"]);
         makeDiv(container, null, ["title"], removeAds.title);
         makeDiv(container, null, ["description"], removeAds.description);
+        makeDiv(container, null, ["priceRub"], removeAds.price);
 
         this.removeAdsButton = document.createElement("button");
         this.removeAdsButton.classList.add("buy", "styledButton");
@@ -218,6 +243,12 @@ export class HUDCurrencyShop extends BaseHUDPart {
             const purchased = this.root.app.platformWrapper.getAdsDisabled();
             this.removeAdsButton.innerText = purchased ? removeAds.purchased : removeAds.buttonBuy;
             this.removeAdsButton.classList.toggle("buyable", !purchased && !this.purchasingAdRemoval);
+        }
+
+        // Consumable - never shows a "Purchased" state, just disabled while
+        // a purchase is already in flight.
+        if (this.currencyPackButton) {
+            this.currencyPackButton.classList.toggle("buyable", !this.purchasingCurrencyPack);
         }
 
         // Item cards themselves are never part of the isShopUnlocked() gate
@@ -361,6 +392,22 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
         this.claimingAdReward = false;
         if (watched && this.root.hubGoals.grantAdReward()) {
+            this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
+        }
+        this.renderCountsAndStatus();
+    }
+
+    async tryPurchaseCurrencyPack() {
+        if (this.purchasingCurrencyPack) {
+            return;
+        }
+        this.purchasingCurrencyPack = true;
+        this.renderCountsAndStatus();
+
+        const purchased = await this.root.app.platformWrapper.purchaseCurrencyPack();
+
+        this.purchasingCurrencyPack = false;
+        if (purchased && this.root.hubGoals.grantCurrencyPackPurchase()) {
             this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
         }
         this.renderCountsAndStatus();
