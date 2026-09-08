@@ -474,15 +474,6 @@ function generateShopItems() {
             price: 6000,
             requires: enumHubGoalRewards.reward_shop_auto_path,
         },
-        // Copy/paste (see blueprint.ts / blueprint_library.js) - no longer a
-        // free level reward, bought here instead. Gated to level 13 (see
-        // levels.js) since that's also when the currency head-start toward
-        // it is granted.
-        blueprints: {
-            reward: enumHubGoalRewards.reward_blueprints,
-            price: 3000,
-            minLevel: 13,
-        },
         autoTunnel: {
             reward: enumHubGoalRewards.reward_shop_auto_tunnel,
             price: 8000,
@@ -501,6 +492,18 @@ function generateShopItems() {
             reward: enumHubGoalRewards.reward_shop_auto_splitter,
             price: 10000,
             requires: enumHubGoalRewards.reward_shop_auto_path,
+        },
+        // Copy/paste (see blueprint.ts / blueprint_library.js) - no longer a
+        // free level reward, bought here instead. Gated to level 13 (see
+        // levels.js) since that's also when the currency head-start toward
+        // it is granted. Listed last among the visible cards (see
+        // currency_shop.js - exchange below is the only later entry, and
+        // it's excluded from itemsSection entirely) since it's the highest
+        // level requirement of the bunch.
+        blueprints: {
+            reward: enumHubGoalRewards.reward_blueprints,
+            price: 3000,
+            minLevel: 13,
         },
         // Not rendered as a regular .shopItem card - currency_shop.js skips
         // it there and shows its price/purchase next to the "Exchange"

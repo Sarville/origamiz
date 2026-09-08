@@ -261,14 +261,24 @@ export class HUDCurrencyShop extends BaseHUDPart {
             const handle = this.itemsToElements[itemId];
             const item = items[itemId];
             const completed = this.root.hubGoals.isRewardUnlocked(item.reward);
-            const levelLocked = !completed && item.minLevel && this.root.hubGoals.level < item.minLevel;
+            // Boolean(...) matters here, not just style - classList.toggle(cls, force)
+            // treats an explicit `undefined` force as "no force" (plain flip) rather
+            // than false, and `item.minLevel && ...`/`item.requires && ...` evaluate to
+            // `undefined` (not false) for items missing that field, since `&&` returns
+            // the falsy operand as-is. Without the cast, every item lacking minLevel/
+            // requires had its levelLocked/requiresLocked class - and the CSS tied to
+            // it - flip on and off every single frame the Shop was open.
+            const levelLocked = Boolean(
+                !completed && item.minLevel && this.root.hubGoals.level < item.minLevel
+            );
             // ShopItemDefinition's `requires` (longRoute/autoTunnel/autoMerger/
             // autoSplitter all requiring autoPath) - unlike levelLocked, the
             // price still shows normally (it's a real, currently-unspendable
             // price, not a "not yet available" placeholder); the button's own
             // label carries the prerequisite message instead.
-            const requiresLocked =
-                !completed && !levelLocked && item.requires && !this.root.hubGoals.isRewardUnlocked(item.requires);
+            const requiresLocked = Boolean(
+                !completed && !levelLocked && item.requires && !this.root.hubGoals.isRewardUnlocked(item.requires)
+            );
 
             handle.elem.classList.toggle("completed", completed);
             handle.elem.classList.toggle("levelLocked", levelLocked);
@@ -302,7 +312,11 @@ export class HUDCurrencyShop extends BaseHUDPart {
         this.gatedContent.classList.toggle("hidden", !unlocked);
         this.lockedDisclaimerElem.classList.toggle("hidden", unlocked);
         if (!unlocked) {
-            this.sessionLockedDisclaimerElem.classList.add("hidden");
+            // toggle(cls, true), not add(cls) - add() unconditionally rewrites the
+            // class attribute even when the class is already present (unlike
+            // toggle() with a matching force, which no-ops), so this ran every
+            // single frame the Shop was open pre-unlock.
+            this.sessionLockedDisclaimerElem.classList.toggle("hidden", true);
             return;
         }
 

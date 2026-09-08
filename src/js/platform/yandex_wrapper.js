@@ -147,12 +147,17 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
             let rewarded = false;
             this.ysdk.adv.showRewardedVideo({
                 callbacks: {
+                    onOpen: () => this.app.sound.setMuted(true),
                     onRewarded: () => {
                         rewarded = true;
                     },
-                    onClose: () => resolve(rewarded),
+                    onClose: () => {
+                        this.app.sound.setMuted(false);
+                        resolve(rewarded);
+                    },
                     onError: ex => {
                         logger.error("Rewarded ad failed:", ex);
+                        this.app.sound.setMuted(false);
                         resolve(false);
                     },
                 },
@@ -216,9 +221,14 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
         return new Promise(resolve => {
             this.ysdk.adv.showFullscreenAdv({
                 callbacks: {
-                    onClose: wasShown => resolve(Boolean(wasShown)),
+                    onOpen: () => this.app.sound.setMuted(true),
+                    onClose: wasShown => {
+                        this.app.sound.setMuted(false);
+                        resolve(Boolean(wasShown));
+                    },
                     onError: ex => {
                         logger.error("Interstitial ad failed:", ex);
+                        this.app.sound.setMuted(false);
                         resolve(false);
                     },
                 },

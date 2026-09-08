@@ -223,6 +223,12 @@ export class SoundInterface {
     }
 
     /**
+     * Mutes/unmutes all audio, e.g. while a platform ad overlay is showing.
+     * @param {boolean} muted
+     */
+    setMuted(muted) {}
+
+    /**
      * Focus change handler, called by the pap
      * @param {boolean} pageIsVisible
      */
@@ -542,5 +548,9 @@ export class Sound extends SoundInterface {
 
     deinitialize() {
         return super.deinitialize().then(() => Howler.unload());
+    }
+
+    setMuted(muted) {
+        Howler.mute(muted);
     }
 }

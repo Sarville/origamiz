@@ -255,9 +255,13 @@
             // Not yet purchasable because of a minLevel gate (e.g.
             // blueprints, level 13) - the price column shows "Unlocks at
             // level N" instead of a buyable amount, so it shouldn't read as
-            // green/urgent the way an affordable price does.
+            // green/urgent the way an affordable price does. Also sized down
+            // from the inherited Heading size - that's calibrated for a short
+            // number like "3k", not a whole sentence.
             &.levelLocked .price {
                 color: #aaa;
+                font-size: 0.85rem;
+                font-weight: normal;
             }
 
             // Not yet purchasable because its own prerequisite item (e.g.
