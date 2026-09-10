@@ -13,6 +13,12 @@ const logger = new Logger("yandex-wrapper");
 // player can buy it again.
 const CURRENCY_PACK_PRODUCT_ID = "currency_pack_10k";
 
+// Must match hub_goals.js's CURRENCY_PACK_AMOUNT - duplicated here because
+// consumeUnprocessedPurchases() has to run before any savegame (and its
+// HubGoals) exists, so it can't call through hub_goals.js's own
+// grantCurrencyPackPurchase() the way the normal purchase-button flow does.
+const CURRENCY_PACK_AMOUNT = 10000;
+
 // Loaded onto window by the SDK <script> tag the "yandex" build variant
 // injects into index.html (see gulp/html.js) - not present in other builds.
 /** @typedef {{ init: () => Promise<any> }} YaGamesGlobal */
@@ -43,13 +49,47 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
             logger.error("Failed to initialize Yandex Games SDK, continuing without it:", ex);
         }
 
+        // Consumable purchases (currency_pack_10k) left over from an
+        // interrupted purchase flow (see purchaseCurrencyPack) - stashed
+        // here and credited later by consumeUnprocessedPurchases(), once
+        // app.wallet has hydrated from the cloud and won't clobber the
+        // credit (see that method's doc).
+        this.unconsumedCurrencyPackPurchases = [];
+
         try {
             this.payments = (await this.ysdk?.getPayments({ signed: false })) ?? null;
             const purchases = await this.payments?.getPurchases();
             this.adsDisabled = Boolean(purchases?.some(purchase => purchase.productID === "disable_ads"));
+            this.unconsumedCurrencyPackPurchases =
+                purchases?.filter(purchase => purchase.productID === CURRENCY_PACK_PRODUCT_ID) ?? [];
         } catch (ex) {
-            logger.error("Failed to check Yandex ad-removal purchase, continuing without it:", ex);
+            logger.error("Failed to check Yandex purchases, continuing without them:", ex);
         }
+    }
+
+    /**
+     * Credits and consumes any currency-pack purchase found unconsumed at
+     * startup (see initialize()) - required by Yandex so a purchase that
+     * failed to consume last session (e.g. network dropped right after
+     * payments.purchase() resolved) doesn't sit unprocessed forever and
+     * block moderation/future purchases of the same consumable.
+     *
+     * Must be called only after app.wallet.initialize() has hydrated the
+     * balance from the cloud - crediting any earlier would get overwritten
+     * by that hydration. Credits before consuming, per Yandex's own
+     * recommended order, since consumePurchase() deletes the purchase
+     * record with no way to recover it if crediting failed after.
+     */
+    async consumeUnprocessedPurchases() {
+        for (const purchase of this.unconsumedCurrencyPackPurchases) {
+            try {
+                this.app.wallet.credit(CURRENCY_PACK_AMOUNT);
+                await this.payments.consumePurchase(purchase.purchaseToken);
+            } catch (ex) {
+                logger.error("Failed to consume unprocessed currency-pack purchase:", ex);
+            }
+        }
+        this.unconsumedCurrencyPackPurchases = [];
     }
 
     getId() {

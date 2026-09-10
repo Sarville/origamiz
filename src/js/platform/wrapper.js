@@ -286,6 +286,15 @@ export class PlatformWrapperImplBrowser {
     }
 
     /**
+     * Credits and consumes any currency-pack purchase left over from a
+     * previous session that got interrupted before it could be consumed
+     * (network drop between payments.purchase() and consumePurchase()) -
+     * see PlatformWrapperImplYandex for the real implementation. No-op here
+     * since this platform has no real payment SDK.
+     */
+    async consumeUnprocessedPurchases() {}
+
+    /**
      * Shows a fullscreen interstitial ad. Resolves true if an ad was
      * actually shown, false otherwise (throttled by the platform, ads
      * disabled, or unsupported here). Never call this while the player is
