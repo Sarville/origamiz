@@ -43,11 +43,8 @@ a purchase via `/vk/origamiz-consume`.
 ## Item pricing
 
 `ITEMS` in `vk-payments/server.js` prices `disable_ads`/`currency_pack_10k` in VK "voices"
-(голоса), chosen to approximate Origamiz's Yandex build prices (150 rub / 100 rub) - there is no
-documented official voice-to-rouble exchange rate for developers (VK's own retail price per voice
-varies ~7-11 rub by purchase method), so this is a best-effort estimate, **not verified against a
-real purchase**. Check the actual charged amount in the VK payments cabinet after a real (or
-"Тестовый") purchase and adjust `price` if it's off.
+(голоса) at a confirmed 1 voice = 1 rub for this app, matching Origamiz's Yandex build prices
+(150 rub / 100 rub) directly.
 
 ## Deploying a change
 

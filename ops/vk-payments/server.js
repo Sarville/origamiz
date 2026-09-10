@@ -12,14 +12,11 @@ const DATA_FILE = process.env.DATA_FILE || "/data/entitlements.json";
 
 // disable_ads (one-time, permanent) mirrors Origamiz's Yandex build at 150 rub; currency_pack_10k
 // (repeatable, credits 10000 currency - see hub_goals.js's CURRENCY_PACK_AMOUNT) mirrors 100 rub.
-// VK charges in "voices" (голоса), not rubles directly, and there is no documented fixed
-// voice-to-rouble rate for developers (VK's own retail price per voice varies by purchase
-// method, ~7-11 rub) - these are a best-effort approximation, not a guaranteed match. Verify
-// against a real test purchase in the VK payments cabinet and adjust if the charged amount is
-// off. ponytail: revisit if VK ever documents an official conversion rate.
+// VK charges in "voices" (голоса) - confirmed 1 voice = 1 rub for this app, so price is just the
+// target rouble amount.
 const ITEMS = {
-    disable_ads: { title: "Отключить рекламу", price: 21 },
-    currency_pack_10k: { title: "Пак валюты", price: 15 },
+    disable_ads: { title: "Отключить рекламу", price: 150 },
+    currency_pack_10k: { title: "Пак валюты", price: 100 },
 };
 
 let entitlements = {};
