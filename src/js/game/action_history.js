@@ -63,9 +63,21 @@ export class ActionHistory {
     /**
      * Opens a new recording window - call once around a single user action
      * (a tap, a whole dragged path, a delete-mode tap), not per tile placed.
+     *
+     * Reentrant: a caller that itself wraps several already-self-contained
+     * placements (each managing its own begin/endTransaction pair, e.g.
+     * HUDBuildingPlacerLogic.tryPlaceCurrentBuildingAt) in one outer
+     * transaction - so the whole thing undoes as a single step - just
+     * increments a depth counter instead of clobbering the outer
+     * transaction's already-recorded operations. Only the outermost
+     * endTransaction call actually commits (see its own doc).
      */
     beginTransaction() {
-        this.transaction = { operations: [] };
+        if (this.transaction) {
+            this.transaction.depth++;
+            return;
+        }
+        this.transaction = { operations: [], depth: 1 };
     }
 
     /**
@@ -104,11 +116,22 @@ export class ActionHistory {
      * to wherever it was *before* this placement on undo, and forward to
      * this placement's own end tile on redo - ActionHistory doesn't know or
      * care what a "belt" is, it just carries whatever the caller attaches.
+     *
+     * Reentrant (see beginTransaction): an inner call just decrements the
+     * depth counter and returns without committing anything - its own meta
+     * is discarded, since only the outermost call's meta describes the
+     * compound action as a whole.
      */
     endTransaction(meta) {
+        if (!this.transaction) {
+            return;
+        }
+        if (--this.transaction.depth > 0) {
+            return;
+        }
         const tx = this.transaction;
         this.transaction = null;
-        if (!tx || tx.operations.length === 0) {
+        if (tx.operations.length === 0) {
             return;
         }
         const ops = tx.operations;

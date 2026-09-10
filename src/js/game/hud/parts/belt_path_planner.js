@@ -244,6 +244,39 @@ export class BeltPathPlanner {
     }
 
     /**
+     * Preview entries for a straight (pre-autoPath) drag path - unlike
+     * beltTilesToEntries (a pure function of the tile sequence alone), this
+     * reads the live map at each tile through the same
+     * computeOptimalDirectionAndRotationVariantAtTile every ordinary
+     * single-tile placement already uses, so an existing belt's end (or a
+     * building's input) sitting on this line shows the same curve
+     * mobile_controls.js's placeStraightPath is about to commit for real -
+     * see its doc for why the atomic curvedEntry math doesn't apply here.
+     * @param {Array<Vector>} path
+     * @returns {Array<PathEntry>}
+     */
+    straightPathEntries(path) {
+        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
+        if (path.length === 0 || !metaBuilding) {
+            return [];
+        }
+        const variant = this.placerLogic.currentVariant.get();
+        const layer = metaBuilding.getLayer();
+        const outgoing =
+            path.length > 1 ? this.directionBetween(path[0], path[1]) : this.placerLogic.currentBaseRotation;
+        return path.map(tile => {
+            const { rotation, rotationVariant } = metaBuilding.computeOptimalDirectionAndRotationVariantAtTile({
+                root: this.root,
+                tile,
+                rotation: outgoing,
+                variant,
+                layer,
+            });
+            return { tile, rotation, rotationVariant };
+        });
+    }
+
+    /**
      * The Belt component at the given tile, or null.
      * @param {Vector} tile
      */

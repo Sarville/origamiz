@@ -432,6 +432,13 @@
             background-size: 80%;
         }
 
+        // Shop item "autoPath" not bought yet (toggled every frame in
+        // HUDMobileControls.update()) - same [hidden]-vs-author-CSS
+        // specificity issue as ">.layers[hidden]" above, same fix.
+        > .newBelt[hidden] {
+            display: none;
+        }
+
         // Belt mode (default - not blueprintMode): undo, N, then cancel.
         // Nothing else applies (see the class comment above).
         > .undo {

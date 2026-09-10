@@ -1021,6 +1021,71 @@ export class HUDMobileControls extends BaseHUDPart {
         }
     }
 
+    /**
+     * Commits a pre-autoPath straight belt drag (see onMouseMove's
+     * autoPathUnlocked branch) one tile at a time through
+     * tryPlaceCurrentBuildingAt - the same per-tile, map-aware auto-rotation
+     * (MetaBeltBuilding.computeOptimalDirectionAndRotationVariantAtTile)
+     * desktop's own Bresenham drag already uses for this exact case
+     * (building_placer_logic.js's onMouseMove), instead of
+     * BeltPathPlanner.placePath's atomic whole-path curvedEntry math - that
+     * one is only correct once a path has actually been routed (autoPath)
+     * and deliberately suppresses systems/belt.js's
+     * updateSurroundingBeltPlacement while placing (see its own doc).
+     * Without that suppression here, an existing belt's end (or a building's
+     * input) already sitting on this straight line curves into it exactly
+     * like a single ordinary placement would, and a neighbour merely touched
+     * by the new run (not overwritten by it) reacts and curves too.
+     * @param {Array<Vector>} path
+     * @param {boolean} releaseWasOccupied Whether the release tile already had map content *before* this placement.
+     */
+    placeStraightPath(path, releaseWasOccupied) {
+        const metaBuilding = this.placerLogic.currentMetaBuilding.get();
+        if (!metaBuilding || path.length === 0) {
+            return;
+        }
+        const direction =
+            path.length > 1
+                ? this.beltPathPlanner.directionBetween(path[0], path[1])
+                : this.placerLogic.currentBaseRotation;
+
+        const beltTileBefore = this.lastBeltTile;
+        const beltIncomingBefore = this.lastBeltIncomingDirection;
+        this.root.actionHistory.beginTransaction();
+        let anythingPlaced = false;
+        for (const tile of path) {
+            this.placerLogic.currentBaseRotation = direction;
+            if (this.placerLogic.tryPlaceCurrentBuildingAt(tile)) {
+                anythingPlaced = true;
+            }
+        }
+        const lastTile = path[path.length - 1];
+        const beltIncomingAfter = anythingPlaced
+            ? this.root.map.getLayerContentXY(lastTile.x, lastTile.y, "regular").components.StaticMapEntity
+                  .rotation
+            : undefined;
+        this.root.actionHistory.endTransaction({
+            beltTileBefore,
+            beltTileAfter: lastTile,
+            beltIncomingBefore,
+            beltIncomingAfter,
+        });
+
+        if (anythingPlaced) {
+            this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
+            if (releaseWasOccupied) {
+                this.lastBeltTile = null;
+                this.lastBeltIncomingDirection = undefined;
+            } else {
+                this.lastBeltTile = lastTile;
+                this.lastBeltIncomingDirection = beltIncomingAfter;
+            }
+        } else {
+            this.root.soundProxy.playUiError();
+            this.flashInvalidBelt(path);
+        }
+    }
+
     clearPendingHold() {
         if (this.holdTimer) {
             clearTimeout(this.holdTimer);
@@ -1201,9 +1266,15 @@ export class HUDMobileControls extends BaseHUDPart {
                     this.dragPreviewInvalid = !resolved;
                 } else {
                     // Shop item "autoPath" not bought yet - straight single-axis
-                    // line only, no bends, no obstacle-crossing.
+                    // line only, no bends, no obstacle-crossing. The preview
+                    // still reads the live map (straightPathEntries) so an
+                    // existing belt's end sitting on this line shows the same
+                    // curve placeStraightPath is about to commit for real,
+                    // instead of a flat straight-only guess that never agreed
+                    // with the neighbour-aware placement desktop's own
+                    // Bresenham drag has always used for this same case.
                     this.dragPath = this.beltPathPlanner.straightDragPath(this.dragStartTile, tile);
-                    this.dragPreviewEntries = this.beltPathPlanner.beltTilesToEntries(this.dragPath);
+                    this.dragPreviewEntries = this.beltPathPlanner.straightPathEntries(this.dragPath);
                     this.dragPreviewInvalid = false;
                 }
             }
@@ -1268,7 +1339,11 @@ export class HUDMobileControls extends BaseHUDPart {
                     releaseTile.y,
                     "regular"
                 );
-                this.placePath(this.dragPreviewEntries, releaseWasOccupied);
+                if (this.autoPathUnlocked) {
+                    this.placePath(this.dragPreviewEntries, releaseWasOccupied);
+                } else {
+                    this.placeStraightPath(this.dragPath, releaseWasOccupied);
+                }
             }
             this.dragPath = [];
             this.dragPreviewEntries = [];
@@ -1479,6 +1554,11 @@ export class HUDMobileControls extends BaseHUDPart {
         // unrelated history it could otherwise undo into.
         this.beltUndoButton.classList.toggle("disabled", !this.lastBeltTile);
         this.redoButton.classList.toggle("disabled", !this.root.actionHistory.canRedo);
+
+        // Shop item "autoPath" not bought yet - there's no auto-extend
+        // continuation for this button to detach from (see onNewBeltClicked
+        // and placeBeltTapAt's own autoPathUnlocked gate), so don't show it.
+        this.newBeltButton.hidden = !this.autoPathUnlocked;
 
         // Item 1: only shown once wires are unlocked - same gate
         // HUDWiresOverlay.switchLayers itself checks before actually
