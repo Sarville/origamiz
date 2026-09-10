@@ -29,7 +29,10 @@ function withVariantDefines(config, variant) {
         ...config,
         plugins: [
             ...config.plugins,
-            new rspack.DefinePlugin({ G_IS_YANDEX: JSON.stringify(variant === "yandex") }),
+            new rspack.DefinePlugin({
+                G_IS_YANDEX: JSON.stringify(variant === "yandex"),
+                G_IS_VK: JSON.stringify(variant === "vk"),
+            }),
         ],
     };
 }

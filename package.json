@@ -14,11 +14,14 @@
         "serve-web": "gulp --cwd gulp serve.web",
         "build-yandex": "gulp --cwd gulp build.yandex.full",
         "serve-yandex": "gulp --cwd gulp serve.yandex",
+        "build-vk": "gulp --cwd gulp build.vk.full",
+        "serve-vk": "gulp --cwd gulp serve.vk",
         "lint": "eslint .",
         "prettier-all": "prettier --write ."
     },
     "dependencies": {
         "@msgpack/msgpack": "^3.1.2",
+        "@vkontakte/vk-bridge": "^3.0.2",
         "ajv": "^6.10.2",
         "debounce-promise": "^3.1.2",
         "howler": "^2.1.2",

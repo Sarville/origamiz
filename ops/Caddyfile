@@ -1,0 +1,81 @@
+games.sarville.online {
+	encode gzip
+	log
+
+	# `route` forces the literal order below - directives like `respond`/`header`/`handle` are
+	# otherwise silently re-sorted by Caddy's default directive order (respond runs AFTER handle
+	# by default), which let file_server answer every request before the block below ever ran.
+	route {
+		header X-Content-Type-Options "nosniff"
+
+		# The game page itself must only load from a real, fresh VK launch - vk_user_id being
+		# present in the URL proves nothing on its own (it's just a copyable query string), so
+		# forward_auth mirrors the request (path/query/headers) to vk-payments-colorit, which
+		# verifies VK's HMAC launch-params signature + timestamp freshness before file_server ever
+		# runs. See lib/vkSdk.ts / opt/games/vk-payments/server.js for the matching client/server
+		# halves of this.
+		@vkColoritEntry path /vk/colorit /vk/colorit/
+		forward_auth @vkColoritEntry vk-payments-colorit:3000 {
+			uri {http.request.uri}
+		}
+
+		# Same gate as above, for Origamiz (shapez CE) - see src/js/platform/vk_wrapper.js /
+		# ops/vk-payments/server.js in that repo for the matching client/server halves.
+		@vkOrigamizEntry path /vk/origamiz /vk/origamiz/
+		forward_auth @vkOrigamizEntry vk-payments-origamiz:3000 {
+			uri {http.request.uri}
+		}
+
+		# Game audio isn't meant to be played/downloaded outside the game itself - block requests
+		# whose Referer isn't the game's own page. Same-origin <audio>/fetch calls from inside the
+		# game always carry the page's own URL as Referer, so this only stops someone following or
+		# sharing the raw file URL directly; it can't stop a determined download once the browser
+		# already has the bytes to play them (nothing server-side can - the player needs the file).
+		# path_regexp, not path with a trailing "*" or "**" - Caddy's path matcher wildcards only
+		# ever match within a single segment, so a glob-based pattern silently misses anything nested
+		# (e.g. sounds/music/menu.mp3) and this must catch every depth under sounds/. The optional
+		# "res/" covers Origamiz's layout (/vk/origamiz/res/sounds/...) alongside Colorit's flatter
+		# one (/vk/colorit/sounds/...).
+		@soundsDirect {
+			path_regexp ^/vk/[^/]+/(res/)?sounds/
+			not header_regexp Referer ^https://games\.sarville\.online/
+		}
+		respond @soundsDirect 403
+
+		# _next/static filenames are content-hashed (change on every rebuild) and sounds rarely
+		# change - both are safe to cache hard. Without this, browsers re-validate media on every
+		# play instead of serving it straight from disk cache.
+		#
+		# Deliberately does NOT include Origamiz's JS (bundle.js / *.bundle.js): unlike Colorit's
+		# Next.js output, those filenames are NOT content-hashed (see gulp/rspack.production.config.js
+		# in that repo) - caching them immutably would keep serving a stale build after every deploy.
+		@static {
+			path_regexp ^/vk/[^/]+/(_next/static/|(res/)?sounds/)
+		}
+		header @static Cache-Control "public, max-age=31536000, immutable"
+
+		# VK's payments callback (get_item / order_status_change) for the "support the author" item
+		# - set as this app's callback URL in the VK admin panel.
+		handle /vk/colorit-payments {
+			reverse_proxy vk-payments-colorit:3000
+		}
+
+		# Origamiz's payments webhook, plus the two small endpoints its client polls at boot/after
+		# a purchase (see ops/vk-payments/server.js in that repo) - VK has no client-side "list my
+		# purchases" API, so these are this service's own entitlement ledger.
+		handle /vk/origamiz-payments {
+			reverse_proxy vk-payments-origamiz:3000
+		}
+		handle /vk/origamiz-entitlements {
+			reverse_proxy vk-payments-origamiz:3000
+		}
+		handle /vk/origamiz-consume {
+			reverse_proxy vk-payments-origamiz:3000
+		}
+
+		handle {
+			root * /srv/games
+			file_server
+		}
+	}
+}

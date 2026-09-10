@@ -19,6 +19,7 @@ declare const G_BUILD_VERSION: string;
 declare const G_ALL_UI_IMAGES: Array<string>;
 declare const G_IS_RELEASE: boolean;
 declare const G_IS_YANDEX: boolean;
+declare const G_IS_VK: boolean;
 
 // Provided by the Yandex Games SDK <script> tag (yandex build variant only)
 declare const YaGames: { init: () => Promise<any> };

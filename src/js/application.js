@@ -15,6 +15,7 @@ import { MOD_SIGNALS } from "./mods/mod_signals";
 import { MODS } from "./mods/modloader";
 import { Sound } from "./platform/sound";
 import { Storage, STORAGE_SAVES } from "./platform/storage";
+import { PlatformWrapperImplVk } from "./platform/vk_wrapper";
 import { PlatformWrapperImplBrowser } from "./platform/wrapper";
 import { PlatformWrapperImplYandex } from "./platform/yandex_wrapper";
 import { AchievementsStorage } from "./profile/achievements_storage";
@@ -70,9 +71,11 @@ export class Application {
         this.storage = new Storage(this, STORAGE_SAVES);
         await this.storage.initialize();
 
-        this.platformWrapper = G_IS_YANDEX
-            ? new PlatformWrapperImplYandex(this)
-            : new PlatformWrapperImplBrowser(this);
+        this.platformWrapper = G_IS_VK
+            ? new PlatformWrapperImplVk(this)
+            : G_IS_YANDEX
+              ? new PlatformWrapperImplYandex(this)
+              : new PlatformWrapperImplBrowser(this);
 
         // Global stuff
         this.settings = new ApplicationSettings(this, this.storage);

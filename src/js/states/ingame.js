@@ -131,7 +131,7 @@ export class InGameState extends GameState {
      * WalletStorage's class doc on the account-wide currency wallet).
      */
     getPauseOnFocusLost() {
-        return G_IS_YANDEX;
+        return G_IS_YANDEX || G_IS_VK;
     }
 
     getHasUnloadConfirmation() {
