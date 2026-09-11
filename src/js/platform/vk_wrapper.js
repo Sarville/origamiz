@@ -226,7 +226,7 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
         }
         bridge
             .send("VKWebAppCheckBannerAd")
-            .then(res => (res.result ? bridge.send("VKWebAppShowBannerAd", { banner_location: "bottom" }) : null))
+            .then(res => (res.result ? bridge.send("VKWebAppShowBannerAd", { banner_location: "top" }) : null))
             .catch(ex => logger.error("VK banner ad failed:", ex));
     }
 

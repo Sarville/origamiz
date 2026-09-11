@@ -129,8 +129,13 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
 
     onGameReady() {
         this.ysdk?.features?.LoadingAPI?.ready();
+        // showBannerAdv() is the SDK call behind the dev-console "sticky banner"
+        // setting (position/desktop toggle configured there, not here) - shown once
+        // for the whole SPA session since it stays sticky across every level/screen.
         if (!this.adsDisabled) {
-            this.ysdk?.adv?.showBannerAdv();
+            this.ysdk?.adv
+                ?.showBannerAdv()
+                ?.catch(ex => logger.error("Yandex sticky banner failed:", ex));
         }
     }
 
@@ -224,7 +229,7 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
         try {
             await this.payments.purchase({ id: "disable_ads" });
             this.adsDisabled = true;
-            this.ysdk?.adv?.hideBannerAdv();
+            this.ysdk?.adv?.hideBannerAdv()?.catch(ex => logger.error("Yandex sticky banner hide failed:", ex));
             return true;
         } catch (ex) {
             logger.error("Ad-removal purchase failed:", ex);
