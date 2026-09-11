@@ -142,6 +142,10 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
         this.ysdk?.features?.GameplayAPI?.stop();
     }
 
+    getSupportsCrossDeviceWallet() {
+        return true;
+    }
+
     async getCloudData() {
         try {
             return (await this.player?.getData()) ?? null;

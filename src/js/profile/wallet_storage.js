@@ -106,8 +106,17 @@ export class WalletStorage {
         const cloud = await this.app.platformWrapper.getCloudData();
         const wallet = cloud?.wallet;
         const session = wallet?.session;
+
+        // Only a real, shared-across-devices cloud store (Yandex) can ever
+        // have a genuine "foreign" session - the plain browser platform's
+        // getCloudData is just this device's own local storage (see its
+        // class doc), so a "used on another device" claim there is always a
+        // false positive (e.g. a stale heartbeat from a previous tab).
         const foreignSessionActive =
-            session && session.id !== this.sessionId && Date.now() - session.updatedAt < SESSION_LOCK_STALE_MS;
+            this.app.platformWrapper.getSupportsCrossDeviceWallet() &&
+            session &&
+            session.id !== this.sessionId &&
+            Date.now() - session.updatedAt < SESSION_LOCK_STALE_MS;
 
         if (foreignSessionActive) {
             // Someone else holds the lock - freeze in place (canEarn/

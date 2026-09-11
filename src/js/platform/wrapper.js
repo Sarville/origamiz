@@ -43,6 +43,16 @@ export class PlatformWrapperImplBrowser {
     }
 
     /**
+     * Whether getCloudData/setCloudData are backed by a real, shared-across-
+     * devices store. False here (plain IndexedDB, single local device - see
+     * CLOUD_DATA_FILENAME) - WalletStorage's cross-device session lock is
+     * pointless noise on this platform and skips itself using this.
+     */
+    getSupportsCrossDeviceWallet() {
+        return false;
+    }
+
+    /**
      * Attempt to open an external url
      * @param {string} url
      */
