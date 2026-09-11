@@ -1,4 +1,4 @@
-import { Vector, enumDirection } from "../../core/vector";
+import { Vector, enumDirection, mirrorSlotsHorizontally } from "../../core/vector";
 import { LogicGateComponent, enumLogicGateType } from "../components/logic_gate";
 import { WiredPinsComponent, enumPinSlotType } from "../components/wired_pins";
 import { Entity } from "../entity";
@@ -16,6 +16,14 @@ export const enumVirtualProcessorVariants = {
     unstacker: "unstacker",
     stacker: "stacker",
     painter: "painter",
+    stackerMirrored: "stacker-mirrored",
+    painterMirrored: "painter-mirrored",
+};
+
+/** Variants whose second (side) input mirrors to the opposite side */
+const mirroredVariantSource = {
+    [enumVirtualProcessorVariants.stackerMirrored]: enumVirtualProcessorVariants.stacker,
+    [enumVirtualProcessorVariants.painterMirrored]: enumVirtualProcessorVariants.painter,
 };
 
 /** @enum {string} */
@@ -25,6 +33,8 @@ const enumVariantToGate = {
     [enumVirtualProcessorVariants.unstacker]: enumLogicGateType.unstacker,
     [enumVirtualProcessorVariants.stacker]: enumLogicGateType.stacker,
     [enumVirtualProcessorVariants.painter]: enumLogicGateType.painter,
+    [enumVirtualProcessorVariants.stackerMirrored]: enumLogicGateType.stacker,
+    [enumVirtualProcessorVariants.painterMirrored]: enumLogicGateType.painter,
 };
 
 const colors = {
@@ -33,6 +43,8 @@ const colors = {
     [enumVirtualProcessorVariants.unstacker]: new MetaStackerBuilding().getSilhouetteColor(),
     [enumVirtualProcessorVariants.stacker]: new MetaStackerBuilding().getSilhouetteColor(),
     [enumVirtualProcessorVariants.painter]: new MetaPainterBuilding().getSilhouetteColor(),
+    [enumVirtualProcessorVariants.stackerMirrored]: new MetaStackerBuilding().getSilhouetteColor(),
+    [enumVirtualProcessorVariants.painterMirrored]: new MetaPainterBuilding().getSilhouetteColor(),
 };
 
 export class MetaVirtualProcessorBuilding extends MetaBuilding {
@@ -62,6 +74,14 @@ export class MetaVirtualProcessorBuilding extends MetaBuilding {
                 internalId: 51,
                 variant: enumVirtualProcessorVariants.painter,
             },
+            {
+                internalId: 69,
+                variant: enumVirtualProcessorVariants.stackerMirrored,
+            },
+            {
+                internalId: 70,
+                variant: enumVirtualProcessorVariants.painterMirrored,
+            },
         ];
     }
 
@@ -85,14 +105,24 @@ export class MetaVirtualProcessorBuilding extends MetaBuilding {
         return new Vector(1, 1);
     }
 
-    getAvailableVariants() {
-        return [
+    /**
+     * @param {GameRoot} root
+     */
+    getAvailableVariants(root) {
+        const variants = [
             defaultBuildingVariant,
             enumVirtualProcessorVariants.rotator,
             enumVirtualProcessorVariants.stacker,
             enumVirtualProcessorVariants.painter,
             enumVirtualProcessorVariants.unstacker,
         ];
+        if (root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_building_mirroring)) {
+            variants.push(
+                enumVirtualProcessorVariants.stackerMirrored,
+                enumVirtualProcessorVariants.painterMirrored
+            );
+        }
+        return variants;
     }
 
     getRenderPins() {
@@ -148,7 +178,7 @@ export class MetaVirtualProcessorBuilding extends MetaBuilding {
             }
             case enumLogicGateType.stacker:
             case enumLogicGateType.painter: {
-                pinComp.setSlots([
+                let slots = [
                     {
                         pos: new Vector(0, 0),
                         direction: enumDirection.top,
@@ -164,7 +194,11 @@ export class MetaVirtualProcessorBuilding extends MetaBuilding {
                         direction: enumDirection.right,
                         type: enumPinSlotType.logicalAcceptor,
                     },
-                ]);
+                ];
+                if (mirroredVariantSource[variant]) {
+                    slots = mirrorSlotsHorizontally(slots, 1);
+                }
+                pinComp.setSlots(slots);
                 break;
             }
             default:

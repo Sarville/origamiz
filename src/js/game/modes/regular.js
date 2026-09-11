@@ -474,6 +474,13 @@ function generateShopItems() {
             price: 6000,
             requires: enumHubGoalRewards.reward_shop_auto_path,
         },
+        // Mirrored variants for Cutter/Painter/Stacker/Filter (see each
+        // building's own getAvailableVariants) - a placement-time toggle,
+        // not tied to the belt-routing search above, so no `requires`.
+        buildingMirroring: {
+            reward: enumHubGoalRewards.reward_shop_building_mirroring,
+            price: 2000,
+        },
         autoTunnel: {
             reward: enumHubGoalRewards.reward_shop_auto_tunnel,
             price: 8000,

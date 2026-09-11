@@ -44,6 +44,7 @@ export const enumHubGoalRewards = {
     reward_shop_auto_splitter: "reward_shop_auto_splitter",
     reward_shop_long_route: "reward_shop_long_route",
     reward_shop_exchange: "reward_shop_exchange",
+    reward_shop_building_mirroring: "reward_shop_building_mirroring",
 
     no_reward: "no_reward",
     no_reward_freeplay: "no_reward_freeplay",

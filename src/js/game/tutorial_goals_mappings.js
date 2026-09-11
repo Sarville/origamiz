@@ -72,6 +72,7 @@ export const enumHubGoalRewardsToContentUnlocked = {
     [enumHubGoalRewards.reward_shop_auto_splitter]: null,
     [enumHubGoalRewards.reward_shop_long_route]: null,
     [enumHubGoalRewards.reward_shop_exchange]: null,
+    [enumHubGoalRewards.reward_shop_building_mirroring]: null,
     [enumHubGoalRewards.no_reward]: null,
     [enumHubGoalRewards.no_reward_freeplay]: null,
     [enumHubGoalRewards.reward_demo_end]: null,

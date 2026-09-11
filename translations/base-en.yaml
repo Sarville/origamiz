@@ -620,6 +620,9 @@ shopItems:
     blueprints:
         name: Blueprints
         description: Copy and paste parts of your factory. Select an area (hold CTRL, then drag), press 'C' to copy, 'V' to paste.
+    buildingMirroring:
+        name: Mirrored Buildings
+        description: Adds mirrored variants for the Cutter, Painter, Stacker and Filter - cycle through them with 'T' like any other variant.
 
 # Buildings and their name / description
 buildings:
@@ -681,8 +684,14 @@ buildings:
             name: &cutter Cutter
             description: Cuts shapes from top to bottom and outputs both halves. <strong>If you use only one part, be sure to destroy the other part or it will clog and stall!</strong>
         quad:
-            name: Cutter (Quad)
-            description: Cuts shapes into four parts. <strong>If you use only one part, be sure to destroy the other parts or it will clog and stall!</strong>
+            name: &cutter_quad Cutter (Quad)
+            description: &cutter_quad_desc Cuts shapes into four parts. <strong>If you use only one part, be sure to destroy the other parts or it will clog and stall!</strong>
+        mirrored:
+            name: *cutter
+            description: Cuts shapes from top to bottom and outputs both halves, mirrored - accepts from the opposite side. <strong>If you use only one part, be sure to destroy the other part or it will clog and stall!</strong>
+        quad-mirrored:
+            name: *cutter_quad
+            description: *cutter_quad_desc
 
     rotator:
         default:
@@ -699,6 +708,9 @@ buildings:
         default:
             name: &stacker Stacker
             description: Combines its inputs, on the same layer if possible, otherwise the right input is stacked on top of the left input.
+        mirrored:
+            name: *stacker
+            description: Combines its inputs, on the same layer if possible, otherwise the right input is stacked on top of the left input. Output is mirrored to the opposite side.
 
     mixer:
         default:
@@ -714,13 +726,29 @@ buildings:
             name: *painter
             description: Paints the whole shape on the left input with the color from the bottom input.
 
+        flipped:
+            name: *painter
+            description: Paints the whole shape on the right input with the color from the top input.
+
+        flipped-mirrored:
+            name: *painter
+            description: Paints the whole shape on the right input with the color from the bottom input.
+
         double:
-            name: Painter (Double)
-            description: Colors the shapes on the left inputs with the color from the top input.
+            name: &painter_double Painter (Double)
+            description: &painter_double_desc Colors the shapes on the left inputs with the color from the top input.
+
+        double-flipped:
+            name: *painter_double
+            description: Colors the shapes on the right inputs with the color from the top input.
 
         quad:
-            name: Painter (Quad)
-            description: Allows you to color each quadrant of the shape individually. Only slots with a <strong>truthy signal</strong> on the wires layer will be painted!
+            name: &painter_quad Painter (Quad)
+            description: &painter_quad_desc Allows you to color each quadrant of the shape individually. Only slots with a <strong>truthy signal</strong> on the wires layer will be painted!
+
+        quad-flipped:
+            name: *painter_quad
+            description: *painter_quad_desc
 
     trash:
         default:
@@ -783,6 +811,9 @@ buildings:
         default:
             name: &filter Filter
             description: Connect a signal to route all matching items to the top and the remaining to the right. Can be controlled with boolean signals too.
+        mirrored:
+            name: *filter
+            description: Connect a signal to route all matching items to the top and the remaining to the left. Can be controlled with boolean signals too.
 
     display:
         default:
@@ -818,12 +849,20 @@ buildings:
             description: Virtually extracts the topmost layer to the right output and the remaining ones to the left.
 
         stacker:
-            name: Virtual Stacker
+            name: &virtual_stacker Virtual Stacker
             description: Virtually stacks the right shape onto the left.
 
         painter:
-            name: Virtual Painter
-            description: Virtually paints the shape from the bottom input with the color on the right input.
+            name: &virtual_painter Virtual Painter
+            description: &virtual_painter_desc Virtually paints the shape from the bottom input with the color on the right input.
+
+        stacker-mirrored:
+            name: *virtual_stacker
+            description: Virtually stacks the left shape onto the right.
+
+        painter-mirrored:
+            name: *virtual_painter
+            description: Virtually paints the shape from the bottom input with the color on the left input.
 
 storyRewards:
     # Those are the rewards gained from completing the store
@@ -950,6 +989,10 @@ storyRewards:
     reward_shop_exchange:
         title: Exchange
         desc: Purchased in the <strong>Shop</strong> - you can now trade shapes for currency and currency for shapes!
+
+    reward_shop_building_mirroring:
+        title: Mirrored Buildings
+        desc: Purchased in the <strong>Shop</strong> - the Cutter, Painter, Stacker and Filter can now also be placed as a mirror image, flipping which side items enter and exit!
 
     reward_blueprints:
         title: Blueprints

@@ -25,6 +25,19 @@ export const enumInvertedDirections = {
 };
 
 /**
+ * Flips a direction across the vertical (left-right) axis - unlike
+ * enumInvertedDirections (180° flip), top/bottom are left untouched and
+ * only left/right swap. Used to mirror building I/O slots horizontally.
+ * @enum {string}
+ */
+export const enumDirectionMirrorHorizontal = {
+    [enumDirection.top]: enumDirection.top,
+    [enumDirection.right]: enumDirection.left,
+    [enumDirection.bottom]: enumDirection.bottom,
+    [enumDirection.left]: enumDirection.right,
+};
+
+/**
  * @enum {number}
  */
 export const enumDirectionToAngle = {
@@ -673,6 +686,23 @@ export class Vector {
  */
 export function mixVector(v1, v2, a) {
     return new Vector(v1.x * (1 - a) + v2.x * a, v1.y * (1 - a) + v2.y * a);
+}
+
+/**
+ * Mirrors an array of building I/O slots (acceptor/ejector/wired-pin) across the
+ * vertical center axis of a `width`-wide building - flips the x position and
+ * left/right facing, leaves top/bottom facing untouched. Used to derive a
+ * "mirrored" building variant's slots from its normal ones instead of
+ * hand-writing every flipped position.
+ * @param {Array<{ pos: Vector, direction: enumDirection }>} slots
+ * @param {number} width
+ */
+export function mirrorSlotsHorizontally(slots, width) {
+    return slots.map(slot => ({
+        ...slot,
+        pos: new Vector(width - 1 - slot.pos.x, slot.pos.y),
+        direction: enumDirectionMirrorHorizontal[slot.direction],
+    }));
 }
 
 /**

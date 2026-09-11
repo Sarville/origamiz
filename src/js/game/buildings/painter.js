@@ -1,5 +1,5 @@
 import { formatItemsPerSecond } from "../../core/utils";
-import { enumDirection, Vector } from "../../core/vector";
+import { enumDirection, mirrorSlotsHorizontally, Vector } from "../../core/vector";
 import { T } from "../../translations";
 import { ItemAcceptorComponent } from "../components/item_acceptor";
 import { ItemEjectorComponent } from "../components/item_ejector";
@@ -14,8 +14,23 @@ import { GameRoot } from "../root";
 import { enumHubGoalRewards } from "../tutorial_goals";
 import { WiredPinsComponent, enumPinSlotType } from "../components/wired_pins";
 
-/** @enum {string} */
-export const enumPainterVariants = { mirrored: "mirrored", double: "double", quad: "quad" };
+/**
+ * mirrored: color input flips top<->bottom, shape input/output stay put (left/right).
+ * flipped: shape input/output flip left<->right (color stays wherever it already was).
+ * flipped-mirrored: both flips combined.
+ * double/quad only get the shape/output flip - they never had a top/bottom color
+ * choice to combine with.
+ * @enum {string}
+ */
+export const enumPainterVariants = {
+    mirrored: "mirrored",
+    flipped: "flipped",
+    flippedMirrored: "flipped-mirrored",
+    double: "double",
+    doubleFlipped: "double-flipped",
+    quad: "quad",
+    quadFlipped: "quad-flipped",
+};
 
 export class MetaPainterBuilding extends MetaBuilding {
     constructor() {
@@ -40,6 +55,22 @@ export class MetaPainterBuilding extends MetaBuilding {
                 internalId: 19,
                 variant: enumPainterVariants.quad,
             },
+            {
+                internalId: 63,
+                variant: enumPainterVariants.flipped,
+            },
+            {
+                internalId: 64,
+                variant: enumPainterVariants.flippedMirrored,
+            },
+            {
+                internalId: 65,
+                variant: enumPainterVariants.doubleFlipped,
+            },
+            {
+                internalId: 66,
+                variant: enumPainterVariants.quadFlipped,
+            },
         ];
     }
 
@@ -47,10 +78,14 @@ export class MetaPainterBuilding extends MetaBuilding {
         switch (variant) {
             case defaultBuildingVariant:
             case enumPainterVariants.mirrored:
+            case enumPainterVariants.flipped:
+            case enumPainterVariants.flippedMirrored:
                 return new Vector(2, 1);
             case enumPainterVariants.double:
+            case enumPainterVariants.doubleFlipped:
                 return new Vector(2, 2);
             case enumPainterVariants.quad:
+            case enumPainterVariants.quadFlipped:
                 return new Vector(4, 1);
             default:
                 assertAlways(false, "Unknown painter variant: " + variant);
@@ -72,15 +107,19 @@ export class MetaPainterBuilding extends MetaBuilding {
         }
         switch (variant) {
             case defaultBuildingVariant:
-            case enumPainterVariants.mirrored: {
+            case enumPainterVariants.mirrored:
+            case enumPainterVariants.flipped:
+            case enumPainterVariants.flippedMirrored: {
                 const speed = root.hubGoals.getProcessorBaseSpeed(enumItemProcessorTypes.painter);
                 return [[T.ingame.buildingPlacement.infoTexts.speed, formatItemsPerSecond(speed)]];
             }
-            case enumPainterVariants.double: {
+            case enumPainterVariants.double:
+            case enumPainterVariants.doubleFlipped: {
                 const speed = root.hubGoals.getProcessorBaseSpeed(enumItemProcessorTypes.painterDouble);
                 return [[T.ingame.buildingPlacement.infoTexts.speed, formatItemsPerSecond(speed, true)]];
             }
-            case enumPainterVariants.quad: {
+            case enumPainterVariants.quad:
+            case enumPainterVariants.quadFlipped: {
                 const speed = root.hubGoals.getProcessorBaseSpeed(enumItemProcessorTypes.painterQuad);
                 return [[T.ingame.buildingPlacement.infoTexts.speed, formatItemsPerSecond(speed)]];
             }
@@ -91,15 +130,29 @@ export class MetaPainterBuilding extends MetaBuilding {
      * @param {GameRoot} root
      */
     getAvailableVariants(root) {
-        let variants = [defaultBuildingVariant, enumPainterVariants.mirrored];
+        const variants = [defaultBuildingVariant, enumPainterVariants.mirrored];
+
+        const mirroringUnlocked = root.hubGoals.isRewardUnlocked(
+            enumHubGoalRewards.reward_shop_building_mirroring
+        );
+        if (mirroringUnlocked) {
+            variants.push(enumPainterVariants.flipped, enumPainterVariants.flippedMirrored);
+        }
+
         if (root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_painter_double)) {
             variants.push(enumPainterVariants.double);
+            if (mirroringUnlocked) {
+                variants.push(enumPainterVariants.doubleFlipped);
+            }
         }
         if (
             root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_wires_painter_and_levers) &&
             root.gameMode.getSupportsWires()
         ) {
             variants.push(enumPainterVariants.quad);
+            if (mirroringUnlocked) {
+                variants.push(enumPainterVariants.quadFlipped);
+            }
         }
         return variants;
     }
@@ -150,14 +203,23 @@ export class MetaPainterBuilding extends MetaBuilding {
     updateVariants(entity, rotationVariant, variant) {
         switch (variant) {
             case defaultBuildingVariant:
-            case enumPainterVariants.mirrored: {
+            case enumPainterVariants.mirrored:
+            case enumPainterVariants.flipped:
+            case enumPainterVariants.flippedMirrored: {
                 // REGULAR PAINTER
 
                 if (entity.components.WiredPins) {
                     entity.removeComponent(WiredPinsComponent);
                 }
 
-                entity.components.ItemAcceptor.setSlots([
+                const colorOnBottom =
+                    variant === enumPainterVariants.mirrored ||
+                    variant === enumPainterVariants.flippedMirrored;
+                const flipped =
+                    variant === enumPainterVariants.flipped ||
+                    variant === enumPainterVariants.flippedMirrored;
+
+                let acceptorSlots = [
                     {
                         pos: new Vector(0, 0),
                         direction: enumDirection.left,
@@ -165,15 +227,19 @@ export class MetaPainterBuilding extends MetaBuilding {
                     },
                     {
                         pos: new Vector(1, 0),
-                        direction:
-                            variant === defaultBuildingVariant ? enumDirection.top : enumDirection.bottom,
+                        direction: colorOnBottom ? enumDirection.bottom : enumDirection.top,
                         filter: "color",
                     },
-                ]);
+                ];
+                let ejectorSlots = [{ pos: new Vector(1, 0), direction: enumDirection.right }];
 
-                entity.components.ItemEjector.setSlots([
-                    { pos: new Vector(1, 0), direction: enumDirection.right },
-                ]);
+                if (flipped) {
+                    acceptorSlots = mirrorSlotsHorizontally(acceptorSlots, 2);
+                    ejectorSlots = mirrorSlotsHorizontally(ejectorSlots, 2);
+                }
+
+                entity.components.ItemAcceptor.setSlots(acceptorSlots);
+                entity.components.ItemEjector.setSlots(ejectorSlots);
 
                 entity.components.ItemProcessor.type = enumItemProcessorTypes.painter;
                 entity.components.ItemProcessor.processingRequirement = null;
@@ -182,14 +248,15 @@ export class MetaPainterBuilding extends MetaBuilding {
                 break;
             }
 
-            case enumPainterVariants.double: {
+            case enumPainterVariants.double:
+            case enumPainterVariants.doubleFlipped: {
                 // DOUBLE PAINTER
 
                 if (entity.components.WiredPins) {
                     entity.removeComponent(WiredPinsComponent);
                 }
 
-                entity.components.ItemAcceptor.setSlots([
+                let acceptorSlots = [
                     {
                         pos: new Vector(0, 0),
                         direction: enumDirection.left,
@@ -205,11 +272,16 @@ export class MetaPainterBuilding extends MetaBuilding {
                         direction: enumDirection.top,
                         filter: "color",
                     },
-                ]);
+                ];
+                let ejectorSlots = [{ pos: new Vector(1, 0), direction: enumDirection.right }];
 
-                entity.components.ItemEjector.setSlots([
-                    { pos: new Vector(1, 0), direction: enumDirection.right },
-                ]);
+                if (variant === enumPainterVariants.doubleFlipped) {
+                    acceptorSlots = mirrorSlotsHorizontally(acceptorSlots, 2);
+                    ejectorSlots = mirrorSlotsHorizontally(ejectorSlots, 2);
+                }
+
+                entity.components.ItemAcceptor.setSlots(acceptorSlots);
+                entity.components.ItemEjector.setSlots(ejectorSlots);
 
                 entity.components.ItemProcessor.type = enumItemProcessorTypes.painterDouble;
                 entity.components.ItemProcessor.processingRequirement = null;
@@ -217,14 +289,15 @@ export class MetaPainterBuilding extends MetaBuilding {
                 break;
             }
 
-            case enumPainterVariants.quad: {
+            case enumPainterVariants.quad:
+            case enumPainterVariants.quadFlipped: {
                 // QUAD PAINTER
 
                 if (!entity.components.WiredPins) {
                     entity.addComponent(new WiredPinsComponent({ slots: [] }));
                 }
 
-                entity.components.WiredPins.setSlots([
+                let wiredSlots = [
                     {
                         pos: new Vector(0, 0),
                         direction: enumDirection.bottom,
@@ -245,9 +318,9 @@ export class MetaPainterBuilding extends MetaBuilding {
                         direction: enumDirection.bottom,
                         type: enumPinSlotType.logicalAcceptor,
                     },
-                ]);
+                ];
 
-                entity.components.ItemAcceptor.setSlots([
+                let acceptorSlots = [
                     {
                         pos: new Vector(0, 0),
                         direction: enumDirection.left,
@@ -273,11 +346,19 @@ export class MetaPainterBuilding extends MetaBuilding {
                         direction: enumDirection.bottom,
                         filter: "color",
                     },
-                ]);
+                ];
 
-                entity.components.ItemEjector.setSlots([
-                    { pos: new Vector(0, 0), direction: enumDirection.top },
-                ]);
+                let ejectorSlots = [{ pos: new Vector(0, 0), direction: enumDirection.top }];
+
+                if (variant === enumPainterVariants.quadFlipped) {
+                    wiredSlots = mirrorSlotsHorizontally(wiredSlots, 4);
+                    acceptorSlots = mirrorSlotsHorizontally(acceptorSlots, 4);
+                    ejectorSlots = mirrorSlotsHorizontally(ejectorSlots, 4);
+                }
+
+                entity.components.WiredPins.setSlots(wiredSlots);
+                entity.components.ItemAcceptor.setSlots(acceptorSlots);
+                entity.components.ItemEjector.setSlots(ejectorSlots);
 
                 entity.components.ItemProcessor.type = enumItemProcessorTypes.painterQuad;
                 entity.components.ItemProcessor.processingRequirement =

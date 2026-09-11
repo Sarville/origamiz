@@ -1,5 +1,5 @@
 import { formatItemsPerSecond } from "../../core/utils";
-import { enumDirection, Vector } from "../../core/vector";
+import { enumDirection, mirrorSlotsHorizontally, Vector } from "../../core/vector";
 import { T } from "../../translations";
 import { ItemAcceptorComponent } from "../components/item_acceptor";
 import { ItemEjectorComponent } from "../components/item_ejector";
@@ -8,6 +8,9 @@ import { Entity } from "../entity";
 import { defaultBuildingVariant, MetaBuilding } from "../meta_building";
 import { GameRoot } from "../root";
 import { enumHubGoalRewards } from "../tutorial_goals";
+
+/** @enum {string} */
+export const enumStackerVariants = { mirrored: "mirrored" };
 
 export class MetaStackerBuilding extends MetaBuilding {
     constructor() {
@@ -20,6 +23,10 @@ export class MetaStackerBuilding extends MetaBuilding {
                 internalId: 14,
                 variant: defaultBuildingVariant,
             },
+            {
+                internalId: 67,
+                variant: enumStackerVariants.mirrored,
+            },
         ];
     }
 
@@ -29,6 +36,16 @@ export class MetaStackerBuilding extends MetaBuilding {
 
     getDimensions() {
         return new Vector(2, 1);
+    }
+
+    /**
+     * @param {GameRoot} root
+     */
+    getAvailableVariants(root) {
+        if (root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_building_mirroring)) {
+            return [defaultBuildingVariant, enumStackerVariants.mirrored];
+        }
+        return super.getAvailableVariants(root);
     }
 
     /**
@@ -84,5 +101,18 @@ export class MetaStackerBuilding extends MetaBuilding {
                 ],
             })
         );
+    }
+
+    /**
+     * @param {Entity} entity
+     * @param {number} rotationVariant
+     * @param {string} variant
+     */
+    updateVariants(entity, rotationVariant, variant) {
+        let ejectorSlots = [{ pos: new Vector(0, 0), direction: enumDirection.top }];
+        if (variant === enumStackerVariants.mirrored) {
+            ejectorSlots = mirrorSlotsHorizontally(ejectorSlots, 2);
+        }
+        entity.components.ItemEjector.setSlots(ejectorSlots);
     }
 }

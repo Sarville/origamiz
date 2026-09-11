@@ -1,5 +1,5 @@
 import { formatItemsPerSecond } from "../../core/utils";
-import { enumDirection, Vector } from "../../core/vector";
+import { enumDirection, mirrorSlotsHorizontally, Vector } from "../../core/vector";
 import { T } from "../../translations";
 import { FilterComponent } from "../components/filter";
 import { ItemAcceptorComponent } from "../components/item_acceptor";
@@ -9,6 +9,9 @@ import { Entity } from "../entity";
 import { defaultBuildingVariant, MetaBuilding } from "../meta_building";
 import { GameRoot } from "../root";
 import { enumHubGoalRewards } from "../tutorial_goals";
+
+/** @enum {string} */
+export const enumFilterVariants = { mirrored: "mirrored" };
 
 export class MetaFilterBuilding extends MetaBuilding {
     constructor() {
@@ -21,7 +24,21 @@ export class MetaFilterBuilding extends MetaBuilding {
                 internalId: 37,
                 variant: defaultBuildingVariant,
             },
+            {
+                internalId: 68,
+                variant: enumFilterVariants.mirrored,
+            },
         ];
+    }
+
+    /**
+     * @param {GameRoot} root
+     */
+    getAvailableVariants(root) {
+        if (root.hubGoals.isRewardUnlocked(enumHubGoalRewards.reward_shop_building_mirroring)) {
+            return [defaultBuildingVariant, enumFilterVariants.mirrored];
+        }
+        return super.getAvailableVariants(root);
     }
 
     getSilhouetteColor() {
@@ -100,5 +117,31 @@ export class MetaFilterBuilding extends MetaBuilding {
         );
 
         entity.addComponent(new FilterComponent());
+    }
+
+    /**
+     * @param {Entity} entity
+     * @param {number} rotationVariant
+     * @param {string} variant
+     */
+    updateVariants(entity, rotationVariant, variant) {
+        let wiredSlots = [
+            { pos: new Vector(0, 0), direction: enumDirection.left, type: enumPinSlotType.logicalAcceptor },
+        ];
+        let acceptorSlots = [{ pos: new Vector(0, 0), direction: enumDirection.bottom }];
+        let ejectorSlots = [
+            { pos: new Vector(0, 0), direction: enumDirection.top },
+            { pos: new Vector(1, 0), direction: enumDirection.right },
+        ];
+
+        if (variant === enumFilterVariants.mirrored) {
+            wiredSlots = mirrorSlotsHorizontally(wiredSlots, 2);
+            acceptorSlots = mirrorSlotsHorizontally(acceptorSlots, 2);
+            ejectorSlots = mirrorSlotsHorizontally(ejectorSlots, 2);
+        }
+
+        entity.components.WiredPins.setSlots(wiredSlots);
+        entity.components.ItemAcceptor.setSlots(acceptorSlots);
+        entity.components.ItemEjector.setSlots(ejectorSlots);
     }
 }
