@@ -30,11 +30,14 @@ export class HUDCurrencyShop extends BaseHUDPart {
         // Below reward_research (see isShopUnlocked()), currency has nothing
         // to earn or spend yet - shown instead of the balance/dailyBonus/
         // adReward below, which all revolve around earning or spending it.
-        // Remove-ads and the currency pack are real-money, not currency, so
-        // they stay outside this gate and are always available - and so do the item cards
-        // themselves (itemsSection below): shown with their price from the
-        // start so the player can see what's coming, just with no buy
-        // button until this same level (see renderCountsAndStatus).
+        // Remove-ads is real-money, not currency, so it stays outside this
+        // gate and is always available. The currency pack is also real-money,
+        // but selling currency the player can't spend yet is pointless, so
+        // it's hidden until the same level instead (see createCurrencyPackSection).
+        // The item cards themselves (itemsSection below) also stay outside
+        // this gate: shown with their price from the start so the player can
+        // see what's coming, just with no buy button until this same level
+        // (see renderCountsAndStatus).
         this.lockedDisclaimerElem = makeDiv(this.contentDiv, null, ["lockedDisclaimer"]);
 
         // Shown instead of a wallet lock reason from another device - see
@@ -165,7 +168,10 @@ export class HUDCurrencyShop extends BaseHUDPart {
     /**
      * Real-money currency pack purchase (Yandex Payments, consumable - see
      * yandex_wrapper.js's purchaseCurrencyPack). Skipped entirely where the
-     * platform doesn't sell it, same as remove-ads.
+     * platform doesn't sell it, same as remove-ads. Unlike remove-ads
+     * though, it's pointless before isShopUnlocked() - there's nothing to
+     * spend the currency on yet - so it's hidden (not just gated on a buy
+     * button) until that same level, see renderCountsAndStatus.
      */
     createCurrencyPackSection() {
         if (!this.root.app.platformWrapper.getSupportsCurrencyPackPurchase()) {
@@ -174,6 +180,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
         const pack = T.ingame.currencyShop.currencyPack;
         const container = makeDiv(this.contentDiv, null, ["dailyBonus", "hasPrice"]);
+        this.currencyPackContainer = container;
         makeDiv(container, null, ["title"], pack.title);
         makeDiv(container, null, ["description"], pack.description);
         makeDiv(container, null, ["priceRub"], pack.price);
@@ -246,9 +253,11 @@ export class HUDCurrencyShop extends BaseHUDPart {
         }
 
         // Consumable - never shows a "Purchased" state, just disabled while
-        // a purchase is already in flight.
+        // a purchase is already in flight. Hidden entirely pre-unlock
+        // (see createCurrencyPackSection) - there's nothing to spend it on yet.
         if (this.currencyPackButton) {
             this.currencyPackButton.classList.toggle("buyable", !this.purchasingCurrencyPack);
+            this.currencyPackContainer.classList.toggle("hidden", !this.isShopUnlocked());
         }
 
         // Item cards themselves are never part of the isShopUnlocked() gate
