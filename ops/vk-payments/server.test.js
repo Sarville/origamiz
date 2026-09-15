@@ -80,6 +80,15 @@ async function main() {
         "tampering with a signed param must fail the gate"
     );
 
+    // OK sends vk_ts in milliseconds instead of VK's seconds - must still pass, not read as a
+    // wildly negative age.
+    const okMsQuery = launchQuery("123", { vk_ts: String(Date.now()), vk_client: "ok" });
+    assert.strictEqual(
+        (await request("GET", `/vk/origamiz?${okMsQuery}`)).status,
+        200,
+        "millisecond vk_ts (OK) should pass the gate like second-precision vk_ts (VK)"
+    );
+
     // Fresh user has no entitlements yet.
     let entitlements = (await request("GET", `/vk/origamiz-entitlements?${gameQuery}`)).body;
     assert.deepStrictEqual(entitlements, { adsDisabled: false, pendingCurrencyPacks: [] }, "new user starts with no entitlements");

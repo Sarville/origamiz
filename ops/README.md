@@ -53,8 +53,17 @@ OK runs this same VK Mini App unchanged (no separate client/SDK) - see
 `https://games.sarville.online/vk/origamiz-payments/ok` as this app's "URL для платёжных
 уведомлений Одноклассников" in the dev.vk.ru cabinet (distinct from the classic
 `/vk/origamiz-payments` URL above, which still handles `get_item`/`order_status_change` for both
-platforms). Not yet verified against a real captured OK notification or a real OK-launched
-Referer - check both with OK's own "Тестовый" probe before trusting this in production.
+platforms).
+
+Confirmed from a real captured OK launch: **`vk_ts` arrives in milliseconds on OK, not seconds
+like VK** (`isValidLaunchParams` normalizes this - anything above `1e11` is treated as
+milliseconds). Without this, the freshness check read a huge negative age and 403'd every real OK
+player. Referer was `id.vk.ru`, already covered by the existing `.vk.ru` allowlist entry - the
+`ok.ru` addition wasn't the actual fix, just harmless to keep.
+
+Still not verified against a real captured OK notification: the *payment confirmation*
+(`handleOkPaymentNotification`) itself - check with OK's own "Тестовый" probe before trusting it
+in production.
 
 ## Deploying a change
 

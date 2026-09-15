@@ -88,7 +88,15 @@ function isValidLaunchParams(searchParams) {
     if (expected !== sign) {
         return false;
     }
-    const ts = Number(searchParams.get("vk_ts"));
+    // VK's vk_ts is Unix seconds, but an OK-hosted launch (vk_client=ok) sends it in
+    // milliseconds instead (confirmed from a real captured OK launch: vk_ts=1789483279190 vs
+    // VK's vk_ts=1789477153) - unnormalized, that reads as a wildly negative age and 403s every
+    // real OK player. Seconds-since-epoch won't reach 1e11 until year 5138, so anything past
+    // that threshold is unambiguously milliseconds.
+    let ts = Number(searchParams.get("vk_ts"));
+    if (ts > 1e11) {
+        ts /= 1000;
+    }
     const ageSeconds = Date.now() / 1000 - ts;
     return Boolean(ts) && ageSeconds >= -60 && ageSeconds <= LAUNCH_MAX_AGE_SECONDS;
 }
