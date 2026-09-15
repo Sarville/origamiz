@@ -55,8 +55,12 @@ games.sarville.online {
 		header @static Cache-Control "public, max-age=31536000, immutable"
 
 		# VK's payments callback (get_item / order_status_change) for the "support the author" item
-		# - set as this app's callback URL in the VK admin panel.
-		handle /vk/colorit-payments {
+		# - set as this app's callback URL in the VK admin panel. Also receives OK's get_item
+		# lookups (same classic channel per VK's docs) and OK's *separate* purchase-confirmation
+		# callback at the /ok sub-path - set that one as the app's "URL для платёжных уведомлений
+		# Одноклассников" in the dev.vk.ru cabinet, distinct from the URL above.
+		@coloritPayments path /vk/colorit-payments /vk/colorit-payments/ok
+		handle @coloritPayments {
 			reverse_proxy vk-payments-colorit:3000
 		}
 

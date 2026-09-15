@@ -135,8 +135,12 @@
       (`handleOkPaymentNotification`) всё ещё не проверено на реальном
       запросе. Подробности —
       [sessions/2026-09-15-1741-session.md](sessions/2026-09-15-1741-session.md),
-      [sessions/2026-09-15-1746-session.md](sessions/2026-09-15-1746-session.md)
-      и [sessions/2026-09-15-1757-session.md](sessions/2026-09-15-1757-session.md).
+      [sessions/2026-09-15-1746-session.md](sessions/2026-09-15-1746-session.md),
+      [sessions/2026-09-15-1757-session.md](sessions/2026-09-15-1757-session.md)
+      и [sessions/2026-09-15-1806-session.md](sessions/2026-09-15-1806-session.md)
+      (деплой + реальный инцидент: параллельный деплой Colorit затёр все
+      блоки Origamiz из общего `Caddyfile` на ~40 минут, восстановлено
+      ручным слиянием).
 
 ## Действующие решения
 

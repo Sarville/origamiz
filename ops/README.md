@@ -25,6 +25,10 @@ sure Colorit's blocks are still present and unchanged - if that project has depl
 change since this file was last synced here, merge forward instead of clobbering it. The
 `@vkColoritEntry`/`@soundsDirect`/`@static` blocks are shared infrastructure both games' rules
 live inside; only `@vkOrigamizEntry` and the `handle /vk/origamiz-*` blocks are Origamiz-specific.
+**This already happened for real, not just hypothetically**: on 2026-09-15 a Colorit-side deploy
+overwrote the live file with one that had zero Origamiz blocks (game gate + payments/entitlements/
+consume all gone, ~40min outage) - see `sessions/2026-09-15-1806-session.md`. Diff-before-deploy is
+not optional.
 
 See [`docs/`](../docs/) and the flowit/Colorit project's `docs/vk-gotchas.md` before changing
 either file - VK's order-box response types being wrong, the 4096-byte storage cap, Caddy's
