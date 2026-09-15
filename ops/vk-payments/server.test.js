@@ -14,7 +14,7 @@ process.env.VK_APP_SECRET = APP_SECRET;
 process.env.DATA_FILE = DATA_FILE;
 process.env.PORT = String(PORT);
 
-const { server } = require("./server.js");
+const { server, handleOkPaymentNotification } = require("./server.js");
 
 function signLaunchParams(params) {
     const vkKeys = Object.keys(params)
@@ -42,6 +42,21 @@ function signPaymentParams(params) {
         .map(key => `${key}=${params[key]}`)
         .join("");
     return crypto.createHash("md5").update(joined + APP_SECRET).digest("hex");
+}
+
+function fakeRes() {
+    return {
+        status: null,
+        headers: null,
+        body: null,
+        writeHead(status, headers) {
+            this.status = status;
+            this.headers = headers;
+        },
+        end(body) {
+            this.body = body;
+        },
+    };
 }
 
 async function request(method, urlPath, body) {
@@ -106,6 +121,31 @@ async function main() {
     await request("POST", `/vk/origamiz-consume?${gameQuery}&orderId=555`);
     entitlements = (await request("GET", `/vk/origamiz-entitlements?${gameQuery}`)).body;
     assert.deepStrictEqual(entitlements.pendingCurrencyPacks, [], "consumed order should be removed from pending");
+
+    // OK's purchase-confirmation notification: accepts a correctly signed, matching purchase;
+    // rejects bad sig, missing fields, and a mismatched product/price; credits the same
+    // entitlement ledger as the classic order_status_change branch above.
+    const okParams = {
+        uid: "777",
+        transaction_id: "ok-1",
+        transaction_time: "2026-09-15 12:00:00",
+        amount: "100",
+        product_code: "disable_ads",
+    };
+    const okRes = fakeRes();
+    await handleOkPaymentNotification(new URLSearchParams({ ...okParams, sig: signPaymentParams(okParams) }), okRes);
+    assert.strictEqual(okRes.body, "true", "valid OK confirmation should return bare true");
+    entitlements = (await request("GET", `/vk/origamiz-entitlements?${launchQuery("777")}`)).body;
+    assert.strictEqual(entitlements.adsDisabled, true, "OK confirmation should credit the entitlement ledger");
+
+    const badSigRes = fakeRes();
+    await handleOkPaymentNotification(new URLSearchParams({ ...okParams, sig: "deadbeef" }), badSigRes);
+    assert.strictEqual(badSigRes.headers["Invocation-error"], "1001", "forged OK signature must be rejected");
+
+    const wrongPriceParams = { ...okParams, transaction_id: "ok-2", amount: "1" };
+    const wrongPriceRes = fakeRes();
+    await handleOkPaymentNotification(new URLSearchParams({ ...wrongPriceParams, sig: signPaymentParams(wrongPriceParams) }), wrongPriceRes);
+    assert.strictEqual(JSON.parse(wrongPriceRes.body).error_code, 1001, "OK amount must match the item's priceOk");
 
     console.log("All vk-payments server checks passed.");
 }

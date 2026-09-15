@@ -62,8 +62,11 @@ games.sarville.online {
 
 		# Origamiz's payments webhook, plus the two small endpoints its client polls at boot/after
 		# a purchase (see ops/vk-payments/server.js in that repo) - VK has no client-side "list my
-		# purchases" API, so these are this service's own entitlement ledger.
-		handle /vk/origamiz-payments {
+		# purchases" API, so these are this service's own entitlement ledger. The /ok sub-path is
+		# OK's own *separate* purchase-confirmation callback - set as the app's "URL для платёжных
+		# уведомлений Одноклассников" in the dev.vk.ru cabinet, distinct from the classic URL above.
+		@origamizPayments path /vk/origamiz-payments /vk/origamiz-payments/ok
+		handle @origamizPayments {
 			reverse_proxy vk-payments-origamiz:3000
 		}
 		handle /vk/origamiz-entitlements {

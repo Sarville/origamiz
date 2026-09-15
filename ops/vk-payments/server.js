@@ -10,13 +10,13 @@ const APP_SECRET = process.env.VK_APP_SECRET || "";
 // below. Bind-mounted from the host so it survives container restarts/redeploys.
 const DATA_FILE = process.env.DATA_FILE || "/data/entitlements.json";
 
-// disable_ads (one-time, permanent) mirrors Origamiz's Yandex build at 150 rub; currency_pack_10k
-// (repeatable, credits 10000 currency - see hub_goals.js's CURRENCY_PACK_AMOUNT) mirrors 100 rub.
-// VK charges in "voices" (голоса) - confirmed 1 voice = 1 rub for this app, so price is just the
-// target rouble amount.
+// disable_ads: one-time, permanent. currency_pack_10k: repeatable, credits 10000 currency (see
+// hub_goals.js's CURRENCY_PACK_AMOUNT). `price` is VK's "голоса", `priceOk` is OK's "ОКи" - the two
+// don't convert 1:1 to RUB or to each other, so both are set explicitly from each platform's own
+// purchase-pack cabinet rather than assumed. See docs/vk-ok-payments-findings.md.
 const ITEMS = {
-    disable_ads: { title: "Отключить рекламу", price: 150 },
-    currency_pack_10k: { title: "Пак валюты", price: 100 },
+    disable_ads: { title: "Отключить рекламу", price: 20, priceOk: 100 },
+    currency_pack_10k: { title: "Пак валюты", price: 10, priceOk: 50 },
 };
 
 let entitlements = {};
@@ -94,17 +94,66 @@ function isValidLaunchParams(searchParams) {
 }
 
 // Soft check, on top of the sign - see flowit/Colorit's docs/vk-gotchas.md for the full
-// rationale (missing Referer is not punished, only a present-but-wrong one is).
+// rationale (missing Referer is not punished, only a present-but-wrong one is). ok.ru is included
+// defensively for OK-hosted launches (vk_client=ok) - not confirmed against a real OK launch's
+// actual Referer, so this could still wrongly 403 real OK players if OK sends something else;
+// check a real captured OK request before trusting this (see docs/vk-ok-payments-findings.md).
 function isAcceptableReferer(referer) {
     if (!referer) {
         return true;
     }
     try {
         const host = new URL(referer).hostname;
-        return host === "vk.com" || host.endsWith(".vk.com") || host === "vk.ru" || host.endsWith(".vk.ru");
+        return (
+            host === "vk.com" ||
+            host.endsWith(".vk.com") ||
+            host === "vk.ru" ||
+            host.endsWith(".vk.ru") ||
+            host === "ok.ru" ||
+            host.endsWith(".ok.ru")
+        );
     } catch {
         return false;
     }
+}
+
+// OK (Odnoklassniki) is a mode of this same VK Mini App, not a separate platform - one app, one
+// APP_SECRET, same isValidSig formula. `get_item` for an OK purchase still arrives on the classic
+// POST channel below (with site=ok, handled there); this GET is OK's *separate* purchase
+// confirmation ("chargeable" equivalent) - apiok.ru `callbacks.payment` - which must be set as its
+// own "URL для платёжных уведомлений Одноклассников" in the dev.vk.ru cabinet. Response shape is
+// OK-specific: bare JSON `true` on success, {error_code,...} plus an Invocation-error header on
+// failure. Not verified against a real captured OK notification yet - check a real request from
+// OK's "Тестовый" probe before trusting this in production (see docs/vk-ok-payments-findings.md).
+async function handleOkPaymentNotification(searchParams, res) {
+    const params = Object.fromEntries(searchParams);
+
+    function fail(code, msg) {
+        res.writeHead(200, { "Content-Type": "application/json", "Invocation-error": String(code) });
+        res.end(JSON.stringify({ error_code: code, error_msg: msg, error_data: null }));
+    }
+
+    if (!isValidSig(params)) {
+        return fail(1001, "CALLBACK_INVALID_SIGNATURE: invalid sig");
+    }
+    if (!params.uid || !params.transaction_id || !params.transaction_time || !params.amount) {
+        return fail(1001, "CALLBACK_INVALID_PAYMENT: missing required field");
+    }
+    const item = ITEMS[params.product_code];
+    if (!item || Number(params.amount) !== item.priceOk) {
+        return fail(1001, "CALLBACK_INVALID_PAYMENT: unknown item or price");
+    }
+
+    const user = getUser(params.uid);
+    if (params.product_code === "disable_ads") {
+        user.adsDisabled = true;
+    } else if (!user.pendingCurrencyPacks.includes(params.transaction_id)) {
+        user.pendingCurrencyPacks.push(params.transaction_id);
+    }
+    await persist();
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end("true");
 }
 
 function readBody(req) {
@@ -156,6 +205,10 @@ const server = http.createServer(async (req, res) => {
         return res.end();
     }
 
+    if (req.method === "GET" && url.pathname === "/vk/origamiz-payments/ok") {
+        return await handleOkPaymentNotification(url.searchParams, res);
+    }
+
     // VK's payments callback (get_item / order_status_change) - set as this app's callback URL
     // in the VK admin panel's payments cabinet.
     if (req.method === "POST" && url.pathname === "/vk/origamiz-payments") {
@@ -174,7 +227,12 @@ const server = http.createServer(async (req, res) => {
         const item = ITEMS[params.item];
 
         if (notificationType === "get_item" && item) {
-            return res.end(JSON.stringify({ response: { title: item.title, price: item.price, item_id: params.item } }));
+            // `site` tells apart a lookup triggered from the VK client vs the OK client - both
+            // arrive on this same classic endpoint (OK only gets its own separate channel for the
+            // purchase *confirmation*, handled above), so this is the one place that needs to
+            // answer with the right currency's price for whichever platform is asking.
+            const price = params.site === "ok" ? item.priceOk : item.price;
+            return res.end(JSON.stringify({ response: { title: item.title, price, item_id: params.item } }));
         }
 
         if (notificationType === "order_status_change" && params.status === "chargeable" && item) {
@@ -200,4 +258,4 @@ const server = http.createServer(async (req, res) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`vk-payments-origamiz listening on :${PORT}`));
 
-module.exports = { server, isValidSig, isValidLaunchParams, isAcceptableReferer };
+module.exports = { server, isValidSig, isValidLaunchParams, isAcceptableReferer, handleOkPaymentNotification };

@@ -42,9 +42,19 @@ a purchase via `/vk/origamiz-consume`.
 
 ## Item pricing
 
-`ITEMS` in `vk-payments/server.js` prices `disable_ads`/`currency_pack_10k` in VK "voices"
-(голоса) at a confirmed 1 voice = 1 rub for this app, matching Origamiz's Yandex build prices
-(150 rub / 100 rub) directly.
+`ITEMS` in `vk-payments/server.js` prices `disable_ads` at 20 VK "голоса" / 100 OK "ОКи" and
+`currency_pack_10k` at 10 voices / 50 OKi. Voices and OKi don't convert 1:1 to RUB or to each
+other - see `docs/vk-ok-payments-findings.md` for how these were derived.
+
+## OK (Odnoklassniki) payments
+
+OK runs this same VK Mini App unchanged (no separate client/SDK) - see
+`docs/vk-ok-payments-findings.md`. The one extra piece is a second webhook URL: set
+`https://games.sarville.online/vk/origamiz-payments/ok` as this app's "URL для платёжных
+уведомлений Одноклассников" in the dev.vk.ru cabinet (distinct from the classic
+`/vk/origamiz-payments` URL above, which still handles `get_item`/`order_status_change` for both
+platforms). Not yet verified against a real captured OK notification or a real OK-launched
+Referer - check both with OK's own "Тестовый" probe before trusting this in production.
 
 ## Deploying a change
 
