@@ -238,8 +238,10 @@ const server = http.createServer(async (req, res) => {
             // `site` tells apart a lookup triggered from the VK client vs the OK client - both
             // arrive on this same classic endpoint (OK only gets its own separate channel for the
             // purchase *confirmation*, handled above), so this is the one place that needs to
-            // answer with the right currency's price for whichever platform is asking.
-            const price = params.site === "ok" ? item.priceOk : item.price;
+            // answer with the right currency's price for whichever platform is asking. Confirmed
+            // from a real captured OK request: the value is "OK", not "ok" - lowercase it before
+            // comparing, or this silently always answers with the VK price.
+            const price = (params.site || "").toLowerCase() === "ok" ? item.priceOk : item.price;
             return res.end(JSON.stringify({ response: { title: item.title, price, item_id: params.item } }));
         }
 

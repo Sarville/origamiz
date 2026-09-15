@@ -61,6 +61,11 @@ milliseconds). Without this, the freshness check read a huge negative age and 40
 player. Referer was `id.vk.ru`, already covered by the existing `.vk.ru` allowlist entry - the
 `ok.ru` addition wasn't the actual fix, just harmless to keep.
 
+Also confirmed from a real captured OK request: `get_item`'s `site` param is `"OK"` (uppercase),
+not `"ok"` - the price lookup lowercases it before comparing, or it silently always answers with
+the VK price (which is what shipped first, and is presumably why OK's own purchase flow choked on
+it).
+
 Still not verified against a real captured OK notification: the *payment confirmation*
 (`handleOkPaymentNotification`) itself - check with OK's own "Тестовый" probe before trusting it
 in production.

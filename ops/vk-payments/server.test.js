@@ -101,6 +101,17 @@ async function main() {
         new URLSearchParams({ ...getItemParams, sig: signPaymentParams(getItemParams) }).toString()
     );
     assert.strictEqual(getItemRes.body.response.item_id, "currency_pack_10k", "get_item should describe the requested item");
+    assert.strictEqual(getItemRes.body.response.price, 10, "get_item without an OK site should answer with the VK price");
+
+    // Real OK requests send site="OK" (uppercase) - must still be recognized as OK, not silently
+    // fall through to the VK price.
+    const getItemOkParams = { notification_type: "get_item", item: "currency_pack_10k", site: "OK" };
+    const getItemOkRes = await request(
+        "POST",
+        "/vk/origamiz-payments",
+        new URLSearchParams({ ...getItemOkParams, sig: signPaymentParams(getItemOkParams) }).toString()
+    );
+    assert.strictEqual(getItemOkRes.body.response.price, 50, "get_item with site=\"OK\" (uppercase) should answer with the OK price");
 
     // order_status_change webhook credits the order as pending for that VK user.
     const orderParams = {
