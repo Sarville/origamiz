@@ -105,6 +105,10 @@
                 background: $darkModeControlsBackground;
             }
 
+            &.hidden {
+                display: none;
+            }
+
             .title {
                 grid-column: 1 / 2;
                 @include PlainText;
@@ -163,6 +167,16 @@
                     // green in-game price.
                     color: $colorOrangeBright;
                     white-space: nowrap;
+
+                    // VK/OK prices spell out the currency name ("10 голосов", "80 ОКов")
+                    // instead of a single symbol like "₽" - GameFont has no Cyrillic
+                    // glyphs, so the word falls back to the browser's default font and
+                    // reads far bigger/heavier than the number next to it unless sized
+                    // down explicitly (see vk_wrapper.js's price-label getters).
+                    .priceUnit {
+                        font-size: 0.6em;
+                        font-weight: normal;
+                    }
                 }
 
                 button.buy {

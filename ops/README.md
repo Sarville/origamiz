@@ -46,9 +46,12 @@ a purchase via `/vk/origamiz-consume`.
 
 ## Item pricing
 
-`ITEMS` in `vk-payments/server.js` prices `disable_ads` at 20 VK "голоса" / 100 OK "ОКи" and
-`currency_pack_10k` at 10 voices / 50 OKi. Voices and OKi don't convert 1:1 to RUB or to each
-other - see `docs/vk-ok-payments-findings.md` for how these were derived.
+`ITEMS` in `vk-payments/server.js` prices `disable_ads` at 20 VK "голоса" / 120 OK "ОКи" and
+`currency_pack_10k` at 10 voices / 80 OKi. Voices and OKi don't convert 1:1 to RUB or to each
+other - see `docs/vk-ok-payments-findings.md` for how these were derived. The client-side price
+labels (`src/js/platform/vk_wrapper.js`'s `getAdRemovalPriceLabel`/`getCurrencyPackPriceLabel`,
+shown in `currency_shop.js` instead of a ruble figure on VK/OK) must be kept in sync with these
+by hand - no shared source between the two repos' build steps.
 
 ## OK (Odnoklassniki) payments
 

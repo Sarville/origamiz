@@ -5,6 +5,7 @@ import { Application } from "../application";
 import { IS_MOBILE, globalConfig } from "../core/config";
 import { Logger } from "../core/logging";
 import { clamp } from "../core/utils";
+import { T } from "../translations";
 
 const logger = new Logger("browser-wrapper");
 
@@ -262,6 +263,16 @@ export class PlatformWrapperImplBrowser {
     }
 
     /**
+     * Price label shown next to the ad-removal buy button. Ruble price by
+     * default (Yandex/browser); VK charges in голоса/ОКи instead, which
+     * don't convert 1:1 to RUB, so PlatformWrapperImplVK overrides this
+     * with its own literal label rather than reusing this translation.
+     */
+    getAdRemovalPriceLabel() {
+        return T.ingame.currencyShop.removeAds.price;
+    }
+
+    /**
      * Starts the ad-removal purchase flow. Resolves true if the purchase
      * succeeded and ads are now disabled, false otherwise (cancelled,
      * failed, or unsupported here).
@@ -282,6 +293,14 @@ export class PlatformWrapperImplBrowser {
      */
     getSupportsCurrencyPackPurchase() {
         return Boolean(G_IS_DEV && globalConfig.debug.rewardedAdsInstant);
+    }
+
+    /**
+     * Price label shown next to the currency-pack buy button - see
+     * getAdRemovalPriceLabel for why VK overrides this.
+     */
+    getCurrencyPackPriceLabel() {
+        return T.ingame.currencyShop.currencyPack.price;
     }
 
     /**

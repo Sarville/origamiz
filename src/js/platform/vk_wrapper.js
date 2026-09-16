@@ -34,6 +34,17 @@ function isVkEnvironment() {
     return typeof window !== "undefined" && new URLSearchParams(window.location.search).has("vk_user_id");
 }
 
+// OK (Odnoklassniki) runs this same VK Mini App with one extra launch param, vk_client=ok, on
+// top of the usual VK ones - see docs/vk-ok-payments-findings.md. Used to pick the right price
+// label (VK голоса vs OK ОКи never convert 1:1) since the two platforms otherwise look identical
+// client-side.
+function isOkEnvironment() {
+    return (
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("vk_client") === "ok"
+    );
+}
+
 /**
  * Reads and JSON-parses a possibly-chunked value written by vkStorageSetValue.
  * @param {string} key
@@ -258,6 +269,14 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
         return this.inVk;
     }
 
+    // Must match ITEMS.disable_ads's price/priceOk in ops/vk-payments/server.js - kept in sync
+    // manually, same as CURRENCY_PACK_ITEM_ID above.
+    getAdRemovalPriceLabel() {
+        return isOkEnvironment()
+            ? '120 <span class="priceUnit">ОКов</span>'
+            : '20 <span class="priceUnit">голосов</span>';
+    }
+
     getAdsDisabled() {
         return this.adsDisabled;
     }
@@ -285,6 +304,13 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
 
     getSupportsCurrencyPackPurchase() {
         return this.inVk;
+    }
+
+    // Must match ITEMS.currency_pack_10k's price/priceOk in ops/vk-payments/server.js.
+    getCurrencyPackPriceLabel() {
+        return isOkEnvironment()
+            ? '80 <span class="priceUnit">ОКов</span>'
+            : '10 <span class="priceUnit">голосов</span>';
     }
 
     async purchaseCurrencyPack() {

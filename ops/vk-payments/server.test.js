@@ -111,7 +111,7 @@ async function main() {
         "/vk/origamiz-payments",
         new URLSearchParams({ ...getItemOkParams, sig: signPaymentParams(getItemOkParams) }).toString()
     );
-    assert.strictEqual(getItemOkRes.body.response.price, 50, "get_item with site=\"OK\" (uppercase) should answer with the OK price");
+    assert.strictEqual(getItemOkRes.body.response.price, 80, "get_item with site=\"OK\" (uppercase) should answer with the OK price");
 
     // order_status_change webhook credits the order as pending for that VK user.
     const orderParams = {
@@ -149,7 +149,7 @@ async function main() {
         uid: "777",
         transaction_id: "ok-1",
         transaction_time: "2026-09-15 12:00:00",
-        amount: "100",
+        amount: "120",
         product_code: "disable_ads",
     };
     const okRes = fakeRes();

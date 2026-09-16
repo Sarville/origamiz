@@ -15,8 +15,8 @@ const DATA_FILE = process.env.DATA_FILE || "/data/entitlements.json";
 // don't convert 1:1 to RUB or to each other, so both are set explicitly from each platform's own
 // purchase-pack cabinet rather than assumed. See docs/vk-ok-payments-findings.md.
 const ITEMS = {
-    disable_ads: { title: "Отключить рекламу", price: 20, priceOk: 100 },
-    currency_pack_10k: { title: "Пак валюты", price: 10, priceOk: 50 },
+    disable_ads: { title: "Отключить рекламу", price: 20, priceOk: 120 },
+    currency_pack_10k: { title: "Пак валюты", price: 10, priceOk: 80 },
 };
 
 let entitlements = {};

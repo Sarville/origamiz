@@ -1,4 +1,4 @@
-import { formatBigNumber, formatSeconds, makeDiv } from "../../../core/utils";
+import { formatBigNumber, formatSeconds, makeDiv, makeDivElement } from "../../../core/utils";
 import { SOUNDS } from "../../../platform/sound";
 import { T } from "../../../translations";
 import { KEYMAPPINGS, KeyActionMapper } from "../../key_action_mapper";
@@ -33,7 +33,8 @@ export class HUDCurrencyShop extends BaseHUDPart {
         // Remove-ads is real-money, not currency, so it stays outside this
         // gate and is always available. The currency pack is also real-money,
         // but selling currency the player can't spend yet is pointless, so
-        // it's hidden until the same level instead (see createCurrencyPackSection).
+        // it doesn't even exist in the DOM until that same level instead (see
+        // ensureCurrencyPackSection).
         // The item cards themselves (itemsSection below) also stay outside
         // this gate: shown with their price from the start so the player can
         // see what's coming, just with no buy button until this same level
@@ -72,7 +73,8 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
         this.createDailyBonusSection();
         this.createAdRewardSection();
-        this.createCurrencyPackSection();
+        // currencyPack itself is NOT created here, unlike every other section - see
+        // ensureCurrencyPackSection's doc for why.
         this.createRemoveAdsSection();
 
         // One-off toggle purchases - "exchange" is deliberately excluded,
@@ -167,23 +169,34 @@ export class HUDCurrencyShop extends BaseHUDPart {
 
     /**
      * Real-money currency pack purchase (Yandex Payments, consumable - see
-     * yandex_wrapper.js's purchaseCurrencyPack). Skipped entirely where the
-     * platform doesn't sell it, same as remove-ads. Unlike remove-ads
-     * though, it's pointless before isShopUnlocked() - there's nothing to
-     * spend the currency on yet - so it's hidden (not just gated on a buy
-     * button) until that same level, see renderCountsAndStatus.
+     * yandex_wrapper.js's purchaseCurrencyPack). Unlike remove-ads, it's
+     * pointless before isShopUnlocked() - there's nothing to spend the
+     * currency on yet - so the DOM node (and its buy-button click handler)
+     * plain doesn't exist pre-unlock, rather than existing hidden behind a
+     * CSS class: a hidden-but-present button is still one Inspect Element
+     * away from a real purchase (the click handler has no level check of
+     * its own - see tryPurchaseCurrencyPack - relying on this method never
+     * being called until unlocked is the actual guard, not the CSS).
+     * Spending the resulting currency is separately and independently
+     * gated regardless (hub_goals.js's canPurchaseShopItem/
+     * isExchangeUnlocked both require reward_research), so this was never
+     * an exploit - just weaker isolation than intended.
+     * Called lazily from renderCountsAndStatus once isShopUnlocked() is
+     * true; a no-op on every call after the first (idempotent via the
+     * this.currencyPackContainer check there).
      */
-    createCurrencyPackSection() {
+    ensureCurrencyPackSection() {
         if (!this.root.app.platformWrapper.getSupportsCurrencyPackPurchase()) {
             return;
         }
 
         const pack = T.ingame.currencyShop.currencyPack;
-        const container = makeDiv(this.contentDiv, null, ["dailyBonus", "hasPrice"]);
+        const container = makeDivElement(null, ["dailyBonus", "hasPrice"]);
+        this.contentDiv.insertBefore(container, this.itemsSection);
         this.currencyPackContainer = container;
         makeDiv(container, null, ["title"], pack.title);
         makeDiv(container, null, ["description"], pack.description);
-        makeDiv(container, null, ["priceRub"], pack.price);
+        makeDiv(container, null, ["priceRub"], this.root.app.platformWrapper.getCurrencyPackPriceLabel());
 
         this.currencyPackButton = document.createElement("button");
         this.currencyPackButton.classList.add("buy", "styledButton", "buyable");
@@ -207,7 +220,7 @@ export class HUDCurrencyShop extends BaseHUDPart {
         const container = makeDiv(this.contentDiv, null, ["dailyBonus", "hasPrice"]);
         makeDiv(container, null, ["title"], removeAds.title);
         makeDiv(container, null, ["description"], removeAds.description);
-        makeDiv(container, null, ["priceRub"], removeAds.price);
+        makeDiv(container, null, ["priceRub"], this.root.app.platformWrapper.getAdRemovalPriceLabel());
 
         this.removeAdsButton = document.createElement("button");
         this.removeAdsButton.classList.add("buy", "styledButton");
@@ -252,12 +265,17 @@ export class HUDCurrencyShop extends BaseHUDPart {
             this.removeAdsButton.classList.toggle("buyable", !purchased && !this.purchasingAdRemoval);
         }
 
+        // Doesn't exist in the DOM at all pre-unlock (see
+        // ensureCurrencyPackSection) - create it the first time this fires
+        // after isShopUnlocked() goes true; a no-op every call after.
+        if (!this.currencyPackButton && this.isShopUnlocked()) {
+            this.ensureCurrencyPackSection();
+        }
+
         // Consumable - never shows a "Purchased" state, just disabled while
-        // a purchase is already in flight. Hidden entirely pre-unlock
-        // (see createCurrencyPackSection) - there's nothing to spend it on yet.
+        // a purchase is already in flight.
         if (this.currencyPackButton) {
             this.currencyPackButton.classList.toggle("buyable", !this.purchasingCurrencyPack);
-            this.currencyPackContainer.classList.toggle("hidden", !this.isShopUnlocked());
         }
 
         // Item cards themselves are never part of the isShopUnlocked() gate
