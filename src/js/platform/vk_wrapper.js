@@ -45,18 +45,25 @@ function isOkEnvironment() {
     );
 }
 
+// VK's real key validation only allows letters/digits/underscore/hyphen (confirmed live:
+// "wallet#n" fails with error_code 100 "incorrect key" - "#" isn't allowed, contrary to what the
+// original chunking scheme assumed). Every prior read/write under the "#" scheme failed the same
+// way, so there's no old data under it to migrate.
+const chunkCountKey = key => `${key}_n`;
+const chunkKey = (key, i) => `${key}_${i}`;
+
 /**
  * Reads and JSON-parses a possibly-chunked value written by vkStorageSetValue.
  * @param {string} key
  * @returns {Promise<unknown>}
  */
 async function vkStorageGetValue(key) {
-    const countRes = await bridge.send("VKWebAppStorageGet", { keys: [`${key}#n`] });
-    const n = Number(countRes.keys.find(e => e.key === `${key}#n`)?.value) || 0;
+    const countRes = await bridge.send("VKWebAppStorageGet", { keys: [chunkCountKey(key)] });
+    const n = Number(countRes.keys.find(e => e.key === chunkCountKey(key))?.value) || 0;
     if (n === 0) {
         return undefined;
     }
-    const chunkKeys = Array.from({ length: n }, (_, i) => `${key}#${i}`);
+    const chunkKeys = Array.from({ length: n }, (_, i) => chunkKey(key, i));
     const parts = [];
     for (let i = 0; i < chunkKeys.length; i += VK_STORAGE_GET_BATCH) {
         const batch = chunkKeys.slice(i, i + VK_STORAGE_GET_BATCH);
@@ -89,16 +96,16 @@ async function vkStorageSetValue(key, value) {
     for (let i = 0; i < serialized.length; i += VK_STORAGE_CHUNK_SIZE) {
         newChunks.push(serialized.slice(i, i + VK_STORAGE_CHUNK_SIZE));
     }
-    const countRes = await bridge.send("VKWebAppStorageGet", { keys: [`${key}#n`] });
-    const oldN = Number(countRes.keys.find(e => e.key === `${key}#n`)?.value) || 0;
+    const countRes = await bridge.send("VKWebAppStorageGet", { keys: [chunkCountKey(key)] });
+    const oldN = Number(countRes.keys.find(e => e.key === chunkCountKey(key))?.value) || 0;
 
     for (let i = 0; i < newChunks.length; i++) {
-        await bridge.send("VKWebAppStorageSet", { key: `${key}#${i}`, value: newChunks[i] });
+        await bridge.send("VKWebAppStorageSet", { key: chunkKey(key, i), value: newChunks[i] });
     }
     for (let i = newChunks.length; i < oldN; i++) {
-        await bridge.send("VKWebAppStorageSet", { key: `${key}#${i}`, value: "" });
+        await bridge.send("VKWebAppStorageSet", { key: chunkKey(key, i), value: "" });
     }
-    await bridge.send("VKWebAppStorageSet", { key: `${key}#n`, value: String(newChunks.length) });
+    await bridge.send("VKWebAppStorageSet", { key: chunkCountKey(key), value: String(newChunks.length) });
 }
 
 // The only top-level keys ever passed to getCloudData/setCloudData (see achievements_storage.js,
