@@ -1,4 +1,7 @@
+import { Logger } from "../../../core/logging";
 import { BaseHUDPart } from "../base_hud_part";
+
+const logger = new Logger("interstitial-ads");
 
 // Minimum real-world time between two interstitial attempts - VK/OK rule
 // 5.1.5.2 forbids showing them more than once per 30s "between screens";
@@ -12,10 +15,11 @@ const INTERSTITIAL_LAUNCH_GRACE_SECONDS = 60;
 
 /**
  * Shows a fullscreen interstitial ad, but only right at a genuine screen
- * transition: the level-up dialog closing, or the settings menu closing.
- * Never mid-gameplay - VK/OK rule 5.1.5.2 only allows interstitials
- * "between screens" (e.g. a level-load transition), not as an unprompted
- * mid-session interrupt. Purely a scheduler with no UI of its own - see
+ * transition: the level-up dialog closing, the settings menu closing, or
+ * the shop/upgrades/statistics dialogs closing. Never mid-gameplay - VK/OK
+ * rule 5.1.5.2 only allows interstitials "between screens" (e.g. a
+ * level-load transition), not as an unprompted mid-session interrupt.
+ * Purely a scheduler with no UI of its own - see
  * PlatformWrapperImplYandex/PlatformWrapperImplVk.showInterstitialAd() for
  * the actual ad call, which already no-ops by itself once ads are
  * purchased away.
@@ -29,15 +33,23 @@ export class HUDInterstitialAds extends BaseHUDPart {
 
         this.root.hud.signals.unlockNotificationFinished.add(this.tryShow, this);
         this.root.hud.signals.settingsMenuClosed.add(this.tryShow, this);
+        this.root.hud.signals.secondaryDialogClosed.add(this.tryShow, this);
     }
 
     tryShow() {
-        if (this.showing || this.root.time.realtimeNow() < this.nextAttemptAt) {
+        if (this.showing) {
+            return;
+        }
+        const secondsUntilNextAttempt = this.nextAttemptAt - this.root.time.realtimeNow();
+        if (secondsUntilNextAttempt > 0) {
+            logger.log("Interstitial trigger fired but still on cooldown for", secondsUntilNextAttempt.toFixed(0), "s");
             return;
         }
 
         this.showing = true;
-        this.root.app.platformWrapper.showInterstitialAd().then(() => {
+        logger.log("Interstitial trigger fired, attempting to show");
+        this.root.app.platformWrapper.showInterstitialAd().then(shown => {
+            logger.log("Interstitial attempt finished, shown =", shown);
             this.showing = false;
             this.nextAttemptAt = this.root.time.realtimeNow() + INTERSTITIAL_COOLDOWN_SECONDS;
         });

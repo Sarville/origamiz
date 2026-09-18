@@ -278,11 +278,22 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
 
     onGameReady() {
         if (!this.inVk || this.adsDisabled) {
+            logger.log("Sticky banner skipped:", !this.inVk ? "not in VK" : "ads disabled (purchased)");
             return;
         }
         bridge
             .send("VKWebAppCheckBannerAd")
-            .then(res => (res.result ? bridge.send("VKWebAppShowBannerAd", { banner_location: "top" }) : null))
+            .then(res => {
+                logger.log("VKWebAppCheckBannerAd result:", res);
+                if (!res.result) {
+                    // Legitimate: monetization not enabled for this app yet, or
+                    // no fill right now - not a bug, see the ops README.
+                    return null;
+                }
+                return bridge.send("VKWebAppShowBannerAd", { banner_location: "top" }).then(showRes => {
+                    logger.log("VKWebAppShowBannerAd result:", showRes);
+                });
+            })
             .catch(ex => logger.error("VK banner ad failed:", ex));
     }
 
@@ -404,15 +415,20 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
     // unprompted mid-gameplay interrupt, per VK rule 5.1.5.2.
     async showInterstitialAd() {
         if (!this.inVk || this.adsDisabled) {
+            logger.log("Interstitial skipped:", !this.inVk ? "not in VK" : "ads disabled (purchased)");
             return false;
         }
         try {
             const check = await bridge.send("VKWebAppCheckNativeAds", { ad_format: "interstitial" });
+            logger.log("VKWebAppCheckNativeAds (interstitial) result:", check);
             if (!check.result) {
+                // Legitimate: monetization not enabled for this app yet, or no
+                // fill right now - not a bug, see the ops README.
                 return false;
             }
             this.app.sound.setMuted(true);
             const res = await bridge.send("VKWebAppShowNativeAds", { ad_format: "interstitial" });
+            logger.log("VKWebAppShowNativeAds (interstitial) result:", res);
             return Boolean(res.result);
         } catch (ex) {
             logger.error("VK interstitial ad failed:", ex);

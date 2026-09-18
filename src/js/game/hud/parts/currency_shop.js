@@ -397,6 +397,9 @@ export class HUDCurrencyShop extends BaseHUDPart {
     }
 
     close() {
+        if (this.visible) {
+            this.root.hud.signals.secondaryDialogClosed.dispatch();
+        }
         this.visible = false;
         this.root.app.inputMgr.makeSureDetached(this.inputReceiver);
         this.update();

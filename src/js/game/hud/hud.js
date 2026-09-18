@@ -43,6 +43,10 @@ export class GameHUD {
             viewShapeDetailsRequested: /** @type {Signal<[ShapeDefinition]>} */ (new Signal()),
             unlockNotificationFinished: /** @type {Signal<[]>} */ (new Signal()),
             settingsMenuClosed: /** @type {Signal<[]>} */ (new Signal()),
+            // Dispatched by any of the shop/upgrades/currency-shop/statistics
+            // dialogs closing - another natural screen-transition point for
+            // HUDInterstitialAds, same reasoning as settingsMenuClosed.
+            secondaryDialogClosed: /** @type {Signal<[]>} */ (new Signal()),
         };
 
         /** @type {import("./hud_parts").HudParts} */
