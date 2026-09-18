@@ -85,6 +85,7 @@ export class SavegameManager extends ReadWriteProxy {
      */
     writeAsync() {
         return super.writeAsync().then(result => {
+            logger.log("Scheduling cloud savegame push");
             this.pushSyncBundleDebounced();
             return result;
         });
@@ -281,14 +282,17 @@ export class SavegameManager extends ReadWriteProxy {
      */
     async syncWithCloud() {
         if (!this.app.platformWrapper.getSupportsSavegameSync()) {
+            logger.log("Cloud savegame sync not supported on this platform, skipping");
             return;
         }
+        logger.log("Starting cloud savegame sync");
         try {
             const cloudBundle = await this.app.platformWrapper.getSyncedSavegameBundle();
             if (cloudBundle) {
                 await this.mergeCloudBundle(cloudBundle);
             }
             await this.pushSyncBundle();
+            logger.log("Cloud savegame sync finished");
         } catch (ex) {
             logger.error("Savegame cloud sync failed:", ex);
         }
@@ -337,6 +341,7 @@ export class SavegameManager extends ReadWriteProxy {
         if (!this.app.platformWrapper.getSupportsSavegameSync()) {
             return;
         }
+        logger.log("Pushing", this.currentData.savegames.length, "savegame(s) to cloud");
         const games = {};
         for (const meta of this.currentData.savegames) {
             const savegame = new Savegame(this.app, { internalId: meta.internalId, metaDataRef: meta });
@@ -347,5 +352,6 @@ export class SavegameManager extends ReadWriteProxy {
             }
         }
         await this.app.platformWrapper.pushSavegameBundle({ savegames: this.currentData.savegames, games });
+        logger.log("Pushed savegame bundle to cloud");
     }
 }
