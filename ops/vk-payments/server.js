@@ -10,6 +10,24 @@ const APP_SECRET = process.env.VK_APP_SECRET || "";
 // below. Bind-mounted from the host so it survives container restarts/redeploys.
 const DATA_FILE = process.env.DATA_FILE || "/data/entitlements.json";
 
+// One JSON file per vk_user_id holding that player's savegame bundle (src/js/platform/vk_wrapper.js's
+// getSavegameBundle/setSavegameBundle) - kept out of entitlements.json (which stays small and fully
+// in-memory) since these can be much bigger and there's no reason to load every player's savegames
+// into memory just to answer one player's request.
+const SAVEGAMES_DIR = process.env.SAVEGAMES_DIR || "/data/savegames";
+fs.mkdirSync(SAVEGAMES_DIR, { recursive: true });
+
+// ponytail: flat ceiling, not tuned to any real savegame's measured size - raise if legitimate
+// players hit it (a shapez factory dump is text-serialized JSON, so a few MB covers a very large
+// base; this mainly exists to stop someone POSTing an arbitrarily large body at the endpoint).
+const MAX_SAVEGAME_BUNDLE_BYTES = 16 * 1024 * 1024;
+
+function isValidVkUserId(vkUserId) {
+    // VK/OK user ids are always numeric - reject anything else outright so it can never be used
+    // to build a filesystem path (no traversal characters possible in a digits-only string).
+    return typeof vkUserId === "string" && /^[0-9]+$/.test(vkUserId);
+}
+
 // disable_ads: one-time, permanent. currency_pack_10k: repeatable, credits 10000 currency (see
 // hub_goals.js's CURRENCY_PACK_AMOUNT). `price` is VK's "голоса", `priceOk` is OK's "ОКи" - the two
 // don't convert 1:1 to RUB or to each other, so both are set explicitly from each platform's own
@@ -164,13 +182,21 @@ async function handleOkPaymentNotification(searchParams, res) {
     res.end("true");
 }
 
-function readBody(req) {
-    return new Promise(resolve => {
+function readBody(req, maxBytes = Infinity) {
+    return new Promise((resolve, reject) => {
         let body = "";
+        let bytes = 0;
         req.on("data", chunk => {
+            bytes += chunk.length;
+            if (bytes > maxBytes) {
+                req.destroy();
+                reject(Object.assign(new Error("payload too large"), { tooLarge: true }));
+                return;
+            }
             body += chunk;
         });
         req.on("end", () => resolve(body));
+        req.on("error", reject);
     });
 }
 
@@ -209,6 +235,58 @@ const server = http.createServer(async (req, res) => {
         const orderId = url.searchParams.get("orderId");
         user.pendingCurrencyPacks = user.pendingCurrencyPacks.filter(id => id !== orderId);
         await persist();
+        res.writeHead(200);
+        return res.end();
+    }
+
+    // Cross-device/cross-platform progress sync (src/js/platform/vk_wrapper.js's
+    // getSavegameBundle/setSavegameBundle) - required by VK's rule 2.3.8. Same launch-params auth
+    // as the entitlement endpoints above; storage is a flat per-user JSON file (see SAVEGAMES_DIR),
+    // never held in memory across requests.
+    if (req.method === "GET" && url.pathname === "/vk/origamiz-savegames") {
+        if (!isValidLaunchParams(url.searchParams)) {
+            res.writeHead(403);
+            return res.end();
+        }
+        const vkUserId = url.searchParams.get("vk_user_id");
+        if (!isValidVkUserId(vkUserId)) {
+            res.writeHead(400);
+            return res.end();
+        }
+        try {
+            const contents = await fs.promises.readFile(`${SAVEGAMES_DIR}/${vkUserId}.json`, "utf8");
+            res.writeHead(200, { "Content-Type": "application/json" });
+            return res.end(contents);
+        } catch {
+            res.writeHead(200, { "Content-Type": "application/json" });
+            return res.end("null");
+        }
+    }
+
+    if (req.method === "POST" && url.pathname === "/vk/origamiz-savegames") {
+        if (!isValidLaunchParams(url.searchParams)) {
+            res.writeHead(403);
+            return res.end();
+        }
+        const vkUserId = url.searchParams.get("vk_user_id");
+        if (!isValidVkUserId(vkUserId)) {
+            res.writeHead(400);
+            return res.end();
+        }
+        let body;
+        try {
+            body = await readBody(req, MAX_SAVEGAME_BUNDLE_BYTES);
+        } catch (ex) {
+            res.writeHead(ex.tooLarge ? 413 : 400);
+            return res.end();
+        }
+        try {
+            JSON.parse(body); // reject non-JSON bodies before persisting them
+        } catch {
+            res.writeHead(400);
+            return res.end();
+        }
+        await fs.promises.writeFile(`${SAVEGAMES_DIR}/${vkUserId}.json`, body);
         res.writeHead(200);
         return res.end();
     }

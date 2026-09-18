@@ -2,6 +2,7 @@
 import { Application } from "@/application";
 /* typehints:end */
 
+import debounce from "debounce-promise";
 import { globalConfig } from "../core/config";
 import { ExplainedResult } from "../core/explained_result";
 import { Logger } from "../core/logging";
@@ -28,6 +29,10 @@ export class SavegameManager extends ReadWriteProxy {
         this.app = app;
 
         this.currentData = this.getDefaultData();
+
+        // Collapses bursts of nearby writes (e.g. a content save immediately followed by a
+        // metadata-only save) into a single cloud push - see writeAsync() below.
+        this.pushSyncBundleDebounced = debounce(() => this.pushSyncBundle(), 500);
     }
 
     // RW Proxy Impl
@@ -70,6 +75,19 @@ export class SavegameManager extends ReadWriteProxy {
         }
 
         return ExplainedResult.good();
+    }
+
+    /**
+     * Every path that changes a savegame or its metadata (create/import/delete, and a content
+     * save via Savegame.writeSavegameAndMetadata) ends up calling this - the one choke point to
+     * hook a cloud push onto, instead of adding a call at every call site individually.
+     * @returns {Promise<void>}
+     */
+    writeAsync() {
+        return super.writeAsync().then(result => {
+            this.pushSyncBundleDebounced();
+            return result;
+        });
     }
 
     // End rw proxy
@@ -236,11 +254,98 @@ export class SavegameManager extends ReadWriteProxy {
     initialize() {
         // First read, then directly write to ensure we have the latest data
         // @ts-ignore
-        return this.readAsync().then(() => {
-            if (G_IS_DEV && globalConfig.debug.disableSavegameWrite) {
-                return Promise.resolve();
+        return this.readAsync()
+            .then(() => {
+                if (G_IS_DEV && globalConfig.debug.disableSavegameWrite) {
+                    return Promise.resolve();
+                }
+                return this.updateAfterSavegamesChanged();
+            })
+            .then(result => {
+                // Fire-and-forget: local savegames are already usable at this point, cloud sync
+                // (a network round trip, possibly slow/offline) must never block app startup on it.
+                this.syncWithCloud();
+                return result;
+            });
+    }
+
+    // -- Cloud sync (see PlatformWrapperImplBrowser.getSupportsSavegameSync and its VK
+    // implementation - satisfies VK rule 2.3.8, "progress must carry over across devices". Not
+    // done here: no tombstones, so a savegame deleted on this device can still be pulled back
+    // down from another device/the cloud that hasn't deleted its own copy yet - accepted
+    // tradeoff for never silently destroying a player's progress; revisit if this bites someone.
+
+    /**
+     * Pulls the cloud's savegame bundle, merges in anything newer/missing (never deletes a local
+     * savegame just because the cloud lacks it), then re-uploads so every device converges.
+     */
+    async syncWithCloud() {
+        if (!this.app.platformWrapper.getSupportsSavegameSync()) {
+            return;
+        }
+        try {
+            const cloudBundle = await this.app.platformWrapper.getSyncedSavegameBundle();
+            if (cloudBundle) {
+                await this.mergeCloudBundle(cloudBundle);
             }
-            return this.updateAfterSavegamesChanged();
-        });
+            await this.pushSyncBundle();
+        } catch (ex) {
+            logger.error("Savegame cloud sync failed:", ex);
+        }
+    }
+
+    /**
+     * @param {{savegames: Array<SavegameMetadata>, games: Record<string, object>}} cloudBundle
+     */
+    async mergeCloudBundle(cloudBundle) {
+        let changed = false;
+        for (const cloudMeta of cloudBundle.savegames ?? []) {
+            const localMeta = this.currentData.savegames.find(g => g.internalId === cloudMeta.internalId);
+            if (localMeta && localMeta.lastUpdate >= cloudMeta.lastUpdate) {
+                continue; // local copy is already as new or newer
+            }
+            const cloudGame = cloudBundle.games?.[cloudMeta.internalId];
+            // Skip anything from a build we can't safely read back (a device on a newer/older
+            // version synced this save) rather than risk corrupting it with a blind write.
+            if (!cloudGame || cloudGame.version !== Savegame.getCurrentVersion()) {
+                continue;
+            }
+            const savegame = new Savegame(this.app, { internalId: cloudMeta.internalId, metaDataRef: cloudMeta });
+            savegame.currentData = cloudGame;
+            await savegame.writeAsync();
+            if (localMeta) {
+                Object.assign(localMeta, cloudMeta);
+            } else {
+                this.currentData.savegames.push({ ...cloudMeta });
+            }
+            changed = true;
+        }
+        if (changed) {
+            await this.sortSavegames();
+            await super.writeAsync(); // super: avoid re-triggering the push this merge is part of
+        }
+    }
+
+    /**
+     * Uploads every local savegame's full content to the cloud, unconditionally replacing
+     * whatever was stored - safe because mergeCloudBundle above always runs first on a fresh
+     * sync, so nothing newer gets clobbered; a save made concurrently on another device between
+     * this device's own syncs can still be overwritten on push, same last-writer-wins tradeoff a
+     * single savegame slot has always had.
+     */
+    async pushSyncBundle() {
+        if (!this.app.platformWrapper.getSupportsSavegameSync()) {
+            return;
+        }
+        const games = {};
+        for (const meta of this.currentData.savegames) {
+            const savegame = new Savegame(this.app, { internalId: meta.internalId, metaDataRef: meta });
+            try {
+                games[meta.internalId] = await savegame.readAsync();
+            } catch (ex) {
+                logger.warn("Skipping unreadable savegame during cloud push:", meta.internalId, ex);
+            }
+        }
+        await this.app.platformWrapper.pushSavegameBundle({ savegames: this.currentData.savegames, games });
     }
 }

@@ -196,6 +196,44 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
         return true;
     }
 
+    // Real cross-device savegame sync (see SavegameManager.syncWithCloud/pushSyncBundle) - keyed
+    // server-side by the same vk_user_id already used for entitlements, on the same
+    // vk-payments-origamiz service (ops/vk-payments/server.js's /vk/origamiz-savegames). This is
+    // what VK's rule 2.3.8 (progress must carry over across devices/platforms) actually requires -
+    // getCloudData/setCloudData above only ever synced the wallet/achievements/blueprint library,
+    // never the savegames themselves.
+    getSupportsSavegameSync() {
+        return this.inVk;
+    }
+
+    async getSyncedSavegameBundle() {
+        if (!this.inVk) {
+            return null;
+        }
+        try {
+            const res = await fetch(`/vk/origamiz-savegames${window.location.search}`);
+            return res.ok ? await res.json() : null;
+        } catch (ex) {
+            logger.error("Failed to fetch synced savegames:", ex);
+            return null;
+        }
+    }
+
+    async pushSavegameBundle(bundle) {
+        if (!this.inVk) {
+            return;
+        }
+        try {
+            await fetch(`/vk/origamiz-savegames${window.location.search}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bundle),
+            });
+        } catch (ex) {
+            logger.error("Failed to push savegames to cloud:", ex);
+        }
+    }
+
     async getCloudData() {
         if (!this.inVk) {
             return super.getCloudData();
@@ -354,6 +392,9 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
         );
     }
 
+    // Called only right after a genuine screen transition (level-up dialog
+    // closing, settings menu closing - see HUDInterstitialAds) never as an
+    // unprompted mid-gameplay interrupt, per VK rule 5.1.5.2.
     async showInterstitialAd() {
         if (!this.inVk || this.adsDisabled) {
             return false;

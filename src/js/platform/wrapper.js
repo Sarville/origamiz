@@ -222,6 +222,32 @@ export class PlatformWrapperImplBrowser {
     }
 
     /**
+     * Whether this platform can store/retrieve a player's full savegame bundle somewhere other
+     * devices/sessions can also read it back - real cross-device progress sync, unlike
+     * getCloudData/setCloudData above which only cover the small wallet/achievements/blueprint-
+     * library data. Gates SavegameManager's cloud sync entirely.
+     */
+    getSupportsSavegameSync() {
+        return false;
+    }
+
+    /**
+     * Fetches this player's last-synced savegame bundle, or null if they have never synced one
+     * (fresh account/device, or platform doesn't support it).
+     * @returns {Promise<{savegames: Array<object>, games: Record<string, object>} | null>}
+     */
+    async getSyncedSavegameBundle() {
+        return null;
+    }
+
+    /**
+     * Uploads this player's full savegame bundle, replacing whatever was previously stored for
+     * them. No-op where getSupportsSavegameSync() is false.
+     * @param {{savegames: Array<object>, games: Record<string, object>}} bundle
+     */
+    async pushSavegameBundle(bundle) {}
+
+    /**
      * Whether this platform can show rewarded video ads at all - gates
      * whether the Shop even offers the "watch ad for currency" button.
      * Outside Yandex there's no real ad SDK to show, but dev builds can

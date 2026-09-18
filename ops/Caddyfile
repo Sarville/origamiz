@@ -79,6 +79,9 @@ games.sarville.online {
 		handle /vk/origamiz-consume {
 			reverse_proxy vk-payments-origamiz:3000
 		}
+		handle /vk/origamiz-savegames {
+			reverse_proxy vk-payments-origamiz:3000
+		}
 
 		handle {
 			root * /srv/games

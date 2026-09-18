@@ -77,6 +77,21 @@ Still not verified against a real captured OK notification: the *payment confirm
 (`handleOkPaymentNotification`) itself - check with OK's own "Тестовый" probe before trusting it
 in production.
 
+## Savegame cloud sync (VK rule 2.3.8)
+
+`/vk/origamiz-savegames` (GET/POST, same launch-params auth as the entitlement endpoints) stores
+each `vk_user_id`'s full savegame bundle as `/data/savegames/<vk_user_id>.json` - already covered
+by the same bind-mounted `/data` volume used for `entitlements.json`, no separate mount needed.
+Client side is `SavegameManager.syncWithCloud()`/`pushSyncBundle()`
+(`src/js/savegame/savegame_manager.js`): pulls and merges on startup (favoring whichever side has
+the newer `lastUpdate` per savegame, never deleting a local savegame just because the cloud lacks
+it), then pushes the full local bundle after every local savegame write. No tombstones - a
+savegame deleted on one device can still come back from another device/the cloud that hasn't
+deleted its own copy - accepted tradeoff for never silently destroying progress.
+
+Request bodies are capped at `MAX_SAVEGAME_BUNDLE_BYTES` (16MB) in `server.js`; raise it there if
+real players with very large factories start hitting it.
+
 ## Deploying a change
 
 ```bash

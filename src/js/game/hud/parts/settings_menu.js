@@ -148,6 +148,7 @@ export class HUDSettingsMenu extends BaseHUDPart {
     close() {
         if (this.visible) {
             this.root.app.platformWrapper.onGameplayStart();
+            this.root.hud.signals.settingsMenuClosed.dispatch();
         }
         this.visible = false;
         this.root.app.inputMgr.makeSureDetached(this.inputReceiver);

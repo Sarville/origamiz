@@ -42,6 +42,7 @@ export class GameHUD {
             pasteBlueprintRequested: /** @type {Signal<[]>} */ (new Signal()),
             viewShapeDetailsRequested: /** @type {Signal<[ShapeDefinition]>} */ (new Signal()),
             unlockNotificationFinished: /** @type {Signal<[]>} */ (new Signal()),
+            settingsMenuClosed: /** @type {Signal<[]>} */ (new Signal()),
         };
 
         /** @type {import("./hud_parts").HudParts} */

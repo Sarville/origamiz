@@ -9,9 +9,11 @@ const fs = require("fs");
 const APP_SECRET = "test_secret";
 const PORT = 34121;
 const DATA_FILE = path.join(require("os").tmpdir(), `vk-payments-test-${Date.now()}.json`);
+const SAVEGAMES_DIR = path.join(require("os").tmpdir(), `vk-payments-test-savegames-${Date.now()}`);
 
 process.env.VK_APP_SECRET = APP_SECRET;
 process.env.DATA_FILE = DATA_FILE;
+process.env.SAVEGAMES_DIR = SAVEGAMES_DIR;
 process.env.PORT = String(PORT);
 
 const { server, handleOkPaymentNotification } = require("./server.js");
@@ -167,6 +169,35 @@ async function main() {
     await handleOkPaymentNotification(new URLSearchParams({ ...wrongPriceParams, sig: signPaymentParams(wrongPriceParams) }), wrongPriceRes);
     assert.strictEqual(JSON.parse(wrongPriceRes.body).error_code, 1001, "OK amount must match the item's priceOk");
 
+    // Savegame sync: no bundle yet -> null; round-trips whatever JSON is posted; rejects a
+    // tampered/unsigned request and an oversized/non-JSON body.
+    const savegameQuery = launchQuery("321");
+    let savegameRes = await request("GET", `/vk/origamiz-savegames?${savegameQuery}`);
+    assert.strictEqual(savegameRes.body, null, "fresh user has no synced savegames yet");
+
+    const bundle = JSON.stringify({ savegames: [{ internalId: "abc", lastUpdate: 1 }] });
+    const putRes = await fetch(`http://127.0.0.1:${PORT}/vk/origamiz-savegames?${savegameQuery}`, {
+        method: "POST",
+        body: bundle,
+        headers: { "Content-Type": "application/json" },
+    });
+    assert.strictEqual(putRes.status, 200, "valid savegame bundle upload should succeed");
+    savegameRes = await request("GET", `/vk/origamiz-savegames?${savegameQuery}`);
+    assert.deepStrictEqual(savegameRes.body, JSON.parse(bundle), "uploaded bundle should round-trip");
+
+    const forgedSavegameRes = await fetch(
+        `http://127.0.0.1:${PORT}/vk/origamiz-savegames?${savegameQuery.replace("321", "999")}`,
+        { method: "POST", body: bundle, headers: { "Content-Type": "application/json" } }
+    );
+    assert.strictEqual(forgedSavegameRes.status, 403, "tampered vk_user_id must be rejected");
+
+    const badJsonRes = await fetch(`http://127.0.0.1:${PORT}/vk/origamiz-savegames?${savegameQuery}`, {
+        method: "POST",
+        body: "not json",
+        headers: { "Content-Type": "application/json" },
+    });
+    assert.strictEqual(badJsonRes.status, 400, "non-JSON savegame body must be rejected");
+
     console.log("All vk-payments server checks passed.");
 }
 
@@ -178,4 +209,5 @@ main()
     .finally(() => {
         server.close();
         fs.rmSync(DATA_FILE, { force: true });
+        fs.rmSync(SAVEGAMES_DIR, { recursive: true, force: true });
     });
