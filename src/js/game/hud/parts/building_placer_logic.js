@@ -397,14 +397,17 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
     }
 
     /**
-     * Overview-zoom belt click-continuation (mirrors mobile's own
-     * placeBeltTapAt/item 8): the first click just places one tile, same as
-     * any other building - every following click continues the belt from
-     * wherever it last ended to the newly clicked tile instead of placing a
-     * fresh disconnected one, laid out the same L-shaped-corner way a
-     * normal-zoom drag would. Only called from onMouseDown while zoomed
-     * into map overview - dragging precisely across a zoomed-out view isn't
-     * practical, so this is tap-only, same reasoning as mobile's item 8.
+     * Single-click/tap belt placement (mirrors mobile's own placeBeltTapAt/
+     * item 8), called from onMouseDown both at overview zoom and, once a
+     * belt is selected but autoPathUnlocked isn't bought yet, at normal zoom
+     * too. Three tiers, most specific first: (1) continue wherever this same
+     * click-chain last ended (lastBeltTile, gated on autoPathUnlocked same
+     * as before); (2) failing that, connect to a dangling belt end adjacent
+     * to `tile` if one exists on the real map (findDanglingBeltNeighbor) -
+     * the original always-available "click next to an open end to extend
+     * it" behavior, never gated behind a shop reward since it's a single
+     * guaranteed-adjacent step, not a search; (3) failing that, an ordinary
+     * disconnected single-tile placement, same as any other building.
      * @param {Vector} tile
      */
     placeBeltTapAt(tile) {
@@ -429,7 +432,18 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                 incoming: this.lastBeltIncomingDirection,
             });
             this.applyBeltContinuation(result, releaseWasOccupied);
-        } else if (this.tryPlaceCurrentBuildingAt(tile)) {
+            return;
+        }
+
+        const connection = this.beltPathPlanner.tryConnectToNearbyBeltEnd(tile);
+        if (connection) {
+            const releaseWasOccupied = !!this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+            const result = this.beltPathPlanner.placePath(connection.entries, connection.anchor);
+            this.applyBeltContinuation(result, releaseWasOccupied);
+            return;
+        }
+
+        if (this.tryPlaceCurrentBuildingAt(tile)) {
             this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
             this.lastBeltTile = tile;
             this.lastBeltIncomingDirection = this.root.map.getLayerContentXY(
@@ -1091,6 +1105,13 @@ export class HUDBuildingPlacerLogic extends BaseHUDPart {
                     this.beltDragPath = [this.lastDragTile];
                     this.beltDragPreviewEntries = this.beltPathPlanner.beltTilesToEntries(this.beltDragPath);
                     this.beltDragPreviewInvalid = false;
+                } else if (this.isBeltSelected) {
+                    // Belt selected but autoPathUnlocked not bought yet - no
+                    // deferred drag preview (see the branch above), place
+                    // immediately through the same single-click path taps use
+                    // once unlocked, so a dangling belt end next to this tile
+                    // still gets discovered/connected (placeBeltTapAt's doc).
+                    this.placeBeltTapAt(this.lastDragTile);
                 } else if (this.tryPlaceCurrentBuildingAt(this.lastDragTile)) {
                     this.root.soundProxy.playUi(metaBuilding.getPlacementSound());
                 }

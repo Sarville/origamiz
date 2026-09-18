@@ -967,14 +967,18 @@ export class HUDMobileControls extends BaseHUDPart {
     }
 
     /**
-     * Handles a plain tap (no drag) while belt is selected. The very first
-     * tap just places one tile, same as any other building - but once a
-     * belt tile exists (lastBeltTile set), every following tap continues
-     * the belt from wherever it last ended to the newly tapped tile, laid
-     * out the same L-shaped-corner way a held drag would (item 8: lets a
-     * very long belt be built one tap at a time, which matters at a
-     * zoomed-out scale where dragging precisely across the whole visible
-     * map isn't practical).
+     * Handles a plain tap (no drag) while belt is selected. Three tiers,
+     * most specific first: (1) once a belt tile exists from this same tap-
+     * chain (lastBeltTile set), every following tap continues it the same
+     * L-shaped-corner way a held drag would (item 8: lets a very long belt
+     * be built one tap at a time, which matters at a zoomed-out scale where
+     * dragging precisely across the whole visible map isn't practical);
+     * (2) failing that, connect to a dangling belt end adjacent to `tile` if
+     * one exists on the real map (BeltPathPlanner.findDanglingBeltNeighbor) -
+     * the original always-available "tap next to an open end to extend it"
+     * behavior, never gated behind autoPathUnlocked since it's a single
+     * guaranteed-adjacent step, not a search; (3) failing that, an ordinary
+     * disconnected single-tile placement, same as any other building.
      * @param {Vector} tile
      */
     placeBeltTapAt(tile) {
@@ -988,9 +992,19 @@ export class HUDMobileControls extends BaseHUDPart {
             }
             const releaseWasOccupied = !!this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
             this.placePath(resolved, releaseWasOccupied);
-        } else {
-            this.placeSingle(tile, this.placerLogic.currentBaseRotation);
+            return;
         }
+
+        const connection = this.beltPathPlanner.tryConnectToNearbyBeltEnd(tile);
+        if (connection) {
+            this.lastBeltTile = connection.anchor.tile;
+            this.lastBeltIncomingDirection = connection.anchor.incoming;
+            const releaseWasOccupied = !!this.root.map.getLayerContentXY(tile.x, tile.y, "regular");
+            this.placePath(connection.entries, releaseWasOccupied);
+            return;
+        }
+
+        this.placeSingle(tile, this.placerLogic.currentBaseRotation);
     }
 
     /**

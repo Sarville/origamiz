@@ -319,6 +319,72 @@ export class BeltPathPlanner {
     }
 
     /**
+     * The original single-click behavior (restored - this fork's tap-
+     * continuation/auto-path search only ever *reacts* to what a neighbour
+     * currently points at, which is mutually chicken-and-egg with a freshly
+     * placed tile's own default rotation: neither one points at the other
+     * yet, so nothing connects): of the up-to-4 belts adjacent to `tile`,
+     * finds the one whose output is currently dangling (nothing downstream
+     * of it yet) - a belt mid-run, whose output already feeds the next tile
+     * of its own path, never qualifies, so a plain click beside a belt's
+     * middle can't weld into it (only an explicit drag may reshape that).
+     * Ties (two dangling ends both adjacent to `tile`) go to whichever belt
+     * has the higher entity uid - uids only ever increase, so that's
+     * whichever one was actually built more recently, not just whichever
+     * happens to be found first.
+     * @param {Vector} tile
+     * @returns {{ tile: Vector, incoming: number }|null}
+     */
+    findDanglingBeltNeighbor(tile) {
+        let best = null;
+        let bestUid = -Infinity;
+        for (const dir of [0, 90, 180, 270]) {
+            const neighborTile = tile.add(enumDirectionToVector[enumAngleToDirection[dir]]);
+            const contents = this.root.map.getLayerContentXY(neighborTile.x, neighborTile.y, "regular");
+            if (!contents || !contents.components.Belt) {
+                continue;
+            }
+            const outgoing = this.existingBeltOutgoing(neighborTile);
+            const downstreamTile = neighborTile.add(enumDirectionToVector[enumAngleToDirection[outgoing]]);
+            if (this.root.map.getLayerContentXY(downstreamTile.x, downstreamTile.y, "regular")) {
+                // Something (the next belt tile of its own run, a building
+                // input, ...) already consumes this belt's output - a mid-run
+                // or already-terminated tile, not an open end.
+                continue;
+            }
+            if (contents.uid > bestUid) {
+                best = { tile: neighborTile, incoming: outgoing };
+                bestUid = contents.uid;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Adjacent-only counterpart to findBeltPathToward: connects `tile` to
+     * the nearest dangling belt end next to it (see findDanglingBeltNeighbor),
+     * reshaping that end into a corner if needed - exactly the single-step
+     * case of a continuation, just discovered from the live map instead of
+     * a caller's own remembered lastBeltTile. Deliberately skips
+     * findBeltPath/the shop-gated auto-path search entirely (no obstacle to
+     * route around, no bend budget to spend) so this always works, even
+     * before reward_shop_auto_path is purchased.
+     * @param {Vector} tile
+     * @returns {{ entries: Array<PathEntry>, anchor: { tile: Vector, incoming: number } }|null}
+     */
+    tryConnectToNearbyBeltEnd(tile) {
+        const anchor = this.findDanglingBeltNeighbor(tile);
+        if (!anchor) {
+            return null;
+        }
+        const outgoing = this.directionBetween(anchor.tile, tile);
+        return {
+            entries: [this.curvedEntry(anchor.tile, outgoing, anchor.incoming), this.curvedEntry(tile, outgoing, outgoing)],
+            anchor,
+        };
+    }
+
+    /**
      * Item 9 (building endpoints): world-space feed info for every
      * ItemAcceptor slot of the real building at `tile` - the tile a belt
      * would need to occupy to feed each slot, and the compass direction it'd
