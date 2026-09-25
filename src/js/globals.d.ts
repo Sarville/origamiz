@@ -20,6 +20,10 @@ declare const G_ALL_UI_IMAGES: Array<string>;
 declare const G_IS_RELEASE: boolean;
 declare const G_IS_YANDEX: boolean;
 declare const G_IS_VK: boolean;
+declare const G_IS_ANDROID: boolean;
+declare const G_YAN_BANNER_ID: string;
+declare const G_YAN_INTERSTITIAL_ID: string;
+declare const G_YAN_REWARDED_ID: string;
 
 // Provided by the Yandex Games SDK <script> tag (yandex build variant only)
 declare const YaGames: { init: () => Promise<any> };

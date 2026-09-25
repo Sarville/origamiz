@@ -32,6 +32,13 @@ function withVariantDefines(config, variant) {
             new rspack.DefinePlugin({
                 G_IS_YANDEX: JSON.stringify(variant === "yandex"),
                 G_IS_VK: JSON.stringify(variant === "vk"),
+                G_IS_ANDROID: JSON.stringify(variant === "android"),
+                // Yandex РСЯ ad units for the Android build; unset = Yandex demo units (never pay).
+                G_YAN_BANNER_ID: JSON.stringify(process.env.YAN_BANNER_ID || "demo-banner-yandex"),
+                G_YAN_INTERSTITIAL_ID: JSON.stringify(
+                    process.env.YAN_INTERSTITIAL_ID || "demo-interstitial-yandex"
+                ),
+                G_YAN_REWARDED_ID: JSON.stringify(process.env.YAN_REWARDED_ID || "demo-rewarded-yandex"),
             }),
         ],
     };

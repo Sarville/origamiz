@@ -9,4 +9,6 @@ export const BUILD_VARIANTS = {
     // Same build, plus G_IS_VK=true (vk-bridge itself is bundled, not injected via script tag
     // like Yandex's SDK - see src/js/platform/vk_wrapper.js).
     vk: {},
+    // Capacitor/RuStore Android app: G_IS_ANDROID=true, no SDK script tag (see android/, docs/android-rustore.md).
+    android: {},
 };

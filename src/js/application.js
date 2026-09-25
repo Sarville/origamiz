@@ -15,6 +15,7 @@ import { MOD_SIGNALS } from "./mods/mod_signals";
 import { MODS } from "./mods/modloader";
 import { Sound } from "./platform/sound";
 import { Storage, STORAGE_SAVES } from "./platform/storage";
+import { PlatformWrapperImplAndroid } from "./platform/android_wrapper";
 import { PlatformWrapperImplVk } from "./platform/vk_wrapper";
 import { PlatformWrapperImplBrowser } from "./platform/wrapper";
 import { PlatformWrapperImplYandex } from "./platform/yandex_wrapper";
@@ -75,7 +76,9 @@ export class Application {
             ? new PlatformWrapperImplVk(this)
             : G_IS_YANDEX
               ? new PlatformWrapperImplYandex(this)
-              : new PlatformWrapperImplBrowser(this);
+              : G_IS_ANDROID
+                ? new PlatformWrapperImplAndroid(this)
+                : new PlatformWrapperImplBrowser(this);
 
         // Global stuff
         this.settings = new ApplicationSettings(this, this.storage);

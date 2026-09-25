@@ -16,11 +16,15 @@
         "serve-yandex": "gulp --cwd gulp serve.yandex",
         "build-vk": "gulp --cwd gulp build.vk.full",
         "serve-vk": "gulp --cwd gulp serve.vk",
+        "build-android": "gulp --cwd gulp build.android.full && cap sync android",
         "lint": "eslint .",
         "prettier-all": "prettier --write ."
     },
     "dependencies": {
+        "@capacitor/android": "^8.5.2",
+        "@capacitor/core": "^8.5.2",
         "@msgpack/msgpack": "^3.1.2",
+        "@quenary/capacitor-yandex-ads": "^1.1.0",
         "@vkontakte/vk-bridge": "^3.0.2",
         "ajv": "^6.10.2",
         "debounce-promise": "^3.1.2",
@@ -28,6 +32,7 @@
         "semver": "^7.8.0"
     },
     "devDependencies": {
+        "@capacitor/cli": "^8.5.2",
         "@eslint/js": "^9.24.0",
         "@rspack/core": "^1.7.2",
         "@tsconfig/node-lts": "^22.0.1",

@@ -28,6 +28,13 @@
       сверена с реальным списанием. Что осталось (нужен доступ к аккаунту
       VK) и известный риск (общий `Caddyfile` с Colorit) — см.
       [sessions/2026-09-10-2148-session.md](sessions/2026-09-10-2148-session.md).
+- [ ] **Android / RuStore порт (Capacitor).** Чанк 1 готов: билд-вариант
+      `android` (`npm run build-android`), `android_wrapper.js` (RuStore Pay,
+      Yandex Mobile Ads), проект `android/`, debug-APK проверен на эмуляторе.
+      Осталось (чанк 2): иконка/сплэш, ключ подписи и AAB, RuStore Console
+      (ИП, продукты, ID приложения), блоки РСЯ, проверка на устройстве — см.
+      [docs/android-rustore.md](docs/android-rustore.md) и
+      [sessions/2026-09-25-2211-session.md](sessions/2026-09-25-2211-session.md).
 - [ ] **Ребрендинг ассетов.** Продолжать по
       [REBRANDING_PLAN.md](REBRANDING_PLAN.md); это единственный источник
       оставшегося перечня графики, звука и текстов.
