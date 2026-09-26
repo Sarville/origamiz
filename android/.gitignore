@@ -104,3 +104,7 @@ app/src/main/res/xml/config.xml
 keystore.properties
 *.jks
 *.keystore
+
+# RuStore signing-key export tool/output (pepk_out.zip holds the encrypted private key) and its certificate
+pepk*
+*.pem
