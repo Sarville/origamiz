@@ -12,8 +12,8 @@ export JAVA_HOME=/home/user/jdk21 ANDROID_HOME=/home/user/Android/Sdk   # Gradle
 ./gradlew assembleDebug        # app/build/outputs/apk/debug/app-debug.apk
 ./gradlew bundleRelease        # AAB for RuStore (signed only if android/keystore.properties exists)
 ```
-Real ad unit ids go in at build time (unset = Yandex demo units, which never pay):
-`YAN_BANNER_ID=R-M-… YAN_INTERSTITIAL_ID=R-M-… YAN_REWARDED_ID=R-M-… npm run build-android`.
+Real ad unit ids go in at build time (unset = Yandex demo units, which never pay). Release: `npm run build-android-release`
+(РСЯ app 20120150; banner `R-M-20120150-1`, interstitial `-2`, rewarded `-3`; ids are public, not secrets).
 
 ## Code map
 - `src/js/platform/android_wrapper.js` - `PlatformWrapperImplAndroid`: RuStore Pay + Yandex Mobile Ads

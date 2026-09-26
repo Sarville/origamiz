@@ -17,6 +17,7 @@
         "build-vk": "gulp --cwd gulp build.vk.full",
         "serve-vk": "gulp --cwd gulp serve.vk",
         "build-android": "gulp --cwd gulp build.android.full && cap sync android",
+        "build-android-release": "YAN_BANNER_ID=R-M-20120150-1 YAN_INTERSTITIAL_ID=R-M-20120150-2 YAN_REWARDED_ID=R-M-20120150-3 npm run build-android",
         "lint": "eslint .",
         "prettier-all": "prettier --write ."
     },
