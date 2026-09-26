@@ -43,8 +43,9 @@ Real ad unit ids go in at build time (unset = Yandex demo units, which never pay
      Yandex/VK ones - RUB label comes from `T.ingame.currencyShop.*.price`)
 5. **Ads** (Yandex РСЯ cabinet): add the app (RuStore link), create banner + interstitial + rewarded units, build
    with the `YAN_*_ID` env vars above.
-6. Store material: launcher icon + splash (currently Capacitor defaults - `android/app/src/main/res/`), 512x512
-   store icon, screenshots, age rating, privacy policy URL (ads + payments collect data;
+6. Store material: launcher icon + splash are generated from the repo-root `icon.png`, `promo.png`, `logo.png` by
+   `python3 android/make_assets.py` (rewrites `android/app/src/main/res/`; rerun after changing the sources).
+   Still to do: 512x512 store icon (`icon.png` fits), screenshots, age rating, privacy policy URL (ads + payments collect data;
    `setUserConsent(true)` is passed to the ads SDK unconditionally).
 7. Bump `versionCode` in `android/app/build.gradle` on every upload.
 
