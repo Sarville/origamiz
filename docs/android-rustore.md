@@ -27,10 +27,13 @@ Real ad unit ids go in at build time (unset = Yandex demo units, which never pay
 ## Before the first release (not automatable - all irreversible or account-bound)
 1. **Package name** `ru.sarville.origamiz` (`capacitor.config.json`, `android/app/build.gradle`, Java package).
    Change it *before* the first RuStore upload - afterwards it is fixed forever. Not yet uploaded anywhere.
-2. **Signing key**: `keytool -genkeypair -v -keystore origamiz-release.jks -alias origamiz -keyalg RSA -keysize 2048
-   -validity 10000`, then `android/keystore.properties` (`storeFile`, `storePassword`, `keyAlias`, `keyPassword`;
-   `storeFile` relative to `android/`). Both are gitignored. **Back the .jks up outside the repo - losing it means
-   no more updates.** Without `keystore.properties` release builds are silently UNSIGNED.
+2. **Signing key** - created (10000-day validity, alias `origamiz`) and kept OUTSIDE the repo in
+   `~/keys/origamiz/origamiz-keystore.jks`, one keystore per app; `~/keys/pepk.jar` is the shared RuStore export
+   tool. `~/keys/origamiz/README.md` has the layout, the pepk/PEM steps for RuStore Console ("Ключ подписи
+   приложения") and the recipe for a new app. `android/keystore.properties` (gitignored; `storeFile` is the absolute
+   keystore path, plus `storePassword`, `keyAlias`, `keyPassword`) is what Gradle reads. **Back the .jks up
+   off this disk - losing it means no more updates.** Without `keystore.properties` release builds are silently
+   UNSIGNED - check with `jarsigner -verify app/build/outputs/bundle/release/app-release.aab`.
 3. **RuStore Console**: create the app, put its "ID приложения" into `rustoreConsoleAppId` in
    `android/gradle.properties` (default `0`). Submit the *monetization application* as an ИП (self-employed
    can't use RuStore payments since 2026-02-01) - Pay SDK payments don't work until it's approved.
