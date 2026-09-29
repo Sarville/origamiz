@@ -4,7 +4,18 @@ import { Application } from "../application";
 
 import bridge from "@vkontakte/vk-bridge";
 import { Logger } from "../core/logging";
+import { timeoutPromise } from "../core/utils";
 import { PlatformWrapperImplBrowser } from "./wrapper";
+
+// OK moderation report (2026-09): after a language change triggers performRestart()'s
+// location.reload(), the app can hang on a white screen inside OK's iframe instead of
+// re-booting. bridge.send() has no built-in timeout, so if VKWebAppInit's reply never makes
+// it back across the reloaded iframe (OK-specific reload quirk, exact mechanism unconfirmed),
+// initialize() - and with it the whole boot promise chain in PreloadState - just hangs forever
+// with no error thrown, which is indistinguishable from a crash to the player. Timing it out
+// and falling back to "not in VK" (same as VKWebAppInit rejecting) turns that hang into a
+// normal, playable boot.
+const VK_INIT_TIMEOUT = 8000;
 
 const logger = new Logger("vk-wrapper");
 
@@ -138,9 +149,9 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
             return;
         }
         try {
-            await bridge.send("VKWebAppInit");
+            await timeoutPromise(bridge.send("VKWebAppInit"), VK_INIT_TIMEOUT);
         } catch (ex) {
-            logger.error("VKWebAppInit failed, continuing without VK bridge:", ex);
+            logger.error("VKWebAppInit failed or timed out, continuing without VK bridge:", ex);
             this.inVk = false;
             return;
         }
@@ -155,6 +166,18 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
 
     getId() {
         return "vk";
+    }
+
+    // OK moderation requirement: the app must start in Russian, detected from the platform's
+    // own launch param rather than the device/OS language. VK appends vk_language ("ru", "uk",
+    // "en", ...) to the launch URL the same way it appends vk_user_id/sign - present for both
+    // VK and OK (OK adds vk_client=ok on top, not a replacement param). Mirrors Yandex's
+    // getPreferredLanguage() reading ysdk.environment.i18n.lang.
+    getPreferredLanguage() {
+        if (!this.inVk) {
+            return null;
+        }
+        return new URLSearchParams(window.location.search).get("vk_language");
     }
 
     /**
