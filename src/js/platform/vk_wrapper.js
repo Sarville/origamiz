@@ -7,14 +7,13 @@ import { Logger } from "../core/logging";
 import { timeoutPromise } from "../core/utils";
 import { PlatformWrapperImplBrowser } from "./wrapper";
 
-// OK moderation report (2026-09): after a language change triggers performRestart()'s
-// location.reload(), the app can hang on a white screen inside OK's iframe instead of
-// re-booting. bridge.send() has no built-in timeout, so if VKWebAppInit's reply never makes
-// it back across the reloaded iframe (OK-specific reload quirk, exact mechanism unconfirmed),
-// initialize() - and with it the whole boot promise chain in PreloadState - just hangs forever
-// with no error thrown, which is indistinguishable from a crash to the player. Timing it out
-// and falling back to "not in VK" (same as VKWebAppInit rejecting) turns that hang into a
-// normal, playable boot.
+// Defense in depth, not the fix for the 2026-09 OK white-screen report (that turned out to be
+// the launch-params gate 403ing a restart's self-referer - see isAcceptableReferer in
+// ops/vk-payments/server.js). bridge.send() has no built-in timeout of its own though, and if a
+// reply ever doesn't come back, initialize() - and with it the whole boot promise chain in
+// PreloadState - would hang forever with no error thrown, indistinguishable from a crash to the
+// player. Timing it out and falling back to "not in VK" (same as VKWebAppInit rejecting) turns
+// any such hang into a normal, playable boot instead.
 const VK_INIT_TIMEOUT = 8000;
 
 const logger = new Logger("vk-wrapper");

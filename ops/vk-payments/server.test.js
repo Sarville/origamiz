@@ -61,11 +61,11 @@ function fakeRes() {
     };
 }
 
-async function request(method, urlPath, body) {
+async function request(method, urlPath, body, headers) {
     const res = await fetch(`http://127.0.0.1:${PORT}${urlPath}`, {
         method,
         body,
-        headers: body ? { "Content-Type": "application/x-www-form-urlencoded" } : undefined,
+        headers: { ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}), ...headers },
     });
     const text = await res.text();
     return { status: res.status, body: text ? JSON.parse(text) : null };
@@ -80,6 +80,21 @@ async function main() {
         (await request("GET", `/vk/origamiz?${gameQuery}&vk_user_id=999`)).status,
         403,
         "tampering with a signed param must fail the gate"
+    );
+
+    // A language-change restart (performRestart -> location.reload) sends the game's OWN url as
+    // Referer, not the embedding ok.ru/vk.com page - must still pass the gate (2026-09-29 OK
+    // moderation report: this 403'd and showed a white screen before games.sarville.online was
+    // added to isAcceptableReferer's allowlist). An unrelated third-party referer must still fail.
+    assert.strictEqual(
+        (await request("GET", `/vk/origamiz?${gameQuery}`, undefined, { Referer: "https://games.sarville.online/vk/origamiz/?foo" })).status,
+        200,
+        "a reload's self-referer (this game's own host) should pass the gate"
+    );
+    assert.strictEqual(
+        (await request("GET", `/vk/origamiz?${gameQuery}`, undefined, { Referer: "https://evil.example/" })).status,
+        403,
+        "an unrelated third-party referer must still fail the gate"
     );
 
     // OK sends vk_ts in milliseconds instead of VK's seconds - must still pass, not read as a

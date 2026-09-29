@@ -124,6 +124,13 @@ function isValidLaunchParams(searchParams) {
 // defensively for OK-hosted launches (vk_client=ok) - not confirmed against a real OK launch's
 // actual Referer, so this could still wrongly 403 real OK players if OK sends something else;
 // check a real captured OK request before trusting this (see docs/vk-ok-payments-findings.md).
+//
+// games.sarville.online (this game's own host) is allowed too: confirmed live (2026-09-29,
+// OK moderation report + devtools capture) that performRestart()'s location.reload() sends the
+// game's OWN url as Referer, not the embedding ok.ru/vk.com page - a same-document reload's
+// Referer reflects the reloading document itself, only the very first iframe load carries the
+// platform's Referer. Without this, every language-change restart 403'd, showing a white screen
+// instead of the app.
 function isAcceptableReferer(referer) {
     if (!referer) {
         return true;
@@ -136,7 +143,8 @@ function isAcceptableReferer(referer) {
             host === "vk.ru" ||
             host.endsWith(".vk.ru") ||
             host === "ok.ru" ||
-            host.endsWith(".ok.ru")
+            host.endsWith(".ok.ru") ||
+            host === "games.sarville.online"
         );
     } catch {
         return false;
