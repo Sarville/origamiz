@@ -124,7 +124,11 @@ export class ModLoader {
             }
         });
 
-        window.shapez = exports;
+        // Mods are not loadable in release builds; exposing every module would hand players
+        // GLOBAL_APP (wallet, hub goals, ...) straight from the console.
+        if (G_IS_DEV) {
+            window.shapez = exports;
+        }
     }
 
     private async loadMod(entry: ModQueueEntry): Promise<Mod> {

@@ -330,6 +330,21 @@ export function clamp(v, minimum = 0, maximum = 1) {
 }
 
 /**
+ * Escapes text for safe interpolation into an innerHTML string - use for anything the player
+ * typed or that came from a savegame, never for translations (those intentionally contain markup).
+ * @param {any} text
+ * @returns {string}
+ */
+export function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+/**
  * Helper method to create a new div element
  * @param {string=} id
  * @param {Array<string>=} classes

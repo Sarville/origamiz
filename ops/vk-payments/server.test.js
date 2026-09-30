@@ -155,9 +155,22 @@ async function main() {
     assert.strictEqual(forgedRes.body.error.error_code, 10, "forged payment signature must be rejected");
 
     // Consuming removes the order so it can't be credited twice.
-    await request("POST", `/vk/origamiz-consume?${gameQuery}&orderId=555`);
+    const consumeRes = await fetch(`http://127.0.0.1:${PORT}/vk/origamiz-consume?${gameQuery}&orderId=555`, { method: "POST" });
+    assert.strictEqual(consumeRes.status, 200, "consuming a pending order should succeed");
     entitlements = (await request("GET", `/vk/origamiz-entitlements?${gameQuery}`)).body;
     assert.deepStrictEqual(entitlements.pendingCurrencyPacks, [], "consumed order should be removed from pending");
+
+    // A second consume of the same order must not be confirmed (client would credit again), and a
+    // redelivered webhook for an already-consumed order must not re-queue it.
+    const replayConsumeRes = await fetch(`http://127.0.0.1:${PORT}/vk/origamiz-consume?${gameQuery}&orderId=555`, { method: "POST" });
+    assert.strictEqual(replayConsumeRes.status, 409, "consuming an order twice must be refused");
+    await request(
+        "POST",
+        "/vk/origamiz-payments",
+        new URLSearchParams({ ...orderParams, sig: signPaymentParams(orderParams) }).toString()
+    );
+    entitlements = (await request("GET", `/vk/origamiz-entitlements?${gameQuery}`)).body;
+    assert.deepStrictEqual(entitlements.pendingCurrencyPacks, [], "redelivered webhook must not re-queue a consumed order");
 
     // OK's purchase-confirmation notification: accepts a correctly signed, matching purchase;
     // rejects bad sig, missing fields, and a mismatched product/price; credits the same

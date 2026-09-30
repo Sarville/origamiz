@@ -100,6 +100,13 @@ yandexAuth:
         Only that account progress is synced - your factory savegames always stay on
         this device, but you can export any of them to a file from the main menu and
         import it on another device or browser at any time.
+    adRemovalTitle: Sign in to buy
+    adRemovalDesc: >-
+        Ad removal is available to signed-in players only. The purchase is tied to
+        your account - without signing in it would be bound to this browser alone
+        and could be lost if you clear site data or switch browser or device, and we
+        could not restore it.<br><br>
+        Sign in with Yandex ID to continue with the purchase.
 
 dialogs:
     buttons:

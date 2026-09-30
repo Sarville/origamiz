@@ -3,6 +3,7 @@ import { GameState } from "../core/game_state";
 import { DialogWithForm } from "../core/modal_dialog_elements";
 import { FormElementInput } from "../core/modal_dialog_forms";
 import {
+    escapeHtml,
     formatSecondsToTimeAgo,
     makeButton,
     makeDiv,
@@ -373,7 +374,7 @@ export class MainMenuState extends GameState {
                     elem,
                     null,
                     ["name"],
-                    "<span>" + (games[i].name ? games[i].name : T.mainMenu.savegameUnnamed) + "</span>"
+                    "<span>" + (games[i].name ? escapeHtml(games[i].name) : T.mainMenu.savegameUnnamed) + "</span>"
                 );
                 this.trackClicks(name, () => this.requestRenameSavegame(games[i]));
 
@@ -489,15 +490,16 @@ export class MainMenuState extends GameState {
          * @param {import("../savegame/savegame_typedefs").SavegameStoredMods[0]} mod
          */
         function formatMod(mod) {
+            const website = /^https?:\/\//i.test(mod.website ?? "")
+                ? `<a class="website styledButton" href="${escapeHtml(
+                      mod.website
+                  )}" target="_blank" rel="noopener noreferrer">${T.mods.modWebsite}</a>`
+                : "";
             return `
                 <div class="dialogModsMod">
-                    <div class="name">${mod.name}</div>
-                    <div class="version">${T.mods.version} ${mod.version}</div>
-                    <button class="website styledButton" onclick="window.open('${mod.website?.replace(
-                        /"'/,
-                        ""
-                    )}')">${T.mods.modWebsite}
-            </button>
+                    <div class="name">${escapeHtml(mod.name)}</div>
+                    <div class="version">${T.mods.version} ${escapeHtml(mod.version)}</div>
+                    ${website}
 
                 </div>
             `;
@@ -536,7 +538,7 @@ export class MainMenuState extends GameState {
                 <p>${T.dialogs.confirmSavegameDelete.desc}</p>
                 <div class="saveInfo">
                     <svg class="saveInfoIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 2h9l5 5v15H6z"/><path d="M15 2v5h5"/></svg>
-                    <span class="saveInfoText">&laquo;${game.name || T.mainMenu.savegameUnnamed}&raquo; &bull; ${levelText}</span>
+                    <span class="saveInfoText">&laquo;${game.name ? escapeHtml(game.name) : T.mainMenu.savegameUnnamed}&raquo; &bull; ${levelText}</span>
                 </div>
                 <div class="warningNote">${T.dialogs.confirmSavegameDelete.warningNote}</div>
             `,

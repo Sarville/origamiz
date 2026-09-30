@@ -204,18 +204,21 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
     /**
      * The only place a currency-pack order is ever credited - called either for orders left
      * over from a previous session (consumeUnprocessedPurchases) or, via
-     * waitForPendingCurrencyPackAndCredit, right after this session's own purchase. Crediting
-     * and consuming (telling the server to drop the order from its pending list) always
-     * happen together so an order can never be picked up and credited twice from the two
-     * different signals (VK's order-box success vs. the payments webhook).
+     * waitForPendingCurrencyPackAndCredit, right after this session's own purchase. The server
+     * consumes first and answers 200 only if the order was still pending, so the credit happens
+     * exactly once per order: a blocked/failed request means no credit yet (the order stays
+     * pending for the next load), and a repeated consume gets 409.
      * @param {string} orderId
      */
     async creditAndConsumeCurrencyPack(orderId) {
         try {
-            this.app.wallet.credit(CURRENCY_PACK_AMOUNT);
-            await fetch(`/vk/origamiz-consume${window.location.search}&orderId=${encodeURIComponent(orderId)}`, {
-                method: "POST",
-            });
+            const res = await fetch(
+                `/vk/origamiz-consume${window.location.search}&orderId=${encodeURIComponent(orderId)}`,
+                { method: "POST" }
+            );
+            if (res.ok) {
+                this.app.wallet.credit(CURRENCY_PACK_AMOUNT);
+            }
         } catch (ex) {
             logger.error("Failed to consume VK currency-pack purchase:", ex);
         }

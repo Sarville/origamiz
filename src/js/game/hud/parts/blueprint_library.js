@@ -3,7 +3,7 @@ import { IS_MOBILE } from "../../../core/config";
 import { InputReceiver } from "../../../core/input_receiver";
 import { DialogWithForm } from "../../../core/modal_dialog_elements";
 import { FormElementInput } from "../../../core/modal_dialog_forms";
-import { makeDiv, makeDivElement, removeAllChildren } from "../../../core/utils";
+import { escapeHtml, makeDiv, makeDivElement, removeAllChildren } from "../../../core/utils";
 import { SOUNDS } from "../../../platform/sound";
 import { T } from "../../../translations";
 import { Blueprint } from "../../blueprint";
@@ -379,9 +379,9 @@ export class HUDBlueprintLibrary extends BaseHUDPart {
         const card = makeDivElement(null, ["blueprintCard"]);
 
         const info = makeDiv(card, null, ["info"]);
-        makeDiv(info, null, ["name"], entry.name);
+        makeDiv(info, null, ["name"], escapeHtml(entry.name));
         if (entry.tags.length > 0) {
-            makeDiv(info, null, ["tags"], entry.tags.join(", "));
+            makeDiv(info, null, ["tags"], escapeHtml(entry.tags.join(", ")));
         }
         makeDiv(info, null, ["meta"], t.buildingCount.replace("<count>", "" + entry.entities.length));
 

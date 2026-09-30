@@ -10,6 +10,7 @@ import { Rectangle } from "../../../core/rectangle";
 import { STOP_PROPAGATION } from "../../../core/signal";
 import {
     arrayDeleteValue,
+    escapeHtml,
     lerp,
     makeDiv,
     removeAllChildren,
@@ -362,7 +363,7 @@ export class HUDWaypoints extends BaseHUDPart {
                 // modeled on) until expanded, then the full name.
                 const displayLabel =
                     IS_MOBILE && !isSelected && label.length > 6 ? label.slice(0, 6) + "…" : label;
-                labelTarget = makeDiv(element, null, ["label"], displayLabel);
+                labelTarget = makeDiv(element, null, ["label"], escapeHtml(displayLabel));
             }
 
             // Desktop always shows it (deletable alone); mobile only once

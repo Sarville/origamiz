@@ -461,16 +461,38 @@ export class HUDCurrencyShop extends BaseHUDPart {
         if (this.purchasingAdRemoval || this.root.app.platformWrapper.getAdsDisabled()) {
             return;
         }
+        const platform = this.root.app.platformWrapper;
+        if (platform.getSupportsAuth() && !platform.isAuthorized() && !(await this.requestAuthForAdRemoval())) {
+            return;
+        }
+
         this.purchasingAdRemoval = true;
         this.renderCountsAndStatus();
 
-        const purchased = await this.root.app.platformWrapper.purchaseAdRemoval();
+        const purchased = await platform.purchaseAdRemoval();
 
         this.purchasingAdRemoval = false;
         if (purchased) {
             this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
         }
         this.renderCountsAndStatus();
+    }
+
+    /**
+     * Ad removal is sold to signed-in players only (an anonymous purchase would live in this
+     * browser alone and be lost with it) - explains that and offers sign-in.
+     * @returns {Promise<boolean>} Whether the player ended up authorized.
+     */
+    requestAuthForAdRemoval() {
+        return new Promise(resolve => {
+            const signals = this.root.hud.parts.dialogs.showWarning(
+                T.yandexAuth.adRemovalTitle,
+                T.yandexAuth.adRemovalDesc,
+                ["later:bad", "login:good"]
+            );
+            signals.later.add(() => resolve(false));
+            signals.login.add(() => resolve(this.root.app.platformWrapper.requestAuth()));
+        });
     }
 
     isBlockingOverlay() {

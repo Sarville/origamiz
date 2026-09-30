@@ -223,7 +223,7 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
     }
 
     async purchaseAdRemoval() {
-        if (!this.payments) {
+        if (!this.payments || !this.isAuthorized()) {
             return false;
         }
         try {

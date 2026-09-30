@@ -55,9 +55,19 @@ function persist() {
 
 function getUser(vkUserId) {
     if (!entitlements[vkUserId]) {
-        entitlements[vkUserId] = { adsDisabled: false, pendingCurrencyPacks: [] };
+        entitlements[vkUserId] = { adsDisabled: false, pendingCurrencyPacks: [], consumedOrders: [] };
     }
-    return entitlements[vkUserId];
+    const user = entitlements[vkUserId];
+    user.consumedOrders ??= []; // ledgers written before this field existed
+    return user;
+}
+
+// A payments webhook can be redelivered after the client already consumed the order (VK retries
+// on timeouts) - without the consumed ledger that would queue the same order for a second credit.
+function addPendingPack(user, orderId) {
+    if (!user.pendingCurrencyPacks.includes(orderId) && !user.consumedOrders.includes(orderId)) {
+        user.pendingCurrencyPacks.push(orderId);
+    }
 }
 
 // VK's classic Payments API signature: md5 of every param except sig, sorted by name and
@@ -181,8 +191,8 @@ async function handleOkPaymentNotification(searchParams, res) {
     const user = getUser(params.uid);
     if (params.product_code === "disable_ads") {
         user.adsDisabled = true;
-    } else if (!user.pendingCurrencyPacks.includes(params.transaction_id)) {
-        user.pendingCurrencyPacks.push(params.transaction_id);
+    } else {
+        addPendingPack(user, params.transaction_id);
     }
     await persist();
 
@@ -228,12 +238,15 @@ const server = http.createServer(async (req, res) => {
         }
         const user = getUser(url.searchParams.get("vk_user_id"));
         res.writeHead(200, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify(user));
+        return res.end(
+            JSON.stringify({ adsDisabled: user.adsDisabled, pendingCurrencyPacks: user.pendingCurrencyPacks })
+        );
     }
 
     // Marks a currency-pack order as consumed (src/js/platform/vk_wrapper.js's
-    // creditAndConsumeCurrencyPack) - removes it from pendingCurrencyPacks so it can't be
-    // picked up and credited a second time on a future load.
+    // creditAndConsumeCurrencyPack) - 200 only if the order was actually pending, which is the
+    // client's cue to credit it; 409 for anything else, so a repeated/replayed consume can never
+    // yield a second credit.
     if (req.method === "POST" && url.pathname === "/vk/origamiz-consume") {
         if (!isValidLaunchParams(url.searchParams)) {
             res.writeHead(403);
@@ -241,7 +254,12 @@ const server = http.createServer(async (req, res) => {
         }
         const user = getUser(url.searchParams.get("vk_user_id"));
         const orderId = url.searchParams.get("orderId");
+        if (!user.pendingCurrencyPacks.includes(orderId)) {
+            res.writeHead(409);
+            return res.end();
+        }
         user.pendingCurrencyPacks = user.pendingCurrencyPacks.filter(id => id !== orderId);
+        user.consumedOrders.push(orderId);
         await persist();
         res.writeHead(200);
         return res.end();
@@ -294,7 +312,9 @@ const server = http.createServer(async (req, res) => {
             res.writeHead(400);
             return res.end();
         }
-        await fs.promises.writeFile(`${SAVEGAMES_DIR}/${vkUserId}.json`, body);
+        const target = `${SAVEGAMES_DIR}/${vkUserId}.json`;
+        await fs.promises.writeFile(`${target}.tmp`, body);
+        await fs.promises.rename(`${target}.tmp`, target); // atomic: a crash mid-write can't corrupt the bundle
         res.writeHead(200);
         return res.end();
     }
@@ -335,8 +355,8 @@ const server = http.createServer(async (req, res) => {
             const user = getUser(params.user_id);
             if (params.item === "disable_ads") {
                 user.adsDisabled = true;
-            } else if (params.item === "currency_pack_10k" && !user.pendingCurrencyPacks.includes(params.order_id)) {
-                user.pendingCurrencyPacks.push(params.order_id);
+            } else if (params.item === "currency_pack_10k") {
+                addPendingPack(user, params.order_id);
             }
             await persist();
             return res.end(
