@@ -27,6 +27,7 @@
 @use "ingame_hud/blueprint_library";
 @use "ingame_hud/shape_exchange";
 @use "ingame_hud/game_menu";
+@use "ingame_hud/speed_boost";
 @use "ingame_hud/mobile_controls";
 @use "ingame_hud/dialogs";
 @use "ingame_hud/vignette_overlay";
@@ -61,6 +62,7 @@ ingame_HUD_PlacerVariants,
 
 // Regular hud
 ingame_HUD_GameMenu,
+ingame_HUD_SpeedBoost,
 ingame_HUD_KeybindingOverlay,
 ingame_HUD_Notifications,
 ingame_HUD_DebugInfo,

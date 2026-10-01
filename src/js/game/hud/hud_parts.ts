@@ -6,6 +6,7 @@ import type { HUDBuildingPlacer } from "./parts/building_placer.js";
 import type { HUDColorBlindHelper } from "./parts/color_blind_helper.js";
 import type { HUDConstantSignalEdit } from "./parts/constant_signal_edit.js";
 import type { HUDCurrencyShop } from "./parts/currency_shop.js";
+import type { HUDSpeedBoost } from "./parts/speed_boost.js";
 import type { HUDChangesDebugger } from "./parts/debug_changes.js";
 import type { HUDDebugInfo } from "./parts/debug_info.js";
 import type { HUDEntityDebugger } from "./parts/entity_debugger.js";
@@ -70,6 +71,7 @@ export interface HudParts {
     unlockNotification?: HUDUnlockNotification;
     shop?: HUDShop;
     currencyShop?: HUDCurrencyShop;
+    speedBoost?: HUDSpeedBoost;
     blueprintLibrary?: HUDBlueprintLibrary;
     shapeExchangeList?: HUDShapeExchangeList;
     shapeExchangeModal?: HUDShapeExchangeModal;

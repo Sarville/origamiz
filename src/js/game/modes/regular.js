@@ -10,6 +10,7 @@ import { HUDAchievementTracker } from "../hud/parts/achievement_tracker";
 import { HUDBlueprintLibrary } from "../hud/parts/blueprint_library";
 import { HUDConstantSignalEdit } from "../hud/parts/constant_signal_edit";
 import { HUDCurrencyShop } from "../hud/parts/currency_shop";
+import { HUDSpeedBoost } from "../hud/parts/speed_boost";
 import { HUDGameMenu } from "../hud/parts/game_menu";
 import { HUDInteractiveTutorial } from "../hud/parts/interactive_tutorial";
 import { HUDInterstitialAds } from "../hud/parts/interstitial_ads";
@@ -542,6 +543,7 @@ export class RegularGameMode extends GameMode {
             massSelector: HUDMassSelector,
             shop: HUDShop,
             currencyShop: HUDCurrencyShop,
+            speedBoost: HUDSpeedBoost,
             blueprintLibrary: HUDBlueprintLibrary,
             shapeExchangeList: HUDShapeExchangeList,
             shapeExchangeModal: HUDShapeExchangeModal,

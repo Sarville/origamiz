@@ -1,0 +1,108 @@
+@use "../mixins" as *;
+@use "../ui_resource" as *;
+@use "../variables" as *;
+
+// Rewarded-ad speed boost button, directly under the game menu icon row (see
+// speed_boost.js). The ring is a conic-gradient masked down to a thin band;
+// --progress is set from JS in whole percents.
+#ingame_HUD_SpeedBoost {
+    position: absolute;
+    top: 4.5rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+
+    html.is-mobile & {
+        top: calc(1rem + 9vmin + 1.5vmin);
+        gap: 1.5vmin;
+    }
+
+    .label {
+        @include PlainText;
+        padding: 0.15rem 0.5rem;
+        border-radius: 1rem;
+        background: $ingameHudBg;
+        color: #f4e9cf;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+
+        &.hidden {
+            display: none;
+        }
+    }
+
+    .boostButton {
+        position: relative;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: rgba(#f2e8d5, 0.85);
+        pointer-events: all;
+        cursor: pointer;
+        transition: transform 0.12s ease-in-out;
+
+        html.is-mobile & {
+            width: 9vmin;
+            height: 9vmin;
+        }
+
+        &.pressed {
+            transform: scale(0.9);
+        }
+
+        .ring {
+            --progress: 100%;
+            --ring-color: #6b5636;
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(var(--ring-color) var(--progress), rgba(#6b5636, 0.18) 0);
+            mask: radial-gradient(closest-side, transparent calc(100% - 0.28rem), #000 calc(100% - 0.26rem));
+            -webkit-mask: radial-gradient(
+                closest-side,
+                transparent calc(100% - 0.28rem),
+                #000 calc(100% - 0.26rem)
+            );
+        }
+
+        .icon {
+            position: absolute;
+            inset: 0.38rem;
+            background: center center / contain no-repeat;
+            background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M11.3%201.5H19.7L15.35%209.05H20.15L7.35%2022.5L9.45%2014.05H3.85Z%22%20fill%3D%22%236b5636%22%2F%3E%3Cpath%20d%3D%22M12.25%203.25H16.7L13.2%2010.5H16.55L9.8%2019.25L11.05%2012.3H7.25Z%22%20fill%3D%22%23d8c48f%22%2F%3E%3Cpolygon%20points%3D%2212.25%2C3.25%2013.2%2C10.5%207.25%2C12.3%22%20fill%3D%22%23f7efdc%22%2F%3E%3Cpolygon%20points%3D%2212.25%2C3.25%2016.7%2C3.25%2013.2%2C10.5%22%20fill%3D%22%23eadcae%22%2F%3E%3Cpolygon%20points%3D%227.25%2C12.3%2013.2%2C10.5%2011.05%2C12.3%209.8%2C19.25%22%20fill%3D%22%23d8c48f%22%2F%3E%3Cpolygon%20points%3D%2213.2%2C10.5%2016.55%2C10.5%209.8%2C19.25%2011.05%2C12.3%22%20fill%3D%22%23c2aa70%22%2F%3E%3Cpath%20d%3D%22M7.25%2012.3L13.2%2010.5M13.2%2010.5L11.05%2012.3L9.8%2019.25%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%221.05%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+
+            html.is-mobile & {
+                inset: 1.4vmin;
+            }
+        }
+
+        &.ready {
+            @include InlineAnimation(1.6s ease-in-out infinite) {
+                50% {
+                    transform: scale(1.1);
+                }
+            }
+        }
+
+        &.active {
+            background: rgba(#ffe9c7, 0.95);
+
+            .ring {
+                --ring-color: #ef9d50;
+            }
+
+            .icon {
+                background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cg%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M11.3%201.5H19.7L15.35%209.05H20.15L7.35%2022.5L9.45%2014.05H3.85Z%22%20fill%3D%22%236b5636%22%2F%3E%3Cpath%20d%3D%22M12.25%203.25H16.7L13.2%2010.5H16.55L9.8%2019.25L11.05%2012.3H7.25Z%22%20fill%3D%22%23f4b36a%22%2F%3E%3Cpolygon%20points%3D%2212.25%2C3.25%2013.2%2C10.5%207.25%2C12.3%22%20fill%3D%22%23ffe1b5%22%2F%3E%3Cpolygon%20points%3D%2212.25%2C3.25%2016.7%2C3.25%2013.2%2C10.5%22%20fill%3D%22%23f9c98a%22%2F%3E%3Cpolygon%20points%3D%227.25%2C12.3%2013.2%2C10.5%2011.05%2C12.3%209.8%2C19.25%22%20fill%3D%22%23f4b36a%22%2F%3E%3Cpolygon%20points%3D%2213.2%2C10.5%2016.55%2C10.5%209.8%2C19.25%2011.05%2C12.3%22%20fill%3D%22%23e8964a%22%2F%3E%3Cpath%20d%3D%22M7.25%2012.3L13.2%2010.5M13.2%2010.5L11.05%2012.3L9.8%2019.25%22%20fill%3D%22none%22%20stroke%3D%22%236b5636%22%20stroke-width%3D%221.05%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E");
+            }
+        }
+
+        &.cooldown,
+        &.locked {
+            .icon {
+                opacity: 0.45;
+            }
+        }
+    }
+}

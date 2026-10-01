@@ -69,6 +69,8 @@ dialogs:
         ok: OK
         delete: Удалить
         cancel: Закрыть
+        abort: Отмена
+        watch: Смотреть
         later: Позже
         login: Войти
         restart: Перезапустить
@@ -251,6 +253,18 @@ ingame:
         newUpgrade: Новое улучшение доступно!
         gameSaved: Игра сохранена.
         freeplayLevelComplete: Уровень <level> завершён!
+    speedBoost:
+        title: Ускорение x2
+        description: Посмотрите короткую рекламу — вся фабрика будет работать в 2 раза быстрее 3 минуты, а постоянный бонус к скорости вырастет на +0,1%.
+        statBonus: "Постоянный бонус: <strong>+<bonus>%</strong>"
+        statDaily: "Ускорений осталось сегодня: <strong><left> из <limit></strong>"
+        activeLabel: "x2 <time>"
+        granted: Ускорение x2 включено!
+        unavailable: Реклама сейчас недоступна. Попробуйте через 30 секунд.
+        reasonActive: Ускорение x2 уже действует.
+        reasonCooldown: "Следующее ускорение будет доступно через <time>."
+        reasonDailyLimit: Лимит на сегодня исчерпан. Приходите завтра!
+        reasonLocked: Ускорение сейчас недоступно — кошелёк используется на другом устройстве.
     shop:
         title: Улучшения
         buttonUnlock: Улучшить

@@ -200,7 +200,13 @@
 #ingame_HUD_Waypoints {
     position: absolute;
     right: 1rem;
-    top: 4.5rem;
+    // Clears the speed boost button row (speed_boost.scss) under the game menu.
+    top: 8rem;
+
+    html.is-mobile & {
+        top: calc(1rem + 18vmin + 3vmin + 0.5rem);
+    }
+
     display: flex;
     flex-direction: column;
     @include DarkThemeInvert();

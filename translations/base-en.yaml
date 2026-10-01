@@ -113,6 +113,8 @@ dialogs:
         ok: OK
         delete: Delete
         cancel: Cancel
+        abort: Cancel
+        watch: Watch
         later: Later
         login: Sign In
         restart: Restart
@@ -345,6 +347,20 @@ ingame:
         newUpgrade: A new upgrade is available!
         gameSaved: Your game has been saved.
         freeplayLevelComplete: Level <level> has been completed!
+
+    # Rewarded-ad speed boost button (under the game menu) and its dialog
+    speedBoost:
+        title: Speed Boost x2
+        description: Watch a short ad - the whole factory runs twice as fast for 3 minutes, and your permanent speed bonus grows by +0.1%.
+        statBonus: "Permanent bonus: <strong>+<bonus>%</strong>"
+        statDaily: "Boosts left today: <strong><left> of <limit></strong>"
+        activeLabel: "x2 <time>"
+        granted: Speed boost x2 is on!
+        unavailable: Ad is unavailable right now. Try again in 30 seconds.
+        reasonActive: Boost x2 is active right now.
+        reasonCooldown: "The next boost will be available in <time>."
+        reasonDailyLimit: Today's limit is reached. Come back tomorrow!
+        reasonLocked: The boost is unavailable right now - your wallet is in use on another device.
 
     # The "Upgrades" window
     shop:
