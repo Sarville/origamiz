@@ -147,6 +147,16 @@ export class MainMenuState extends GameState {
         this.app.platformWrapper.exitApp();
     }
 
+    showWalletKickedDialog() {
+        this.app.wallet.kickNoticeShown = true;
+        const { restart } = this.dialogs.showWarning(
+            T.dialogs.walletKicked.title,
+            T.dialogs.walletKicked.desc,
+            ["later:bad", "restart:good"]
+        );
+        restart.add(() => window.location.reload());
+    }
+
     onEnter(payload) {
         // Start loading already
         const app = this.app;
@@ -155,6 +165,10 @@ export class MainMenuState extends GameState {
         this.dialogs = new HUDModalDialogs(null, this.app);
         const dialogsElement = document.body.querySelector(".modalDialogParent");
         this.dialogs.initializeToElement(dialogsElement);
+
+        if (app.wallet.locked && !app.wallet.kickNoticeShown) {
+            this.showWalletKickedDialog();
+        }
 
         if (payload.loadError) {
             this.dialogs.showWarning(

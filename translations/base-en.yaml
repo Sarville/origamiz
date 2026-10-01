@@ -109,6 +109,9 @@ yandexAuth:
         Sign in with Yandex ID to continue with the purchase.
 
 dialogs:
+    walletKicked:
+        title: Playing on another device
+        desc: "This game was opened on another device or tab, so the wallet and speed boost are paused here. Reload to continue here instead (the other session will pause)."
     buttons:
         ok: OK
         delete: Delete
@@ -363,7 +366,7 @@ ingame:
         reasonActive: Boost x2 is active right now.
         reasonCooldown: "The next boost will be available in <time>."
         reasonDailyLimit: Today's limit is reached. Come back tomorrow!
-        reasonLocked: The boost is unavailable right now - your wallet is in use on another device.
+        reasonLocked: The boost is unavailable right now - the game is open on another device. Reload the game to continue here.
 
     # The "Upgrades" window
     shop:
@@ -385,7 +388,7 @@ ingame:
         title: Shop
         balance: You have <amount> currency shapes
         lockedDisclaimer: Currency purchases unlock at level <level>. Until then, you can remove ads below.
-        sessionLocked: Your currency is in use on another active device right now. Close the game there, or wait a moment, to earn or spend it here.
+        sessionLocked: The game was opened on another device, so your currency is paused here. Reload the game to continue here.
 
         buttonBuy: Buy
         completed: Purchased

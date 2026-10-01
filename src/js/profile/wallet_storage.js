@@ -35,9 +35,31 @@ function localDayKey() {
 // comfortably under Yandex's 100-calls/5min player-data limit.
 const HEARTBEAT_INTERVAL_MS = 20 * 1000;
 
-// A foreign session's lock claim older than this is considered abandoned
-// (tab closed/crashed) and can be taken over.
-const SESSION_LOCK_STALE_MS = 90 * 1000;
+// Balance changes are pushed to the cloud this long after the first one in a
+// burst (shape deliveries credit one at a time), on top of the heartbeat.
+// Worst case ~12 + 3 writes/min stays under Yandex's 100-calls/5min limit.
+const FLUSH_DELAY_MS = 5 * 1000;
+
+const SESSION_ID_KEY = "origamiz_wallet_session";
+
+/**
+ * Persisted per browser tab so a page reload keeps owning its own claim
+ * instead of looking like a foreign session.
+ * @returns {string}
+ */
+function loadSessionId() {
+    const fresh = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    try {
+        const saved = sessionStorage.getItem(SESSION_ID_KEY);
+        if (saved) {
+            return saved;
+        }
+        sessionStorage.setItem(SESSION_ID_KEY, fresh);
+    } catch (ex) {
+        // sessionStorage blocked - a reload then just takes the claim over like any new session
+    }
+    return fresh;
+}
 
 /**
  * Global (account-wide, not per-savegame) currency wallet, plus the two
@@ -63,12 +85,15 @@ const SESSION_LOCK_STALE_MS = 90 * 1000;
  * Cross-device session lock: since there's no server to arbitrate, "only
  * one active session" is approximated by writing a {id, updatedAt} claim
  * into the same cloud blob and heartbeating it every HEARTBEAT_INTERVAL_MS.
- * A session that finds a *different*, still-fresh claim on load or on a
- * heartbeat backs off (this.locked = true) and refuses to earn or spend
- * currency until either that claim goes stale (SESSION_LOCK_STALE_MS with
- * no heartbeat - the other tab closed) or this tab reloads and finds it
- * gone. This is a heuristic, not a hard guarantee: two tabs opened within
- * the same instant could both see no claim and both believe they won it.
+ * The newest session always wins: a session that boots adopts the cloud
+ * wallet and overwrites the claim immediately (no waiting for the old one
+ * to time out). The previous owner notices on its next heartbeat that the
+ * claim carries a different id, stops writing (locked = true), saves the
+ * game and goes to the main menu, where the player can reload to take the
+ * wallet back. A tab closing releases its claim (see release). This is a
+ * heuristic, not a hard guarantee: two sessions booting within the same
+ * instant can both believe they won - the later cloud write then evicts the
+ * other one at its next heartbeat.
  */
 export class WalletStorage {
     /** @param {Application} app */
@@ -87,29 +112,66 @@ export class WalletStorage {
         /** Not persisted: short lockout after a failed ad request. */
         this.boostRetryUntil = 0;
 
-        /** Whether another, still-active session currently holds the lock. */
+        /** Whether a newer session took the wallet over - permanent until the page reloads. */
         this.locked = false;
+        this.kickNoticeShown = false;
 
         /**
-         * Whether *this* session currently owns the lock uninterrupted -
-         * false right after boot and again any time locked flips true, so
-         * the next successful claim knows to adopt the cloud's balance
-         * instead of overwriting it with this tab's possibly-stale copy
-         * (see claimOrRefresh).
+         * Whether *this* session has claimed the wallet - false right
+         * after boot so the first claim adopts the cloud's balance instead
+         * of overwriting it with this tab's empty copy (see claimOrRefresh).
          */
         this.owned = false;
 
-        this.sessionId = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+        this.sessionId = loadSessionId();
         this.heartbeatTimer = null;
+        this.flushTimer = null;
     }
 
     async initialize() {
         await this.claimOrRefresh();
         this.heartbeatTimer = setInterval(() => this.claimOrRefresh(), HEARTBEAT_INTERVAL_MS);
 
-        // Best-effort final write - not guaranteed to complete, but costs
-        // nothing to attempt.
-        window.addEventListener("pagehide", () => this.claimOrRefresh());
+        window.addEventListener("pagehide", () => this.release());
+    }
+
+    /**
+     * Best-effort final write on tab close: persists the state and drops the
+     * claim so the next session doesn't have to take over from a dead one.
+     */
+    release() {
+        if (!this.owned || this.locked) {
+            return;
+        }
+        this.app.platformWrapper.setCloudData({ wallet: { ...this.serialize(), session: null } });
+    }
+
+    /** Schedules a cloud write soon, instead of waiting for the next heartbeat. */
+    markDirty() {
+        if (this.flushTimer || this.locked || !this.owned) {
+            return;
+        }
+        this.flushTimer = setTimeout(() => {
+            this.flushTimer = null;
+            this.claimOrRefresh();
+        }, FLUSH_DELAY_MS);
+    }
+
+    /** Called when the cloud claim belongs to a newer session. */
+    handleSuperseded() {
+        this.locked = true;
+        this.owned = false;
+        clearInterval(this.heartbeatTimer);
+        clearTimeout(this.flushTimer);
+        this.flushTimer = null;
+
+        const state = this.app.stateMgr.getCurrentState();
+        if (typeof state?.goBackToMenu === "function") {
+            // The main menu shows the notice on enter.
+            state.goBackToMenu();
+        } else if (typeof state?.showWalletKickedDialog === "function") {
+            state.showWalletKickedDialog();
+        }
     }
 
     serialize() {
@@ -133,34 +195,29 @@ export class WalletStorage {
      * heartbeat tick after that - see class doc.
      */
     async claimOrRefresh() {
+        if (this.locked) {
+            return;
+        }
         const cloud = await this.app.platformWrapper.getCloudData();
         const wallet = cloud?.wallet;
         const session = wallet?.session;
 
-        // Only a real, shared-across-devices cloud store (Yandex) can ever
-        // have a genuine "foreign" session - the plain browser platform's
-        // getCloudData is just this device's own local storage (see its
-        // class doc), so a "used on another device" claim there is always a
-        // false positive (e.g. a stale heartbeat from a previous tab).
-        const foreignSessionActive =
+        // Only a real, shared-across-devices cloud store can have a genuine
+        // "foreign" session - the plain browser platform's getCloudData is
+        // just this device's own local storage (see its class doc).
+        if (
+            this.owned &&
             this.app.platformWrapper.getSupportsCrossDeviceWallet() &&
             session &&
-            session.id !== this.sessionId &&
-            Date.now() - session.updatedAt < SESSION_LOCK_STALE_MS;
-
-        if (foreignSessionActive) {
-            // Someone else holds the lock - freeze in place (canEarn/
-            // canSpend both check !locked) without touching our own
-            // balance, so nothing here gets stomped once we win it back.
-            this.locked = true;
-            this.owned = false;
+            session.id !== this.sessionId
+        ) {
+            this.handleSuperseded();
             return;
         }
 
         if (!this.owned && wallet && typeof wallet === "object") {
-            // First claim this session, or reclaiming after a foreign
-            // session's lock went stale - adopt its last known state
-            // instead of overwriting it with our own (possibly older) copy.
+            // First claim of this session - adopt the cloud's last known
+            // state instead of overwriting it with our empty copy.
             this.balance = Number(wallet.balance) || 0;
             this.dailyBonusClaimedAt = Number(wallet.dailyBonusClaimedAt) || 0;
             this.adRewardClaimedAt = Number(wallet.adRewardClaimedAt) || 0;
@@ -171,7 +228,6 @@ export class WalletStorage {
             this.boostDayCount = Number(wallet.boostDayCount) || 0;
         }
 
-        this.locked = false;
         this.owned = true;
         try {
             await this.app.platformWrapper.setCloudData({ wallet: this.serialize() });
@@ -197,12 +253,14 @@ export class WalletStorage {
     credit(amount) {
         assert(amount >= 0, "Wallet credit must be >= 0: " + amount);
         this.balance += amount;
+        this.markDirty();
     }
 
     /** @param {number} amount */
     debit(amount) {
         assert(this.canSpend(amount), "Can not afford wallet debit: " + amount);
         this.balance -= amount;
+        this.markDirty();
     }
 
     /** @returns {boolean} */
@@ -300,6 +358,7 @@ export class WalletStorage {
         this.boostPermille = Math.min(BOOST_MAX_PERMILLE, this.boostPermille + 1);
         this.boostActiveUntil = now + BOOST_DURATION_MS;
         this.boostCooldownUntil = now + BOOST_COOLDOWN_MS;
+        this.claimOrRefresh();
         return true;
     }
 
