@@ -6,6 +6,7 @@ import { InputReceiver } from "../../../core/input_receiver";
 import { enumHubGoalRewards } from "../../tutorial_goals";
 import { BaseHUDPart } from "../base_hud_part";
 import { DynamicDomAttach } from "../dynamic_dom_attach";
+import { enumRewardedAdResult } from "../../../platform/wrapper";
 
 /**
  * The "Shop" window - separate from the "Upgrades" window (shop.js/HUDShop,
@@ -432,10 +433,10 @@ export class HUDCurrencyShop extends BaseHUDPart {
         this.claimingAdReward = true;
         this.renderCountsAndStatus();
 
-        const watched = await this.root.app.platformWrapper.showRewardedAd();
+        const result = await this.root.app.platformWrapper.showRewardedAd();
 
         this.claimingAdReward = false;
-        if (watched && this.root.hubGoals.grantAdReward()) {
+        if (result === enumRewardedAdResult.rewarded && this.root.hubGoals.grantAdReward()) {
             this.root.app.sound.playUiSound(SOUNDS.unlockUpgrade);
         }
         this.renderCountsAndStatus();

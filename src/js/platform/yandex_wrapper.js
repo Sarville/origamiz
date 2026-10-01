@@ -3,7 +3,7 @@ import { Application } from "../application";
 /* typehints:end */
 
 import { Logger } from "../core/logging";
-import { PlatformWrapperImplBrowser } from "./wrapper";
+import { PlatformWrapperImplBrowser, enumRewardedAdResult } from "./wrapper";
 
 const logger = new Logger("yandex-wrapper");
 
@@ -190,7 +190,7 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
 
     async showRewardedAd() {
         if (!this.getSupportsRewardedAds()) {
-            return false;
+            return enumRewardedAdResult.unavailable;
         }
         return new Promise(resolve => {
             let rewarded = false;
@@ -202,12 +202,12 @@ export class PlatformWrapperImplYandex extends PlatformWrapperImplBrowser {
                     },
                     onClose: () => {
                         this.app.sound.setMuted(false);
-                        resolve(rewarded);
+                        resolve(rewarded ? enumRewardedAdResult.rewarded : enumRewardedAdResult.dismissed);
                     },
                     onError: ex => {
                         logger.error("Rewarded ad failed:", ex);
                         this.app.sound.setMuted(false);
-                        resolve(false);
+                        resolve(enumRewardedAdResult.unavailable);
                     },
                 },
             });

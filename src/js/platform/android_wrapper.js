@@ -5,7 +5,7 @@ import { Application } from "../application";
 import { registerPlugin } from "@capacitor/core";
 import { YandexAds } from "@quenary/capacitor-yandex-ads";
 import { Logger } from "../core/logging";
-import { PlatformWrapperImplBrowser } from "./wrapper";
+import { PlatformWrapperImplBrowser, enumRewardedAdResult } from "./wrapper";
 
 const logger = new Logger("android-wrapper");
 
@@ -203,23 +203,29 @@ export class PlatformWrapperImplAndroid extends PlatformWrapperImplBrowser {
                     YandexAds.addListener("rewardedVideoAdRewarded", () => {
                         rewarded = true;
                     }),
-                    YandexAds.addListener("rewardedVideoAdDismissed", () => end()),
-                    YandexAds.addListener("rewardedVideoAdFailedToShow", () => end()),
+                    YandexAds.addListener("rewardedVideoAdDismissed", () => end(false)),
+                    YandexAds.addListener("rewardedVideoAdFailedToShow", () => end(true)),
                 ];
-                const end = () => {
+                const end = failed => {
                     this.app.sound.setMuted(false);
                     handles.forEach(h => h.then(x => x.remove()));
-                    resolve(rewarded);
+                    resolve(
+                        failed
+                            ? enumRewardedAdResult.unavailable
+                            : rewarded
+                              ? enumRewardedAdResult.rewarded
+                              : enumRewardedAdResult.dismissed
+                    );
                 };
                 YandexAds.showRewardedVideo().catch(ex => {
                     logger.error("Rewarded ad failed to show:", ex);
-                    end();
+                    end(true);
                 });
             });
         } catch (ex) {
             logger.error("Rewarded ad failed:", ex);
             this.app.sound.setMuted(false);
-            return false;
+            return enumRewardedAdResult.unavailable;
         }
     }
 

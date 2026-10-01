@@ -1054,7 +1054,9 @@ export class HubGoals extends BasicSerializableObject {
         if (this.root.gameMode.throughputDoesNotMatter()) {
             return globalConfig.beltSpeedItemsPerSecond * globalConfig.puzzleModeSpeed;
         }
-        return globalConfig.beltSpeedItemsPerSecond * this.upgradeImprovements.belt;
+        return (
+            globalConfig.beltSpeedItemsPerSecond * this.upgradeImprovements.belt * this.getSpeedMultiplier()
+        );
     }
 
     /**
@@ -1065,7 +1067,9 @@ export class HubGoals extends BasicSerializableObject {
         if (this.root.gameMode.throughputDoesNotMatter()) {
             return globalConfig.beltSpeedItemsPerSecond * globalConfig.puzzleModeSpeed;
         }
-        return globalConfig.beltSpeedItemsPerSecond * this.upgradeImprovements.belt;
+        return (
+            globalConfig.beltSpeedItemsPerSecond * this.upgradeImprovements.belt * this.getSpeedMultiplier()
+        );
     }
 
     /**
@@ -1076,7 +1080,21 @@ export class HubGoals extends BasicSerializableObject {
         if (this.root.gameMode.throughputDoesNotMatter()) {
             return globalConfig.minerSpeedItemsPerSecond * globalConfig.puzzleModeSpeed;
         }
-        return globalConfig.minerSpeedItemsPerSecond * this.upgradeImprovements.miner;
+        return (
+            globalConfig.minerSpeedItemsPerSecond * this.upgradeImprovements.miner * this.getSpeedMultiplier()
+        );
+    }
+
+    /**
+     * Account-wide rewarded-ad speed bonus (permanent part x temporary boost),
+     * applied on top of upgrades. Always 1 where throughput is irrelevant.
+     * @returns {number}
+     */
+    getSpeedMultiplier() {
+        if (this.root.gameMode.throughputDoesNotMatter()) {
+            return 1;
+        }
+        return this.root.app.wallet.getSpeedMultiplier();
     }
 
     /**
@@ -1085,6 +1103,14 @@ export class HubGoals extends BasicSerializableObject {
      * @returns {number} items / sec
      */
     getProcessorBaseSpeed(processorType) {
+        return this.getUpgradedProcessorSpeed(processorType) * this.getSpeedMultiplier();
+    }
+
+    /**
+     * @param {enumItemProcessorTypes} processorType
+     * @returns {number} items / sec, without the rewarded-ad multiplier
+     */
+    getUpgradedProcessorSpeed(processorType) {
         if (this.root.gameMode.throughputDoesNotMatter()) {
             return globalConfig.beltSpeedItemsPerSecond * globalConfig.puzzleModeSpeed * 10;
         }

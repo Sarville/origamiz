@@ -5,7 +5,7 @@ import { Application } from "../application";
 import bridge from "@vkontakte/vk-bridge";
 import { Logger } from "../core/logging";
 import { timeoutPromise } from "../core/utils";
-import { PlatformWrapperImplBrowser } from "./wrapper";
+import { PlatformWrapperImplBrowser, enumRewardedAdResult } from "./wrapper";
 
 // Defense in depth, not the fix for the 2026-09 OK white-screen report (that turned out to be
 // the launch-params gate 403ing a restart's self-referer - see isAcceptableReferer in
@@ -328,19 +328,19 @@ export class PlatformWrapperImplVk extends PlatformWrapperImplBrowser {
 
     async showRewardedAd() {
         if (!this.inVk) {
-            return false;
+            return enumRewardedAdResult.unavailable;
         }
         try {
             const check = await bridge.send("VKWebAppCheckNativeAds", { ad_format: "reward" });
             if (!check.result) {
-                return false;
+                return enumRewardedAdResult.unavailable;
             }
             this.app.sound.setMuted(true);
             const res = await bridge.send("VKWebAppShowNativeAds", { ad_format: "reward" });
-            return Boolean(res.result);
+            return res.result ? enumRewardedAdResult.rewarded : enumRewardedAdResult.dismissed;
         } catch (ex) {
             logger.error("VK rewarded ad failed:", ex);
-            return false;
+            return enumRewardedAdResult.unavailable;
         } finally {
             this.app.sound.setMuted(false);
         }

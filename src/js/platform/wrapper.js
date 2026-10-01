@@ -10,6 +10,18 @@ import { T } from "../translations";
 const logger = new Logger("browser-wrapper");
 
 /**
+ * Outcome of showRewardedAd(). "unavailable" means the ad could not be
+ * loaded or shown at all (no fill, SDK error, blocked by an ad blocker) as
+ * opposed to the player closing it early ("dismissed").
+ * @enum {string}
+ */
+export const enumRewardedAdResult = {
+    rewarded: "rewarded",
+    dismissed: "dismissed",
+    unavailable: "unavailable",
+};
+
+/**
  * Local filename backing getCloudData/setCloudData - not really a "cloud"
  * on this platform, just this.app.storage (the same local IndexedDB-backed
  * store settings/achievements/savegames already use). There's no account/
@@ -259,13 +271,15 @@ export class PlatformWrapperImplBrowser {
     }
 
     /**
-     * Shows a rewarded video ad. Resolves true only if the player watched it
-     * through to the platform's reward trigger and should be granted the
-     * reward, false otherwise (closed early, failed, or unsupported here).
-     * @returns {Promise<boolean>}
+     * Shows a rewarded video ad. Resolves "rewarded" only if the player
+     * watched it through to the platform's reward trigger and should be
+     * granted the reward; see enumRewardedAdResult for the other outcomes.
+     * @returns {Promise<enumRewardedAdResult>}
      */
     async showRewardedAd() {
-        return this.getSupportsRewardedAds();
+        return this.getSupportsRewardedAds()
+            ? enumRewardedAdResult.rewarded
+            : enumRewardedAdResult.unavailable;
     }
 
     /**

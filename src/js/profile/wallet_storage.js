@@ -12,6 +12,23 @@ const logger = new Logger("wallet");
 const DAILY_BONUS_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const AD_REWARD_INTERVAL_MS = 2 * 60 * 60 * 1000;
 
+// Rewarded-ad speed boost. Each watched ad: x2 speed for BOOST_DURATION_MS, a
+// BOOST_COOLDOWN_MS lockout, and a permanent +0.1% (stored as integer permille
+// so 3000 additions never drift) up to +300%, at most BOOST_DAILY_LIMIT
+// watches per local calendar day (= max +10%/day).
+export const BOOST_DURATION_MS = 3 * 60 * 1000;
+export const BOOST_COOLDOWN_MS = 5 * 60 * 1000;
+export const BOOST_RETRY_MS = 30 * 1000;
+export const BOOST_DAILY_LIMIT = 100;
+export const BOOST_MAX_PERMILLE = 3000;
+const BOOST_TEMP_MULTIPLIER = 2;
+
+/** @returns {string} Local calendar day key, e.g. "2026-10-1" */
+function localDayKey() {
+    const d = new Date(Date.now());
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+
 // How often the heartbeat re-writes the wallet to the cloud - both to
 // persist balance changes and to keep this session's lock claim fresh (see
 // class doc). Also the practical write rate: one setData call per tick,
@@ -62,6 +79,14 @@ export class WalletStorage {
         this.dailyBonusClaimedAt = 0;
         this.adRewardClaimedAt = 0;
 
+        this.boostPermille = 0;
+        this.boostActiveUntil = 0;
+        this.boostCooldownUntil = 0;
+        this.boostDayKey = "";
+        this.boostDayCount = 0;
+        /** Not persisted: short lockout after a failed ad request. */
+        this.boostRetryUntil = 0;
+
         /** Whether another, still-active session currently holds the lock. */
         this.locked = false;
 
@@ -92,6 +117,11 @@ export class WalletStorage {
             balance: this.balance,
             dailyBonusClaimedAt: this.dailyBonusClaimedAt,
             adRewardClaimedAt: this.adRewardClaimedAt,
+            boostPermille: this.boostPermille,
+            boostActiveUntil: this.boostActiveUntil,
+            boostCooldownUntil: this.boostCooldownUntil,
+            boostDayKey: this.boostDayKey,
+            boostDayCount: this.boostDayCount,
             session: { id: this.sessionId, updatedAt: Date.now() },
         };
     }
@@ -134,6 +164,11 @@ export class WalletStorage {
             this.balance = Number(wallet.balance) || 0;
             this.dailyBonusClaimedAt = Number(wallet.dailyBonusClaimedAt) || 0;
             this.adRewardClaimedAt = Number(wallet.adRewardClaimedAt) || 0;
+            this.boostPermille = Math.min(BOOST_MAX_PERMILLE, Math.max(0, Number(wallet.boostPermille) || 0));
+            this.boostActiveUntil = Number(wallet.boostActiveUntil) || 0;
+            this.boostCooldownUntil = Number(wallet.boostCooldownUntil) || 0;
+            this.boostDayKey = String(wallet.boostDayKey || "");
+            this.boostDayCount = Number(wallet.boostDayCount) || 0;
         }
 
         this.locked = false;
@@ -211,5 +246,65 @@ export class WalletStorage {
         this.adRewardClaimedAt = Date.now();
         this.credit(amount);
         return true;
+    }
+
+    // --- Rewarded-ad speed boost ---
+
+    /** @returns {number} Permanent accumulated bonus as a fraction, 0..3 */
+    getBoostBonus() {
+        return this.boostPermille / 1000;
+    }
+
+    /**
+     * Multiplier applied to belts, miners and processors on top of upgrades.
+     * @returns {number}
+     */
+    getSpeedMultiplier() {
+        const active = Date.now() < this.boostActiveUntil;
+        return (1 + this.boostPermille / 1000) * (active ? BOOST_TEMP_MULTIPLIER : 1);
+    }
+
+    /** @returns {number} Seconds of the x2 boost left, 0 if inactive */
+    getBoostRemainingSeconds() {
+        return Math.max(0, this.boostActiveUntil - Date.now()) / 1000;
+    }
+
+    /** @returns {number} Seconds until the boost button is usable again (cooldown or failed-ad retry) */
+    getBoostCooldownSeconds() {
+        return Math.max(0, this.boostCooldownUntil - Date.now(), this.boostRetryUntil - Date.now()) / 1000;
+    }
+
+    /** @returns {number} Watches left today */
+    getBoostDailyRemaining() {
+        const used = this.boostDayKey === localDayKey() ? this.boostDayCount : 0;
+        return Math.max(0, BOOST_DAILY_LIMIT - used);
+    }
+
+    /** @returns {boolean} */
+    canStartBoost() {
+        return this.canEarn() && this.getBoostCooldownSeconds() === 0 && this.getBoostDailyRemaining() > 0;
+    }
+
+    /**
+     * Call only after the platform confirmed the ad was watched.
+     * @returns {boolean}
+     */
+    grantBoost() {
+        if (!this.canStartBoost()) {
+            return false;
+        }
+        const now = Date.now();
+        const today = localDayKey();
+        this.boostDayCount = (this.boostDayKey === today ? this.boostDayCount : 0) + 1;
+        this.boostDayKey = today;
+        this.boostPermille = Math.min(BOOST_MAX_PERMILLE, this.boostPermille + 1);
+        this.boostActiveUntil = now + BOOST_DURATION_MS;
+        this.boostCooldownUntil = now + BOOST_COOLDOWN_MS;
+        return true;
+    }
+
+    /** Call when the ad could not be loaded/shown at all. */
+    failBoostAttempt() {
+        this.boostRetryUntil = Date.now() + BOOST_RETRY_MS;
     }
 }
