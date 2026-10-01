@@ -356,7 +356,10 @@ ingame:
         statDaily: "Boosts left today: <strong><left> of <limit></strong>"
         activeLabel: "x2 <time>"
         granted: Speed boost x2 is on!
-        unavailable: Ad is unavailable right now. Try again in 30 seconds.
+        adblockTitle: Ad could not be loaded
+        adblockDesc: "Looks like the ad was blocked. If you use an ad blocker (AdBlock, uBlock, a browser or DNS filter), turn it off for this site and try again. If not, the ad service may just be busy - try again in 30 seconds."
+        promoText: "Tip: watch a short ad and the whole factory runs twice as fast for 3 minutes!"
+        promoButton: Speed up x2
         reasonActive: Boost x2 is active right now.
         reasonCooldown: "The next boost will be available in <time>."
         reasonDailyLimit: Today's limit is reached. Come back tomorrow!

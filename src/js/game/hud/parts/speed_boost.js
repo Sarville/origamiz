@@ -139,9 +139,11 @@ export class HUDSpeedBoost extends BaseHUDPart {
             }
         } else if (result === enumRewardedAdResult.unavailable) {
             this.wallet.failBoostAttempt();
-            this.root.hud.signals.notification.dispatch(
-                T.ingame.speedBoost.unavailable,
-                enumNotificationType.warning
+            const t = T.ingame.speedBoost;
+            this.root.hud.parts.dialogs.showInfo(
+                t.adblockTitle,
+                `<div class="speedBoostAdblockImage"></div>${t.adblockDesc}`,
+                ["ok:good"]
             );
         }
     }

@@ -67,6 +67,12 @@
                 }
             }
 
+            .boostPromo {
+                flex-direction: column;
+                gap: 0.5rem;
+                margin-top: 1rem;
+            }
+
             button.close {
                 margin-top: 1.5rem;
             }
@@ -190,6 +196,37 @@
                     box-shadow: 0.2rem 0.3rem 0 0 rgba(0, 0, 0, 0.15);
                 }
             }
+        }
+
+        .boostPromo {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 1rem;
+            max-width: 40rem;
+            margin-top: 1.25rem;
+            padding: 0.6rem 1rem;
+            box-sizing: border-box;
+            border-radius: $globalBorderRadius;
+            background: rgba(#f4e9cf, 0.08);
+
+            &.hidden {
+                display: none;
+            }
+
+            .text {
+                @include PlainText;
+                color: #ece6d8;
+                text-align: left;
+            }
+
+            button {
+                flex-shrink: 0;
+            }
+        }
+
+        .boostPromo:not(.hidden) + button.close {
+            margin-top: 1.25rem;
         }
 
         button.close {

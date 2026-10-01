@@ -42,6 +42,14 @@ export class HUDUnlockNotification extends BaseHUDPart {
 
         this.elemContents = makeDiv(dialog, null, ["contents"]);
 
+        this.promo = makeDiv(dialog, null, ["boostPromo"]);
+        makeDiv(this.promo, null, ["text"], T.ingame.speedBoost.promoText);
+        this.btnBoost = document.createElement("button");
+        this.btnBoost.classList.add("styledButton");
+        this.btnBoost.innerText = T.ingame.speedBoost.promoButton;
+        this.promo.appendChild(this.btnBoost);
+        this.trackClicks(this.btnBoost, this.onBoostPromoClick);
+
         this.btnClose = document.createElement("button");
         this.btnClose.classList.add("close", "styledButton");
         this.btnClose.innerText = T.ingame.levelCompleteNotification.buttonNextLevel;
@@ -101,6 +109,12 @@ export class HUDUnlockNotification extends BaseHUDPart {
         this.elemContents.innerHTML = html;
         this.visible = true;
 
+        const wallet = this.root.app.wallet;
+        this.promo.classList.toggle(
+            "hidden",
+            !(level === 1 && this.root.app.platformWrapper.getSupportsRewardedAds() && wallet.canStartBoost())
+        );
+
         if (this.buttonShowTimeout) {
             clearTimeout(this.buttonShowTimeout);
         }
@@ -127,6 +141,11 @@ export class HUDUnlockNotification extends BaseHUDPart {
 
     isBlockingOverlay() {
         return this.visible;
+    }
+
+    onBoostPromoClick() {
+        this.requestClose();
+        this.root.hud.parts.speedBoost.onClick();
     }
 
     requestClose() {
