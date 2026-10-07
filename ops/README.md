@@ -115,8 +115,8 @@ ssh server-games "docker restart vk-payments-origamiz || docker run -d --name vk
     node:22-alpine node /server.js"
 
 # Static build
-npm run build-vk
-rsync -az --delete build/ server-games:/opt/games/site/vk/origamiz/
+./publish/vk/build.sh
+rsync -az --delete publish/vk/build/ server-games:/opt/games/site/vk/origamiz/
 ```
 
 After either change, verify against the live site (status codes, headers) rather than trusting the

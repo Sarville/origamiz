@@ -5,6 +5,8 @@ bundled into an APK/AAB by Capacitor, so the game runs fully offline; only ads a
 Reference implementation: the sibling `flowit/Colorit` project (`docs/android-rustore.md`).
 
 ## Build
+Release: `./publish/rustore/build.sh` (details in `publish/rustore/README.md`) - builds signed AAB+APK into
+`publish/rustore/build/`. Manual steps below are what it runs.
 ```bash
 npm run build-android          # gulp build.android.full && cap sync android  (copies build/ into android/)
 cd android

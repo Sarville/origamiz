@@ -57,3 +57,16 @@ gulp/additional_build_files
 electron/dist
 assets_backup_original/
 __pycache__/
+
+# Publish materials, store assets, local bundles
+publish/
+/mods/
+/*.zip
+/*.zip.bak
+/*.mp4
+/*.pdn
+/icon.png
+/logo.png
+/promo.png
+/screen[0-9].png
+/origamiz-yandex-market-cover.png
